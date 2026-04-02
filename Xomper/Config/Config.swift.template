@@ -1,0 +1,9 @@
+import Foundation
+
+enum Config {
+    static let supabaseURL = "https://YOUR_PROJECT.supabase.co"
+    static let supabaseAnonKey = "YOUR_ANON_KEY"
+    static let oauthCallbackURL = "xomper://login-callback"
+    static let apiGatewayURL = "https://YOUR_API_GATEWAY.execute-api.us-east-1.amazonaws.com"
+    static let whitelistedLeagueId = "YOUR_LEAGUE_ID"
+}
