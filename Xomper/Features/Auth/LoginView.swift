@@ -43,15 +43,17 @@ private extension LoginView {
 
     var brandingSection: some View {
         VStack(spacing: XomperTheme.Spacing.md) {
-            Image(systemName: "football.fill")
-                .font(.system(size: 64))
-                .foregroundStyle(XomperColors.championGold)
+            Image("XomperLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 120, height: 120)
                 .accessibilityHidden(true)
 
-            Text("Xomper")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .foregroundStyle(XomperColors.textPrimary)
+            Image("XomperBanner")
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: 280)
+                .accessibilityLabel("Xomper")
 
             Text("Fantasy Football Companion")
                 .font(.subheadline)
