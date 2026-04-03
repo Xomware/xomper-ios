@@ -15,7 +15,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "Xomper"
+               BlueprintIdentifier = "01BCCBEA9A65778F086DA1AE"
                BuildableName = "Xomper.app"
                BlueprintName = "Xomper"
                ReferencedContainer = "container:Xomper.xcodeproj">
@@ -44,7 +44,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "Xomper"
+            BlueprintIdentifier = "01BCCBEA9A65778F086DA1AE"
             BuildableName = "Xomper.app"
             BlueprintName = "Xomper"
             ReferencedContainer = "container:Xomper.xcodeproj">
@@ -61,7 +61,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "Xomper"
+            BlueprintIdentifier = "01BCCBEA9A65778F086DA1AE"
             BuildableName = "Xomper.app"
             BlueprintName = "Xomper"
             ReferencedContainer = "container:Xomper.xcodeproj">
