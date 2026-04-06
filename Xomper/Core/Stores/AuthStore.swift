@@ -38,14 +38,14 @@ final class AuthStore {
             self.isAuthenticated = session != nil
 
             if session != nil {
+                // Show loading while resolving whitelist + Sleeper user
+                self.isLoading = true
                 await loadUserData()
             } else {
                 clearUserData()
             }
 
-            if event == .initialSession {
-                self.isLoading = false
-            }
+            self.isLoading = false
         }
     }
 

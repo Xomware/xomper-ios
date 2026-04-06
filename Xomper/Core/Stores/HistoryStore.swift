@@ -386,7 +386,8 @@ final class HistoryStore {
     private nonisolated static func pairMatchupsStatic(_ matchups: [Matchup]) -> [MatchupPair] {
         var grouped: [Int: [Matchup]] = [:]
         for matchup in matchups {
-            grouped[matchup.matchupId, default: []].append(matchup)
+            guard let mid = matchup.matchupId else { continue }
+            grouped[mid, default: []].append(matchup)
         }
 
         return grouped.values.compactMap { pair in
@@ -431,7 +432,7 @@ final class HistoryStore {
                     leagueId: leagueId,
                     season: season,
                     week: week,
-                    matchupId: pair.teamA.matchupId,
+                    matchupId: pair.teamA.matchupId ?? 0,
                     teamARosterId: pair.teamA.rosterId,
                     teamAUserId: userA?.userId ?? "",
                     teamAUsername: userA?.username ?? "",

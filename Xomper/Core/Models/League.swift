@@ -2,19 +2,19 @@ import Foundation
 
 struct League: Codable, Identifiable, Sendable {
     let leagueId: String
-    let name: String
+    let name: String?
     let season: String
-    let seasonType: String
-    let sport: String
-    let status: String
-    let totalRosters: Int
+    let seasonType: String?
+    let sport: String?
+    let status: String?
+    let totalRosters: Int?
     let shard: Int?
     let draftId: String?
     let previousLeagueId: String?
     let bracketId: String?
     let groupId: String?
     let avatar: String?
-    let settings: LeagueSettings
+    let settings: LeagueSettings?
     let scoringSettings: [String: Double]?
     let rosterPositions: [String]?
     let metadata: [String: AnyCodableValue]?
@@ -44,7 +44,8 @@ struct League: Codable, Identifiable, Sendable {
     // MARK: - Computed
 
     var displayName: String {
-        name.isEmpty ? "League \(leagueId)" : name
+        guard let name, !name.isEmpty else { return "League \(leagueId)" }
+        return name
     }
 
     var avatarURL: URL? {
@@ -56,7 +57,7 @@ struct League: Codable, Identifiable, Sendable {
     }
 
     var isDynasty: Bool {
-        if let typeValue = settings.additionalSettings?["type"]?.doubleValue, typeValue == 2 {
+        if let typeValue = settings?.additionalSettings?["type"]?.doubleValue, typeValue == 2 {
             return true
         }
         if metadata?["dynasty"]?.stringValue == "1" {

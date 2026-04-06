@@ -11,7 +11,10 @@ enum StandingsBuilder {
         users: [SleeperUser],
         league: League
     ) -> [StandingsTeam] {
-        let userMap = Dictionary(uniqueKeysWithValues: users.map { ($0.userId, $0) })
+        let userMap = Dictionary(uniqueKeysWithValues: users.compactMap { user -> (String, SleeperUser)? in
+            guard let id = user.userId else { return nil }
+            return (id, user)
+        })
 
         var teams = rosters.compactMap { roster -> StandingsTeam? in
             guard let ownerId = roster.ownerId else { return nil }
@@ -33,9 +36,9 @@ enum StandingsBuilder {
                 division: roster.division,
                 divisionName: divisionInfo.name,
                 divisionAvatar: divisionInfo.avatarId,
-                wins: roster.settings.wins,
-                losses: roster.settings.losses,
-                ties: roster.settings.ties,
+                wins: roster.settings?.wins ?? 0,
+                losses: roster.settings?.losses ?? 0,
+                ties: roster.settings?.ties ?? 0,
                 fpts: roster.pointsFor,
                 fptsAgainst: roster.pointsAgainst,
                 streak: streak,

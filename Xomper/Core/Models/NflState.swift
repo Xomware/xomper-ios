@@ -3,13 +3,13 @@ import Foundation
 struct NflState: Codable, Sendable {
     let week: Int
     let season: String
-    let seasonType: String
+    let seasonType: String?
     let seasonStartDate: String?
     let previousSeason: String?
-    let leg: Int
+    let leg: Int?
     let leagueSeason: String?
     let leagueCreateSeason: String?
-    let displayWeek: Int
+    let displayWeek: Int?
 
     enum CodingKeys: String, CodingKey {
         case week
@@ -30,6 +30,6 @@ struct NflState: Codable, Sendable {
     }
 
     var displayLabel: String {
-        "Week \(displayWeek) - \(seasonType.uppercased()) Season"
+        "Week \(displayWeek ?? week) - \(seasonType?.uppercased() ?? "OFF") Season"
     }
 }

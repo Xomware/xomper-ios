@@ -77,7 +77,7 @@ struct StandingsView: View {
                     team: team,
                     rank: team.leagueRank,
                     isMyTeam: team.userId == authStore.sleeperUserId,
-                    playoffCutoff: leagueStore.currentLeague?.settings.playoffTeams
+                    playoffCutoff: leagueStore.currentLeague?.settings?.playoffTeams
                 ) {
                     selectTeam(team)
                 }

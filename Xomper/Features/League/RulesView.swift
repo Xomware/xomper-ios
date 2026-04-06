@@ -8,7 +8,7 @@ struct RulesView: View {
     @State private var showProposalForm = false
     @State private var expandedRuleSections: Set<Int> = []
 
-    private var totalRosters: Int { league.totalRosters }
+    private var totalRosters: Int { league.totalRosters ?? 0 }
     private var leagueName: String { league.displayName }
     private var leagueId: String { league.leagueId }
 
@@ -244,10 +244,10 @@ private extension RulesView {
     func buildLeagueSettings() -> [(label: String, value: String)] {
         [
             ("Format", league.isDynasty ? "Dynasty" : "Redraft"),
-            ("Teams", "\(league.totalRosters)"),
-            ("Playoff Teams", "\(league.settings.playoffTeams ?? 6)"),
-            ("Taxi Slots", "\(league.settings.taxiSlots ?? 0)"),
-            ("Trade Deadline", "Week \(league.settings.tradeDeadline.map(String.init) ?? "N/A")"),
+            ("Teams", "\(league.totalRosters ?? 0)"),
+            ("Playoff Teams", "\(league.settings?.playoffTeams ?? 6)"),
+            ("Taxi Slots", "\(league.settings?.taxiSlots ?? 0)"),
+            ("Trade Deadline", "Week \(league.settings?.tradeDeadline.map(String.init) ?? "N/A")"),
             ("Divisions", "\(league.divisions.count)"),
         ]
     }

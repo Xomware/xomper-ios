@@ -2,7 +2,7 @@ import Foundation
 
 struct Matchup: Codable, Sendable {
     let rosterId: Int
-    let matchupId: Int
+    let matchupId: Int?
     let players: [String]?
     let starters: [String]?
     let startersPoints: [Double]?

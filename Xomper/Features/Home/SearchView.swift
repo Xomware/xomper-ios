@@ -202,7 +202,7 @@ struct SearchView: View {
         Button {
             let generator = UIImpactFeedbackGenerator(style: .medium)
             generator.impactOccurred()
-            router.navigate(to: .userProfile(userId: user.userId))
+            router.navigate(to: .userProfile(userId: user.userId ?? ""))
         } label: {
             HStack(spacing: XomperTheme.Spacing.md) {
                 AvatarView(
@@ -256,7 +256,7 @@ struct SearchView: View {
 
                     HStack(spacing: XomperTheme.Spacing.sm) {
                         Label("\(league.season)", systemImage: "calendar")
-                        Label("\(league.totalRosters) teams", systemImage: "person.3")
+                        Label("\(league.totalRosters ?? 0) teams", systemImage: "person.3")
                     }
                     .font(.caption)
                     .foregroundStyle(XomperColors.textSecondary)

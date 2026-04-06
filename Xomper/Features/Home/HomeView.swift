@@ -89,7 +89,7 @@ struct HomeView: View {
 
                     HStack(spacing: XomperTheme.Spacing.sm) {
                         Label("\(league.season)", systemImage: "calendar")
-                        Label("\(league.totalRosters) teams", systemImage: "person.3")
+                        Label("\(league.totalRosters ?? 0) teams", systemImage: "person.3")
                     }
                     .font(.caption)
                     .foregroundStyle(XomperColors.textSecondary)

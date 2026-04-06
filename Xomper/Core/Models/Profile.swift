@@ -41,7 +41,7 @@ struct WhitelistedUser: Codable, Sendable {
 }
 
 struct SleeperUser: Codable, Identifiable, Sendable {
-    let userId: String
+    let userId: String?
     let username: String?
     let displayName: String?
     let avatar: String?
@@ -50,7 +50,7 @@ struct SleeperUser: Codable, Identifiable, Sendable {
     let metadata: [String: AnyCodableValue]?
     let settings: [String: AnyCodableValue]?
 
-    var id: String { userId }
+    var id: String { userId ?? UUID().uuidString }
 
     enum CodingKeys: String, CodingKey {
         case userId = "user_id"

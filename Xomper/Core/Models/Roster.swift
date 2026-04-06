@@ -10,7 +10,7 @@ struct Roster: Codable, Identifiable, Sendable {
     let taxi: [String]?
     let coOwners: [String]?
     let keepers: [String]?
-    let settings: RosterSettings
+    let settings: RosterSettings?
     let metadata: [String: AnyCodableValue]?
     let playerMap: [String: AnyCodableValue]?
 
@@ -34,22 +34,25 @@ struct Roster: Codable, Identifiable, Sendable {
     // MARK: - Computed
 
     var pointsFor: Double {
-        Double(settings.fpts) + Double(settings.fptsDecimal) / 100.0
+        guard let s = settings else { return 0 }
+        return Double(s.fpts) + Double(s.fptsDecimal) / 100.0
     }
 
     var pointsAgainst: Double {
-        Double(settings.fptsAgainst) + Double(settings.fptsAgainstDecimal) / 100.0
+        guard let s = settings else { return 0 }
+        return Double(s.fptsAgainst) + Double(s.fptsAgainstDecimal) / 100.0
     }
 
     var record: String {
-        if settings.ties > 0 {
-            return "\(settings.wins)-\(settings.losses)-\(settings.ties)"
+        guard let s = settings else { return "0-0" }
+        if s.ties > 0 {
+            return "\(s.wins)-\(s.losses)-\(s.ties)"
         }
-        return "\(settings.wins)-\(settings.losses)"
+        return "\(s.wins)-\(s.losses)"
     }
 
     var division: Int {
-        settings.division
+        settings?.division ?? 0
     }
 }
 

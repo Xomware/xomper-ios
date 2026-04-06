@@ -119,7 +119,7 @@ struct ProfileView: View {
                         .lineLimit(1)
 
                     HStack(spacing: XomperTheme.Spacing.sm) {
-                        Label("\(league.totalRosters) teams", systemImage: "person.3")
+                        Label("\(league.totalRosters ?? 0) teams", systemImage: "person.3")
                     }
                     .font(.caption)
                     .foregroundStyle(XomperColors.textSecondary)
@@ -184,7 +184,9 @@ struct ProfileView: View {
             let fetchedUser = try await apiClient.fetchUser(userId)
             user = fetchedUser
             isLoadingUser = false
-            await loadLeagues(for: fetchedUser.userId)
+            if let uid = fetchedUser.userId {
+                await loadLeagues(for: uid)
+            }
         } catch {
             errorMessage = "Could not load this profile."
             isLoadingUser = false
