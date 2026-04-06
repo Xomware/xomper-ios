@@ -25,6 +25,7 @@
 		3B67875F822BE9AA9BD052EF /* DraftHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6060C3A4F2B355757F1E3A2 /* DraftHistoryView.swift */; };
 		3E5A98150356BEB75FD87145 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 72178EB48829A7D249085476 /* Supabase */; };
 		40C507B6FB2EF2A7E647AA3C /* TeamStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36A01820FD0F6643BBF8511D /* TeamStore.swift */; };
+		427F23653F78A52108C55692 /* XomperLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE3B178733D5AF9EB7DA7189 /* XomperLoader.swift */; };
 		4DB9374CF45A69E97C02FC94 /* PlayerDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC44D14381C74E97D8AF868F /* PlayerDetailView.swift */; };
 		4E0CAC9964BF3F2B59EDD844 /* DraftHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A789B8D49FA4430886626289 /* DraftHistory.swift */; };
 		54863F3F6ECDD3BE00083582 /* Roster.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE543CB2E49335ADD02E8000 /* Roster.swift */; };
@@ -135,6 +136,7 @@
 		DB1FE16B5220928685DCF19E /* SleeperAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleeperAPIClient.swift; sourceTree = "<group>"; };
 		DBD0F6820960B354EAB3E89D /* LoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingView.swift; sourceTree = "<group>"; };
 		DC24A8748C940FC57B142AFF /* ErrorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorView.swift; sourceTree = "<group>"; };
+		DE3B178733D5AF9EB7DA7189 /* XomperLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XomperLoader.swift; sourceTree = "<group>"; };
 		DF491605034E9F8C00BC0572 /* MatchupHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchupHistoryView.swift; sourceTree = "<group>"; };
 		E1E5A60EE78F668F02CF63C0 /* NflState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NflState.swift; sourceTree = "<group>"; };
 		E6A47FD1CF3BE7AE0B940DEC /* StandingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingsView.swift; sourceTree = "<group>"; };
@@ -327,6 +329,7 @@
 				DC24A8748C940FC57B142AFF /* ErrorView.swift */,
 				DBD0F6820960B354EAB3E89D /* LoadingView.swift */,
 				1AD376EFB7AD4A192FAB3E8F /* RecordBadge.swift */,
+				DE3B178733D5AF9EB7DA7189 /* XomperLoader.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -549,6 +552,7 @@
 				E1D933F9B0C3E87F9C1C907A /* XomperAPIClient.swift in Sources */,
 				1A9D12F3D247BD472801D26D /* XomperApp.swift in Sources */,
 				194BED1749B3F623C8D732DE /* XomperColors.swift in Sources */,
+				427F23653F78A52108C55692 /* XomperLoader.swift in Sources */,
 				2F09FBAE23D8109C931D63A9 /* XomperTheme.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
