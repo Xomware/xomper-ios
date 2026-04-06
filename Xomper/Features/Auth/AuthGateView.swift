@@ -20,8 +20,6 @@ struct AuthGateView: View {
                 LoginView(authStore: authStore)
             } else if !authStore.isWhitelisted {
                 notAuthorizedView
-            } else if authStore.needsSleeperLink {
-                LinkSleeperView(authStore: authStore)
             } else {
                 ContentView(
                     authStore: authStore,
