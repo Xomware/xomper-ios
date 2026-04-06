@@ -121,6 +121,7 @@ final class AuthStore {
     private func loadUserData() async {
         await loadProfile()
         await checkWhitelist()
+        await autoLinkSleeperIfNeeded()
     }
 
     private func loadProfile() async {
@@ -144,6 +145,8 @@ final class AuthStore {
         }
     }
 
+    private var whitelistedUser: WhitelistedUser?
+
     func checkWhitelist() async {
         guard let email = session?.user.email else {
             isWhitelisted = false
@@ -160,9 +163,33 @@ final class AuthStore {
                 .execute()
                 .value
 
+            self.whitelistedUser = results.first
             self.isWhitelisted = !results.isEmpty
         } catch {
             self.isWhitelisted = false
+        }
+    }
+
+    /// Auto-link Sleeper account from whitelist sleeper_username if profile doesn't have one yet
+    private func autoLinkSleeperIfNeeded() async {
+        // Already linked
+        guard sleeperUserId == nil || sleeperUserId?.isEmpty == true else { return }
+        // Need a whitelist record with a sleeper username
+        guard let sleeperUsername = whitelistedUser?.sleeperUsername,
+              !sleeperUsername.isEmpty else { return }
+
+        // Look up the Sleeper user by username
+        let url = URL(string: "https://api.sleeper.app/v1/user/\(sleeperUsername)")!
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let sleeperUser = try JSONDecoder().decode(SleeperUser.self, from: data)
+            let success = await linkSleeperAccount(sleeperUser: sleeperUser)
+            if success {
+                // Skip the manual linking step
+                _ = success
+            }
+        } catch {
+            // Auto-link failed silently — user can still link manually
         }
     }
 

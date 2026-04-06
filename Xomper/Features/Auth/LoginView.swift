@@ -43,12 +43,6 @@ private extension LoginView {
 
     var brandingSection: some View {
         VStack(spacing: XomperTheme.Spacing.md) {
-            Image("XomperLogo")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 120, height: 120)
-                .accessibilityHidden(true)
-
             Image("XomperBanner")
                 .resizable()
                 .scaledToFit()
@@ -74,11 +68,7 @@ private extension LoginView {
 
     var optionsView: some View {
         VStack(spacing: XomperTheme.Spacing.md) {
-            PrimaryButton(
-                title: "Continue with Google",
-                icon: "globe",
-                isLoading: isSubmitting
-            ) {
+            GoogleSignInButton(isLoading: isSubmitting) {
                 isSubmitting = true
                 Task {
                     await authStore.signInWithGoogle()
@@ -315,6 +305,64 @@ private struct InputField: View {
         .background(XomperColors.bgInput)
         .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
         .autocorrectionDisabled()
+    }
+}
+
+// MARK: - Google Sign-In Button
+
+private struct GoogleSignInButton: View {
+    var isLoading: Bool = false
+    let action: () -> Void
+
+    @State private var isPressed = false
+
+    var body: some View {
+        Button {
+            let generator = UIImpactFeedbackGenerator(style: .medium)
+            generator.impactOccurred()
+            action()
+        } label: {
+            HStack(spacing: XomperTheme.Spacing.sm) {
+                if isLoading {
+                    ProgressView()
+                        .tint(.white)
+                } else {
+                    googleLogo
+                        .frame(width: 20, height: 20)
+                    Text("Continue with Google")
+                }
+            }
+            .font(.headline)
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: XomperTheme.minTouchTarget)
+            .padding(.horizontal, XomperTheme.Spacing.md)
+            .background(
+                RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md)
+                    .fill(Color(hex: 0x4285F4))
+            )
+        }
+        .disabled(isLoading)
+        .scaleEffect(isPressed ? 0.97 : 1.0)
+        .animation(XomperTheme.defaultAnimation, value: isPressed)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in isPressed = true }
+                .onEnded { _ in isPressed = false }
+        )
+        .accessibilityLabel("Continue with Google")
+    }
+
+    // Google "G" logo drawn with shapes
+    private var googleLogo: some View {
+        ZStack {
+            Circle()
+                .fill(.white)
+                .frame(width: 20, height: 20)
+            Text("G")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(Color(hex: 0x4285F4))
+        }
     }
 }
 
