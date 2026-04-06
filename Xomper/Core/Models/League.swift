@@ -11,7 +11,7 @@ struct League: Codable, Identifiable, Sendable {
     let shard: Int?
     let draftId: String?
     let previousLeagueId: String?
-    let bracketId: String?
+    let bracketId: Int?
     let groupId: String?
     let avatar: String?
     let settings: LeagueSettings?
@@ -120,7 +120,7 @@ struct LeagueSettings: Codable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case dailyWaivers = "daily_waivers"
-        case dailyWaiverHour = "daily_waiver_hour"
+        case dailyWaiverHour = "daily_waivers_hour"
         case playoffRoundType = "playoff_round_type"
         case playoffTeams = "playoff_teams"
         case playoffSeedType = "playoff_seed_type"
