@@ -14,6 +14,16 @@ final class AuthStore {
     var sleeperUserId: String?
     var errorMessage: String?
 
+    // MARK: - Computed
+
+    var userEmail: String? { session?.user.email }
+    var userDisplayName: String? { whitelistedUser?.displayName }
+    var sleeperUsername: String? { whitelistedUser?.sleeperUsername }
+
+    var isFullySetUp: Bool {
+        isAuthenticated && isWhitelisted && sleeperUserId != nil
+    }
+
     // MARK: - Init
 
     init() {

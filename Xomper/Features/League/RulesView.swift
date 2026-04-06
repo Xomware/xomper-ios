@@ -48,9 +48,9 @@ struct RulesView: View {
     // MARK: - Proposer Name
 
     private var resolvedProposerName: String {
-        authStore.profile?.displayName
-            ?? authStore.profile?.sleeperUsername
-            ?? authStore.profile?.email?.components(separatedBy: "@").first
+        authStore.userDisplayName
+            ?? authStore.sleeperUsername
+            ?? authStore.userEmail?.components(separatedBy: "@").first
             ?? "A league member"
     }
 

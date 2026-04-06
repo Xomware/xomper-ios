@@ -38,7 +38,7 @@ struct AuthGateView: View {
         .animation(XomperTheme.defaultAnimation, value: authStore.isLoading)
         .animation(XomperTheme.defaultAnimation, value: authStore.isAuthenticated)
         .animation(XomperTheme.defaultAnimation, value: authStore.isWhitelisted)
-        .animation(XomperTheme.defaultAnimation, value: authStore.needsSleeperLink)
+        .animation(XomperTheme.defaultAnimation, value: authStore.isFullySetUp)
     }
 
     private var notAuthorizedView: some View {

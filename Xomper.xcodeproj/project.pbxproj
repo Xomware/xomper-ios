@@ -43,7 +43,6 @@
 		7E34464209AAF9EC6801191A /* NflState.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1E5A60EE78F668F02CF63C0 /* NflState.swift */; };
 		7EA8F8FCEFFE3C165655208C /* MatchupHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF491605034E9F8C00BC0572 /* MatchupHistoryView.swift */; };
 		80E6A85F05ED2AFFC648FAFA /* RulesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9382BCB18DFEB416A50A039 /* RulesView.swift */; };
-		81ADFF9E267EABFCEE38CE91 /* LinkSleeperView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5542F5F5221A74FE4CCDF81E /* LinkSleeperView.swift */; };
 		83E71E429B2F8B4B7AEBAB96 /* LoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBD0F6820960B354EAB3E89D /* LoadingView.swift */; };
 		86412A35609319AF08D413D3 /* TaxiSquadStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6387E34B6FA70159F3F9D80A /* TaxiSquadStore.swift */; };
 		8C67D3AAFE5A0A124BDE5F1A /* AppRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EABD25CAB8BF973C4709720 /* AppRouter.swift */; };
@@ -96,7 +95,6 @@
 		45B52D5FD69B62417928B713 /* MatchupHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchupHistory.swift; sourceTree = "<group>"; };
 		460030AF84E8D0E83D8F5896 /* Xomper.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Xomper.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		536B3E71286A0BC3A7CD8DA6 /* AuthStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthStore.swift; sourceTree = "<group>"; };
-		5542F5F5221A74FE4CCDF81E /* LinkSleeperView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkSleeperView.swift; sourceTree = "<group>"; };
 		558164667DF7D89C4DF2F32E /* MyProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyProfileView.swift; sourceTree = "<group>"; };
 		56BB91320E3D5EBE1F777838 /* LeagueStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeagueStore.swift; sourceTree = "<group>"; };
 		57940AEB84889A20016648F2 /* TaxiSquadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaxiSquadView.swift; sourceTree = "<group>"; };
@@ -226,7 +224,6 @@
 			isa = PBXGroup;
 			children = (
 				BB5E661424C55F695BF96281 /* AuthGateView.swift */,
-				5542F5F5221A74FE4CCDF81E /* LinkSleeperView.swift */,
 				9E94170F987E8EFE5C566B9B /* LoginView.swift */,
 			);
 			path = Auth;
@@ -507,7 +504,6 @@
 				114998283E6705D075ED2CA7 /* League.swift in Sources */,
 				0EA958F4475DB9558F187F26 /* LeagueDashboardView.swift in Sources */,
 				724482308D102AFA35AB4017 /* LeagueStore.swift in Sources */,
-				81ADFF9E267EABFCEE38CE91 /* LinkSleeperView.swift in Sources */,
 				83E71E429B2F8B4B7AEBAB96 /* LoadingView.swift in Sources */,
 				A4D93DF4C02A8DE6C695CE4D /* LoginView.swift in Sources */,
 				D106F60A597D780F32FFA5E8 /* Matchup.swift in Sources */,

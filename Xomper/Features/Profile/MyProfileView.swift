@@ -43,7 +43,7 @@ struct MyProfileView: View {
     private var profileHeader: some View {
         VStack(spacing: XomperTheme.Spacing.md) {
             AvatarView(
-                avatarID: authStore.profile?.sleeperAvatar,
+                avatarID: userStore.myUser?.avatar,
                 size: XomperTheme.AvatarSize.xl
             )
 
@@ -55,7 +55,7 @@ struct MyProfileView: View {
                         .foregroundStyle(XomperColors.textPrimary)
                 }
 
-                if let displayName = authStore.profile?.displayName,
+                if let displayName = authStore.userDisplayName,
                    displayName != resolvedUsername {
                     Text(displayName)
                         .font(.subheadline)
@@ -208,7 +208,7 @@ struct MyProfileView: View {
     // MARK: - Helpers
 
     private var resolvedUsername: String? {
-        authStore.profile?.sleeperUsername ?? userStore.myUser?.username
+        authStore.sleeperUsername ?? userStore.myUser?.username
     }
 
     private var statusIcon: String {
@@ -221,7 +221,7 @@ struct MyProfileView: View {
 
     private var statusMessage: String {
         if authStore.isFullySetUp {
-            return "Linked as \(authStore.profile?.sleeperUsername ?? "unknown")"
+            return "Linked as \(authStore.sleeperUsername ?? "unknown")"
         }
         return "Not linked to a Sleeper account"
     }

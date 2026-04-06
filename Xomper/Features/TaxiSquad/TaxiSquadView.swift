@@ -207,8 +207,8 @@ struct TaxiSquadView: View {
     // MARK: - Helpers
 
     private var resolvedStealerName: String {
-        authStore.profile?.displayName
-            ?? authStore.profile?.email?.components(separatedBy: "@").first
+        authStore.userDisplayName
+            ?? authStore.userEmail?.components(separatedBy: "@").first
             ?? "Unknown"
     }
 }
