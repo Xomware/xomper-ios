@@ -44,3 +44,17 @@ targets:
       - package: Supabase
         product: Supabase
     postCompileScripts: []
+
+schemes:
+  Xomper:
+    build:
+      targets:
+        Xomper: all
+    run:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
