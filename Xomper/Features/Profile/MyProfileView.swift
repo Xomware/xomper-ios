@@ -84,7 +84,7 @@ struct MyProfileView: View {
                 .foregroundStyle(statusColor)
                 .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: XomperTheme.Spacing.xxs) {
+            VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
                 Text("Sleeper Account")
                     .font(.subheadline)
                     .fontWeight(.semibold)
@@ -138,7 +138,7 @@ struct MyProfileView: View {
                     isTeam: true
                 )
 
-                VStack(alignment: .leading, spacing: XomperTheme.Spacing.xxs) {
+                VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
                     Text(league.displayName)
                         .font(.headline)
                         .foregroundStyle(XomperColors.textPrimary)

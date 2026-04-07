@@ -30,7 +30,10 @@ struct ContentView: View {
         }
         .tint(XomperColors.championGold)
         .task {
-            await bootstrapApp()
+            await bootstrapPhase1()
+        }
+        .task(id: authStore.sleeperUserId) {
+            await bootstrapPhase2()
         }
     }
 
@@ -165,26 +168,30 @@ struct ContentView: View {
 
     // MARK: - Bootstrap
 
-    private func bootstrapApp() async {
+    /// Phase 1: Load league, NFL state, and players in parallel.
+    /// These don't depend on sleeperUserId.
+    private func bootstrapPhase1() async {
         async let leagueLoad: () = leagueStore.loadMyLeague()
         async let nflLoad: () = nflStateStore.fetchState()
         async let playerLoad: () = playerStore.loadPlayers()
 
         _ = await (leagueLoad, nflLoad, playerLoad)
+    }
 
-        // Load user info once league is available
-        if let sleeperUserId = authStore.sleeperUserId {
-            await userStore.loadMyUser(userId: sleeperUserId)
-        }
+    /// Phase 2: Once sleeperUserId resolves, load user info and build my team.
+    /// Re-triggers automatically when authStore.sleeperUserId changes.
+    private func bootstrapPhase2() async {
+        guard let sleeperUserId = authStore.sleeperUserId else { return }
 
-        // Build standings and find my team
+        await userStore.loadMyUser(userId: sleeperUserId)
+
         if let league = leagueStore.myLeague {
             let standings = StandingsBuilder.buildStandings(
                 rosters: leagueStore.myLeagueRosters,
                 users: leagueStore.myLeagueUsers,
                 league: league
             )
-            teamStore.loadMyTeam(from: standings, userId: authStore.sleeperUserId)
+            teamStore.loadMyTeam(from: standings, userId: sleeperUserId)
         }
     }
 }

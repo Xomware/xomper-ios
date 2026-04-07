@@ -100,7 +100,7 @@ struct HomeView: View {
                             .fontWeight(.semibold)
                             .foregroundStyle(XomperColors.deepNavy)
                             .padding(.horizontal, XomperTheme.Spacing.sm)
-                            .padding(.vertical, XomperTheme.Spacing.xxs)
+                            .padding(.vertical, XomperTheme.Spacing.xs)
                             .background(XomperColors.championGold)
                             .clipShape(Capsule())
                     }
@@ -146,7 +146,7 @@ struct HomeView: View {
             HStack(spacing: XomperTheme.Spacing.md) {
                 AvatarView(avatarID: team.avatarId, size: XomperTheme.AvatarSize.md)
 
-                VStack(alignment: .leading, spacing: XomperTheme.Spacing.xxs) {
+                VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
                     Text(team.teamName)
                         .font(.headline)
                         .foregroundStyle(XomperColors.textPrimary)
@@ -159,7 +159,7 @@ struct HomeView: View {
 
                 Spacer()
 
-                VStack(alignment: .trailing, spacing: XomperTheme.Spacing.xxs) {
+                VStack(alignment: .trailing, spacing: XomperTheme.Spacing.xs) {
                     Text(team.fpts.formattedPoints)
                         .font(.subheadline)
                         .fontWeight(.semibold)

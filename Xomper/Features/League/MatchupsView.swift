@@ -72,7 +72,7 @@ struct MatchupsView: View {
         let seasons = historyStore.availableMatchupSeasons
         if seasons.count > 1 {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: XomperTheme.Spacing.xs) {
+                HStack(spacing: XomperTheme.Spacing.sm) {
                     ForEach(seasons, id: \.self) { season in
                         seasonButton(season)
                     }
@@ -110,7 +110,7 @@ struct MatchupsView: View {
     private var weeksList: some View {
         let weeks = historyStore.weeklyMatchups(forSeason: selectedSeason)
 
-        return LazyVStack(spacing: XomperTheme.Spacing.sm) {
+        return LazyVStack(spacing: XomperTheme.Spacing.md) {
             if weeks.isEmpty {
                 EmptyStateView(
                     icon: "calendar",
@@ -132,7 +132,7 @@ struct MatchupsView: View {
             weekHeader(weekData)
 
             if expandedWeek == weekData.week {
-                VStack(spacing: XomperTheme.Spacing.sm) {
+                VStack(spacing: XomperTheme.Spacing.md) {
                     ForEach(weekData.matchups) { matchup in
                         MatchupCardView(matchup: matchup) {
                             selectedMatchup = matchup
@@ -154,7 +154,7 @@ struct MatchupsView: View {
             }
         } label: {
             HStack {
-                VStack(alignment: .leading, spacing: XomperTheme.Spacing.xxs) {
+                VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
                     Text(weekData.week > 14 ? "Playoff Week \(weekData.week)" : "Week \(weekData.week)")
                         .font(.headline)
                         .foregroundStyle(XomperColors.textPrimary)
@@ -239,7 +239,7 @@ private struct MatchupCardView: View {
                     result: matchupResult(for: matchup.teamBRosterId)
                 )
             }
-            .padding(XomperTheme.Spacing.sm)
+            .padding(XomperTheme.Spacing.md)
             .background(XomperColors.bgCard)
             .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
             .overlay(
@@ -263,7 +263,7 @@ private struct MatchupCardView: View {
 
     private func teamRow(name: String, username: String?, points: Double, result: MatchupResult) -> some View {
         HStack {
-            VStack(alignment: .leading, spacing: XomperTheme.Spacing.xxs) {
+            VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
                 Text(name)
                     .font(.subheadline)
                     .fontWeight(.medium)
@@ -290,7 +290,7 @@ private struct MatchupCardView: View {
                 resultIndicator(result)
             }
         }
-        .padding(.vertical, XomperTheme.Spacing.xs)
+        .padding(.vertical, XomperTheme.Spacing.sm)
     }
 
     private var vsDivider: some View {
@@ -299,7 +299,7 @@ private struct MatchupCardView: View {
                 .fill(XomperColors.surfaceLight)
                 .frame(height: 0.5)
 
-            VStack(spacing: XomperTheme.Spacing.xxs) {
+            VStack(spacing: XomperTheme.Spacing.xs) {
                 Text("VS")
                     .font(.caption2)
                     .fontWeight(.bold)

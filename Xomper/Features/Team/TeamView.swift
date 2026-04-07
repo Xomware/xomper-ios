@@ -240,11 +240,11 @@ private extension TeamView {
     }
 
     func rosterSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: XomperTheme.Spacing.sm) {
+        VStack(alignment: .leading, spacing: XomperTheme.Spacing.md) {
             Text(title)
                 .font(.headline.weight(.bold))
                 .foregroundStyle(XomperColors.championGold)
-                .padding(.bottom, XomperTheme.Spacing.xxs)
+                .padding(.bottom, XomperTheme.Spacing.xs)
                 .accessibilityAddTraits(.isHeader)
 
             content()
@@ -262,7 +262,7 @@ private extension TeamView {
 
             Spacer()
         }
-        .padding(XomperTheme.Spacing.sm)
+        .padding(XomperTheme.Spacing.md)
         .background(XomperColors.bgCard.opacity(0.5))
         .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
         .accessibilityLabel("Empty \(position) slot")
@@ -372,7 +372,7 @@ struct PlayerRow: View {
 
                 PlayerImageView(playerID: player.playerId, size: XomperTheme.AvatarSize.sm)
 
-                VStack(alignment: .leading, spacing: XomperTheme.Spacing.xxs) {
+                VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
                     Text(player.fullDisplayName)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(XomperColors.textPrimary)
@@ -401,7 +401,7 @@ struct PlayerRow: View {
                     .font(.caption)
                     .foregroundStyle(XomperColors.textMuted)
             }
-            .padding(XomperTheme.Spacing.sm)
+            .padding(XomperTheme.Spacing.md)
             .background(
                 RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md)
                     .fill(XomperColors.bgCard)

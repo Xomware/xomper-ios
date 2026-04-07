@@ -340,7 +340,7 @@ private struct DraftPickCard: View {
     // MARK: - Player Info
 
     private var playerInfo: some View {
-        VStack(alignment: .leading, spacing: XomperTheme.Spacing.xxs) {
+        VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
             HStack(spacing: XomperTheme.Spacing.xs) {
                 Text(pick.playerName)
                     .font(.subheadline.weight(.semibold))
@@ -360,7 +360,7 @@ private struct DraftPickCard: View {
                     .foregroundStyle(XomperColors.textMuted)
             }
 
-            HStack(spacing: XomperTheme.Spacing.xxs) {
+            HStack(spacing: XomperTheme.Spacing.xs) {
                 Text("Picked by:")
                     .font(.caption2)
                     .foregroundStyle(XomperColors.textMuted)

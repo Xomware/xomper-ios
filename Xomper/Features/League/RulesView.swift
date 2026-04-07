@@ -614,7 +614,7 @@ private struct RosterSlotBadge: View {
     let slot: RosterSlot
 
     var body: some View {
-        VStack(spacing: XomperTheme.Spacing.xxs) {
+        VStack(spacing: XomperTheme.Spacing.xs) {
             Text(slot.position == "SUPER_FLEX" ? "SF" : slot.position)
                 .font(.caption)
                 .fontWeight(.bold)
@@ -711,7 +711,7 @@ private struct ProposalCardView: View {
             .fontWeight(.bold)
             .foregroundStyle(statusColor)
             .padding(.horizontal, XomperTheme.Spacing.sm)
-            .padding(.vertical, XomperTheme.Spacing.xxs)
+            .padding(.vertical, XomperTheme.Spacing.xs)
             .background(statusColor.opacity(0.15))
             .clipShape(Capsule())
     }

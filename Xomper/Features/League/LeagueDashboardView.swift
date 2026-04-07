@@ -50,7 +50,7 @@ struct LeagueDashboardView: View {
 
     private var tabPicker: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: XomperTheme.Spacing.xs) {
+            HStack(spacing: XomperTheme.Spacing.sm) {
                 ForEach(LeagueTab.allCases) { tab in
                     tabButton(tab)
                 }

@@ -112,7 +112,7 @@ struct ProfileView: View {
                     isTeam: true
                 )
 
-                VStack(alignment: .leading, spacing: XomperTheme.Spacing.xxs) {
+                VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
                     Text(league.displayName)
                         .font(.headline)
                         .foregroundStyle(XomperColors.textPrimary)
@@ -130,7 +130,7 @@ struct ProfileView: View {
                             .fontWeight(.semibold)
                             .foregroundStyle(XomperColors.deepNavy)
                             .padding(.horizontal, XomperTheme.Spacing.sm)
-                            .padding(.vertical, XomperTheme.Spacing.xxs)
+                            .padding(.vertical, XomperTheme.Spacing.xs)
                             .background(XomperColors.championGold)
                             .clipShape(Capsule())
                     }

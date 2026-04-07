@@ -27,8 +27,8 @@ struct WorldCupView: View {
         .refreshable {
             await refreshData()
         }
-        .onAppear {
-            loadIfNeeded()
+        .task {
+            await loadIfNeeded()
         }
     }
 
@@ -89,8 +89,17 @@ struct WorldCupView: View {
 
     // MARK: - Actions
 
-    private func loadIfNeeded() {
+    private func loadIfNeeded() async {
         guard !worldCupStore.hasData, !worldCupStore.isLoading else { return }
+
+        // Ensure chain and matchup history are loaded before computing standings
+        if leagueStore.leagueChain.isEmpty, let leagueId = leagueStore.currentLeague?.leagueId ?? leagueStore.myLeague?.leagueId {
+            await leagueStore.loadLeagueChain(startingFrom: leagueId)
+        }
+        if historyStore.matchupHistory.isEmpty, !leagueStore.leagueChain.isEmpty {
+            await historyStore.loadMatchupHistory(chain: leagueStore.leagueChain)
+        }
+
         reloadStandings()
     }
 
@@ -117,12 +126,12 @@ private struct WorldCupDivisionSection: View {
     let seasons: [String]
 
     var body: some View {
-        VStack(spacing: XomperTheme.Spacing.sm) {
+        VStack(spacing: XomperTheme.Spacing.md) {
             divisionHeader
             standingsTable
             qualifyLine
         }
-        .padding(XomperTheme.Spacing.md)
+        .padding(XomperTheme.Spacing.lg)
         .background(XomperColors.bgCard.opacity(0.6))
         .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
         .overlay(
@@ -142,7 +151,7 @@ private struct WorldCupDivisionSection: View {
     }
 
     private var standingsTable: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: XomperTheme.Spacing.xs) {
             tableHeader
             ForEach(Array(division.teams.enumerated()), id: \.element.id) { index, team in
                 WorldCupTeamRow(
@@ -156,7 +165,7 @@ private struct WorldCupDivisionSection: View {
 
     private var tableHeader: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 0) {
+            HStack(spacing: XomperTheme.Spacing.xs) {
                 headerCell("#", width: 32, alignment: .center)
                 headerCell("Team", width: 120, alignment: .leading)
                 headerCell("W", width: 36, alignment: .center)
@@ -168,7 +177,7 @@ private struct WorldCupDivisionSection: View {
                 }
             }
             .padding(.vertical, XomperTheme.Spacing.sm)
-            .padding(.horizontal, XomperTheme.Spacing.xs)
+            .padding(.horizontal, XomperTheme.Spacing.md)
         }
     }
 
@@ -194,7 +203,7 @@ private struct WorldCupDivisionSection: View {
                     .fontWeight(.bold)
                     .foregroundStyle(XomperColors.championGold)
                     .padding(.horizontal, XomperTheme.Spacing.sm)
-                    .padding(.vertical, XomperTheme.Spacing.xxs)
+                    .padding(.vertical, XomperTheme.Spacing.xs)
                     .background(XomperColors.championGold.opacity(0.15))
                     .clipShape(Capsule())
 
@@ -217,7 +226,7 @@ private struct WorldCupTeamRow: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 0) {
+            HStack(spacing: XomperTheme.Spacing.xs) {
                 rankCell
                 teamInfoCell
                 statCell(String(team.wins), width: 36, isWins: true)
@@ -227,7 +236,7 @@ private struct WorldCupTeamRow: View {
                 seasonCells
             }
             .padding(.vertical, XomperTheme.Spacing.sm)
-            .padding(.horizontal, XomperTheme.Spacing.xs)
+            .padding(.horizontal, XomperTheme.Spacing.md)
         }
         .background(rowBackground)
         .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
@@ -253,7 +262,7 @@ private struct WorldCupTeamRow: View {
     }
 
     private var teamInfoCell: some View {
-        VStack(alignment: .leading, spacing: XomperTheme.Spacing.xxs) {
+        VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
             Text(team.teamName.isEmpty ? team.username : team.teamName)
                 .font(.caption)
                 .fontWeight(.semibold)

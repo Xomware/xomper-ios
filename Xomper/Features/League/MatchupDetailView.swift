@@ -94,7 +94,7 @@ struct MatchupDetailView: View {
                 .frame(maxWidth: .infinity)
 
                 // VS
-                VStack(spacing: XomperTheme.Spacing.xxs) {
+                VStack(spacing: XomperTheme.Spacing.xs) {
                     Text("VS")
                         .font(.caption)
                         .fontWeight(.bold)
@@ -146,7 +146,7 @@ struct MatchupDetailView: View {
             .fontWeight(.bold)
             .foregroundStyle(XomperColors.deepNavy)
             .padding(.horizontal, XomperTheme.Spacing.sm)
-            .padding(.vertical, XomperTheme.Spacing.xxs)
+            .padding(.vertical, XomperTheme.Spacing.xs)
             .background(XomperColors.championGold)
             .clipShape(Capsule())
     }
@@ -275,7 +275,7 @@ struct MatchupDetailView: View {
             playerCell(player: playerB, playerId: playerIdB, alignment: .trailing)
                 .frame(maxWidth: .infinity, alignment: .trailing)
         }
-        .padding(.vertical, XomperTheme.Spacing.xxs)
+        .padding(.vertical, XomperTheme.Spacing.xs)
         .padding(.horizontal, XomperTheme.Spacing.sm)
     }
 

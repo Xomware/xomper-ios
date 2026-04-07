@@ -74,7 +74,7 @@ enum XomperTheme {
 struct XomperCardModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .padding(XomperTheme.Spacing.md)
+            .padding(20)
             .background(XomperColors.bgCard)
             .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
             .xomperShadow(.sm)

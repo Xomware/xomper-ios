@@ -207,7 +207,7 @@ struct PlayoffBracketView: View {
                     .fontDesign(.monospaced)
                     .foregroundStyle(XomperColors.textMuted)
                     .padding(.horizontal, XomperTheme.Spacing.xs)
-                    .padding(.vertical, XomperTheme.Spacing.xxs)
+                    .padding(.vertical, XomperTheme.Spacing.xs)
                     .background(XomperColors.surfaceLight.opacity(0.3))
                     .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.sm))
             }

@@ -40,7 +40,7 @@ struct StandingsView: View {
     // MARK: - View Mode Toggle
 
     private var viewModeToggle: some View {
-        HStack(spacing: XomperTheme.Spacing.xs) {
+        HStack(spacing: XomperTheme.Spacing.sm) {
             ForEach(StandingsViewMode.allCases) { mode in
                 Button {
                     let generator = UIImpactFeedbackGenerator(style: .light)
@@ -70,7 +70,7 @@ struct StandingsView: View {
     // MARK: - League Standings
 
     private var leagueStandingsView: some View {
-        LazyVStack(spacing: XomperTheme.Spacing.sm) {
+        LazyVStack(spacing: XomperTheme.Spacing.md) {
             standingsHeader
             ForEach(standings) { team in
                 StandingsRowView(
@@ -99,7 +99,7 @@ struct StandingsView: View {
     }
 
     private func divisionSection(name: String, teams: [StandingsTeam]) -> some View {
-        VStack(spacing: XomperTheme.Spacing.sm) {
+        VStack(spacing: XomperTheme.Spacing.md) {
             HStack(spacing: XomperTheme.Spacing.sm) {
                 if let avatarId = teams.first?.divisionAvatar {
                     AvatarView(avatarID: avatarId, size: XomperTheme.AvatarSize.sm, isTeam: true)
@@ -109,7 +109,7 @@ struct StandingsView: View {
                     .foregroundStyle(XomperColors.textPrimary)
                 Spacer()
             }
-            .padding(.horizontal, XomperTheme.Spacing.xs)
+            .padding(.horizontal, XomperTheme.Spacing.md)
 
             standingsHeader
 
@@ -129,7 +129,7 @@ struct StandingsView: View {
     // MARK: - Header
 
     private var standingsHeader: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: XomperTheme.Spacing.xs) {
             Text("#")
                 .frame(width: 28, alignment: .center)
             Text("Team")
@@ -146,8 +146,8 @@ struct StandingsView: View {
         .font(.caption2)
         .fontWeight(.semibold)
         .foregroundStyle(XomperColors.textMuted)
-        .padding(.horizontal, XomperTheme.Spacing.sm)
-        .padding(.vertical, XomperTheme.Spacing.xs)
+        .padding(.horizontal, XomperTheme.Spacing.md)
+        .padding(.vertical, XomperTheme.Spacing.sm)
         .accessibilityHidden(true)
     }
 
@@ -209,7 +209,7 @@ private struct StandingsRowView: View {
                 teamInfo
                 statsColumns
             }
-            .padding(.horizontal, XomperTheme.Spacing.sm)
+            .padding(.horizontal, XomperTheme.Spacing.md)
             .padding(.vertical, XomperTheme.Spacing.sm)
             .frame(minHeight: XomperTheme.minTouchTarget)
             .background(XomperColors.bgCard)
@@ -248,7 +248,7 @@ private struct StandingsRowView: View {
         HStack(spacing: XomperTheme.Spacing.sm) {
             AvatarView(avatarID: team.avatarId, size: XomperTheme.AvatarSize.sm)
 
-            VStack(alignment: .leading, spacing: XomperTheme.Spacing.xxs) {
+            VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
                 Text(team.teamName)
                     .font(.subheadline)
                     .fontWeight(.medium)
@@ -265,7 +265,7 @@ private struct StandingsRowView: View {
     }
 
     private var statsColumns: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: XomperTheme.Spacing.xs) {
             Text("\(team.wins)")
                 .frame(width: 28, alignment: .center)
                 .foregroundStyle(XomperColors.textPrimary)

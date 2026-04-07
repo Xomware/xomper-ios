@@ -69,7 +69,7 @@ struct TaxiSquadView: View {
     // MARK: - Group Mode Picker
 
     private var groupModePicker: some View {
-        HStack(spacing: XomperTheme.Spacing.xs) {
+        HStack(spacing: XomperTheme.Spacing.sm) {
             ForEach(TaxiGroupMode.allCases) { mode in
                 TaxiGroupModeButton(
                     mode: mode,
@@ -122,7 +122,7 @@ struct TaxiSquadView: View {
         subtitle: String? = nil,
         players: [TaxiSquadPlayer]
     ) -> some View {
-        VStack(alignment: .leading, spacing: XomperTheme.Spacing.sm) {
+        VStack(alignment: .leading, spacing: XomperTheme.Spacing.md) {
             HStack(spacing: XomperTheme.Spacing.xs) {
                 Text(title)
                     .font(.headline)
@@ -293,7 +293,7 @@ private struct TaxiPlayerCard: View {
                 Spacer()
                 trailingContent
             }
-            .padding(XomperTheme.Spacing.sm)
+            .padding(XomperTheme.Spacing.md)
             .background(cardBackground)
             .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
             .overlay(
@@ -331,7 +331,7 @@ private struct TaxiPlayerCard: View {
     // MARK: - Player Info
 
     private var playerInfo: some View {
-        VStack(alignment: .leading, spacing: XomperTheme.Spacing.xxs) {
+        VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
             Text(player.player.fullDisplayName)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(XomperColors.textPrimary)
@@ -351,7 +351,7 @@ private struct TaxiPlayerCard: View {
                 }
             }
 
-            HStack(spacing: XomperTheme.Spacing.xxs) {
+            HStack(spacing: XomperTheme.Spacing.xs) {
                 Text(draftText)
                     .font(.caption2)
                     .foregroundStyle(XomperColors.textSecondary)
