@@ -80,6 +80,8 @@ struct StandingsView: View {
                     playoffCutoff: leagueStore.currentLeague?.settings?.playoffTeams
                 ) {
                     selectTeam(team)
+                } onProfileTap: {
+                    navigateToProfile(team)
                 }
             }
         }
@@ -121,6 +123,8 @@ struct StandingsView: View {
                     playoffCutoff: nil
                 ) {
                     selectTeam(team)
+                } onProfileTap: {
+                    navigateToProfile(team)
                 }
             }
         }
@@ -152,6 +156,10 @@ struct StandingsView: View {
     }
 
     // MARK: - Actions
+
+    private func navigateToProfile(_ team: StandingsTeam) {
+        router.navigate(to: .userProfile(userId: team.userId))
+    }
 
     private func selectTeam(_ team: StandingsTeam) {
         let user = leagueStore.currentLeagueUsers.first { $0.userId == team.userId }
@@ -195,6 +203,7 @@ private struct StandingsRowView: View {
     let isMyTeam: Bool
     let playoffCutoff: Int?
     let onTap: () -> Void
+    var onProfileTap: (() -> Void)?
 
     @State private var isPressed = false
 
@@ -234,6 +243,15 @@ private struct StandingsRowView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityDescription)
         .accessibilityHint("Double tap to view team details")
+        .contextMenu {
+            if let onProfileTap {
+                Button {
+                    onProfileTap()
+                } label: {
+                    Label("View Owner Profile", systemImage: "person.circle")
+                }
+            }
+        }
     }
 
     private var rankBadge: some View {

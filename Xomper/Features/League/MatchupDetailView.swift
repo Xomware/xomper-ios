@@ -51,6 +51,7 @@ struct MatchupDetailView: View {
                 scoreHeader(pair)
                 seasonLabel
                 startersSection(pair)
+                benchSection(pair)
             }
             .padding(.horizontal, XomperTheme.Spacing.md)
             .padding(.vertical, XomperTheme.Spacing.sm)
@@ -199,11 +200,12 @@ struct MatchupDetailView: View {
 
             // Column headers
             HStack {
-                Text("Team A")
+                Text(teamAName)
                     .font(.caption2)
                     .fontWeight(.semibold)
                     .foregroundStyle(XomperColors.textMuted)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .lineLimit(1)
 
                 Text("PTS")
                     .font(.caption2)
@@ -220,11 +222,12 @@ struct MatchupDetailView: View {
                     .foregroundStyle(XomperColors.textMuted)
                     .frame(width: 44, alignment: .leading)
 
-                Text("Team B")
+                Text(teamBName)
                     .font(.caption2)
                     .fontWeight(.semibold)
                     .foregroundStyle(XomperColors.textMuted)
                     .frame(maxWidth: .infinity, alignment: .trailing)
+                    .lineLimit(1)
             }
             .padding(.horizontal, XomperTheme.Spacing.sm)
 
@@ -300,7 +303,61 @@ struct MatchupDetailView: View {
         .frame(maxWidth: .infinity, alignment: frameAlignment)
     }
 
+    // MARK: - Bench Section
+
+    private func benchSection(_ pair: MatchupPair) -> some View {
+        let rawA = resolvedTeamA(pair)
+        let rawB = resolvedTeamB(pair)
+
+        let starterSetA = Set(rawA.starters ?? [])
+        let starterSetB = Set(rawB.starters ?? [])
+        let allA = rawA.players ?? []
+        let allB = rawB.players ?? []
+        let pointsMapA = rawA.playersPoints ?? [:]
+        let pointsMapB = rawB.playersPoints ?? [:]
+
+        let benchA = allA.filter { !starterSetA.contains($0) && $0 != "0" }
+        let benchB = allB.filter { !starterSetB.contains($0) && $0 != "0" }
+
+        let maxCount = max(benchA.count, benchB.count)
+
+        if maxCount == 0 { return AnyView(EmptyView()) }
+
+        return AnyView(
+            VStack(spacing: XomperTheme.Spacing.xs) {
+                HStack {
+                    Text("Bench")
+                        .font(.headline)
+                        .foregroundStyle(XomperColors.textPrimary)
+                    Spacer()
+                }
+
+                ForEach(0..<maxCount, id: \.self) { index in
+                    let idA = index < benchA.count ? benchA[index] : nil
+                    let idB = index < benchB.count ? benchB[index] : nil
+                    starterRow(
+                        playerIdA: idA,
+                        pointsA: idA.flatMap { pointsMapA[$0] },
+                        playerIdB: idB,
+                        pointsB: idB.flatMap { pointsMapB[$0] }
+                    )
+                }
+            }
+            .padding(XomperTheme.Spacing.md)
+            .background(XomperColors.bgCard)
+            .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
+        )
+    }
+
     // MARK: - Helpers
+
+    private var teamAName: String {
+        record.teamATeamName.isEmpty ? record.teamAUsername : record.teamATeamName
+    }
+
+    private var teamBName: String {
+        record.teamBTeamName.isEmpty ? record.teamBUsername : record.teamBTeamName
+    }
 
     private func resolvedTeamA(_ pair: MatchupPair) -> Matchup {
         if pair.teamA.rosterId == record.teamARosterId {
