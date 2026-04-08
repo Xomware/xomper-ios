@@ -2,7 +2,9 @@ import SwiftUI
 
 @main
 struct XomperApp: App {
-    @State private var authStore = AuthStore()
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
+    @State private var authStore: AuthStore
     @State private var leagueStore = LeagueStore()
     @State private var userStore = UserStore()
     @State private var teamStore = TeamStore()
@@ -12,6 +14,12 @@ struct XomperApp: App {
     @State private var worldCupStore = WorldCupStore()
     @State private var taxiSquadStore = TaxiSquadStore()
     @State private var rulesStore = RulesStore()
+
+    init() {
+        _authStore = State(initialValue: AuthStore(
+            pushManager: PushNotificationManager.shared
+        ))
+    }
 
     var body: some Scene {
         WindowGroup {

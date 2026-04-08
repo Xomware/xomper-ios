@@ -41,6 +41,7 @@
 		7607DB7C775FCCC3B7C3377B /* StandingsTeam.swift in Sources */ = {isa = PBXBuildFile; fileRef = B29D510D87CD290AE7F76FBF /* StandingsTeam.swift */; };
 		76260F26A40213A62E5F22FB /* RecordBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AD376EFB7AD4A192FAB3E8F /* RecordBadge.swift */; };
 		77A0EFCEE4340D3A7853BF08 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43685B0C212A644C0EF202E5 /* ProfileView.swift */; };
+		7D94ADAC136455C3056D5867 /* PushNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEAEC7A4917990425085AE71 /* PushNotificationManager.swift */; };
 		7E34464209AAF9EC6801191A /* NflState.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1E5A60EE78F668F02CF63C0 /* NflState.swift */; };
 		7EA8F8FCEFFE3C165655208C /* MatchupHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF491605034E9F8C00BC0572 /* MatchupHistoryView.swift */; };
 		80E6A85F05ED2AFFC648FAFA /* RulesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9382BCB18DFEB416A50A039 /* RulesView.swift */; };
@@ -50,6 +51,7 @@
 		8E8B3EC17A43676ACA176FC3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6F2D6E80C100927C4C20FAD7 /* Assets.xcassets */; };
 		901F54CB41785D269CC63160 /* WorldCupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43E1C6D5A18697DE79586C1B /* WorldCupStore.swift */; };
 		98F895FBCECB23325658339C /* StandingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6A47FD1CF3BE7AE0B940DEC /* StandingsView.swift */; };
+		9D9E8D2C4A8A0C623AC1EF0D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E767CD5492176E84C2092B0F /* AppDelegate.swift */; };
 		9E5C71DAB504EDCDF2084DF3 /* MyProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 558164667DF7D89C4DF2F32E /* MyProfileView.swift */; };
 		A28A24923C27CF0929ED97E1 /* Double+Formatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669A80C2A9F46A0C4612388C /* Double+Formatting.swift */; };
 		A4D93DF4C02A8DE6C695CE4D /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E94170F987E8EFE5C566B9B /* LoginView.swift */; };
@@ -129,10 +131,12 @@
 		B66A2C896FE4C62CF9719D7A /* TaxiStealConfirmView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaxiStealConfirmView.swift; sourceTree = "<group>"; };
 		BB5E661424C55F695BF96281 /* AuthGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthGateView.swift; sourceTree = "<group>"; };
 		BC44D14381C74E97D8AF868F /* PlayerDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerDetailView.swift; sourceTree = "<group>"; };
+		C1CD5644F6F8376CA86092AF /* Xomper.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Xomper.entitlements; sourceTree = "<group>"; };
 		C82B0FEAAB9BC80BA0801E98 /* XomperColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XomperColors.swift; sourceTree = "<group>"; };
 		C83EF3C6C93199CF3FCBAE42 /* Matchup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Matchup.swift; sourceTree = "<group>"; };
 		C9382BCB18DFEB416A50A039 /* RulesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RulesView.swift; sourceTree = "<group>"; };
 		CC3F6B5022E8151683A45F4F /* PlayerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerStore.swift; sourceTree = "<group>"; };
+		CEAEC7A4917990425085AE71 /* PushNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationManager.swift; sourceTree = "<group>"; };
 		DB1FE16B5220928685DCF19E /* SleeperAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleeperAPIClient.swift; sourceTree = "<group>"; };
 		DBD0F6820960B354EAB3E89D /* LoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingView.swift; sourceTree = "<group>"; };
 		DC24A8748C940FC57B142AFF /* ErrorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorView.swift; sourceTree = "<group>"; };
@@ -140,6 +144,7 @@
 		DF491605034E9F8C00BC0572 /* MatchupHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchupHistoryView.swift; sourceTree = "<group>"; };
 		E1E5A60EE78F668F02CF63C0 /* NflState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NflState.swift; sourceTree = "<group>"; };
 		E6A47FD1CF3BE7AE0B940DEC /* StandingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingsView.swift; sourceTree = "<group>"; };
+		E767CD5492176E84C2092B0F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		E7F510E2F428E107F1AD75CD /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
 		E969C4A894017F9D0072CCFA /* WorldCup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldCup.swift; sourceTree = "<group>"; };
 		ECC70812B3E7E07BA6658A54 /* AvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarView.swift; sourceTree = "<group>"; };
@@ -192,6 +197,7 @@
 		27302FD4ACE49B1C63222F13 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				E767CD5492176E84C2092B0F /* AppDelegate.swift */,
 				22D61F12E32D7C81FCA8F8CE /* ContentView.swift */,
 				A8BD31456E25771C8D7D39C9 /* XomperApp.swift */,
 			);
@@ -340,6 +346,7 @@
 				D8964B32007F666B41D138C5 /* Extensions */,
 				B3F6F3856481009365322743 /* Models */,
 				258608C1F12AB1DDE8EA751F /* Networking */,
+				E7C39A75BB7E636569F65BF7 /* Notifications */,
 				E1A7A2D932D868B1C49CE814 /* Stores */,
 				E7C661C0A256DAE14C4C5532 /* Theme */,
 			);
@@ -349,6 +356,7 @@
 		D35130CF3DC0C4469E9698DA /* Xomper */ = {
 			isa = PBXGroup;
 			children = (
+				C1CD5644F6F8376CA86092AF /* Xomper.entitlements */,
 				27302FD4ACE49B1C63222F13 /* App */,
 				6FCB5AB805D7BDEE3A200785 /* Config */,
 				D257CB729EDFC6660FF4B0A8 /* Core */,
@@ -384,6 +392,14 @@
 				43E1C6D5A18697DE79586C1B /* WorldCupStore.swift */,
 			);
 			path = Stores;
+			sourceTree = "<group>";
+		};
+		E7C39A75BB7E636569F65BF7 /* Notifications */ = {
+			isa = PBXGroup;
+			children = (
+				CEAEC7A4917990425085AE71 /* PushNotificationManager.swift */,
+			);
+			path = Notifications;
 			sourceTree = "<group>";
 		};
 		E7C661C0A256DAE14C4C5532 /* Theme */ = {
@@ -488,6 +504,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9D9E8D2C4A8A0C623AC1EF0D /* AppDelegate.swift in Sources */,
 				8C67D3AAFE5A0A124BDE5F1A /* AppRouter.swift in Sources */,
 				C82AE6076A6555CD294777EE /* AppTab.swift in Sources */,
 				D78D5302B3D17DE9BE7D557C /* AuthGateView.swift in Sources */,
@@ -525,6 +542,7 @@
 				CB47F51AA46AEBC59183C449 /* PlayoffBracketView.swift in Sources */,
 				6C89029D05AEE66FB2315616 /* Profile.swift in Sources */,
 				77A0EFCEE4340D3A7853BF08 /* ProfileView.swift in Sources */,
+				7D94ADAC136455C3056D5867 /* PushNotificationManager.swift in Sources */,
 				76260F26A40213A62E5F22FB /* RecordBadge.swift in Sources */,
 				54863F3F6ECDD3BE00083582 /* Roster.swift in Sources */,
 				CFE915FD4020FDEB923157C2 /* RuleProposal.swift in Sources */,
@@ -564,6 +582,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Xomper/Xomper.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -713,6 +732,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Xomper/Xomper.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;

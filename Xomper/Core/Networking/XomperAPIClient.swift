@@ -3,10 +3,12 @@ import Foundation
 // MARK: - Protocol
 
 protocol XomperAPIClientProtocol: Sendable {
-    func sendRuleProposalEmail(proposal: RuleProposalEmailPayload, recipients: [String]) async throws
-    func sendRuleAcceptedEmail(proposal: RuleProposalEmailPayload, approvedBy: [String], rejectedBy: [String], recipients: [String]) async throws
-    func sendRuleDeniedEmail(proposal: RuleProposalEmailPayload, approvedBy: [String], rejectedBy: [String], recipients: [String]) async throws
-    func sendTaxiStealEmail(stealer: TaxiStealerPayload, player: TaxiPlayerPayload, owner: TaxiOwnerPayload, recipients: [String], leagueName: String) async throws
+    func sendRuleProposalEmail(proposal: RuleProposalEmailPayload, recipients: [String], userIds: [String]) async throws
+    func sendRuleAcceptedEmail(proposal: RuleProposalEmailPayload, approvedBy: [String], rejectedBy: [String], recipients: [String], userIds: [String]) async throws
+    func sendRuleDeniedEmail(proposal: RuleProposalEmailPayload, approvedBy: [String], rejectedBy: [String], recipients: [String], userIds: [String]) async throws
+    func sendTaxiStealEmail(stealer: TaxiStealerPayload, player: TaxiPlayerPayload, owner: TaxiOwnerPayload, recipients: [String], userIds: [String], leagueName: String) async throws
+    func registerDevice(userId: String, deviceToken: String) async throws
+    func unregisterDevice(userId: String, deviceToken: String) async throws
 }
 
 // MARK: - Request Payloads
@@ -118,7 +120,7 @@ final class XomperAPIClient: XomperAPIClientProtocol {
 
     // MARK: - Rule Emails
 
-    func sendRuleProposalEmail(proposal: RuleProposalEmailPayload, recipients: [String]) async throws {
+    func sendRuleProposalEmail(proposal: RuleProposalEmailPayload, recipients: [String], userIds: [String]) async throws {
         let body: [String: Any] = [
             "proposal": [
                 "title": proposal.title,
@@ -126,7 +128,8 @@ final class XomperAPIClient: XomperAPIClientProtocol {
                 "proposed_by_username": proposal.proposedByUsername,
                 "league_name": proposal.leagueName
             ],
-            "recipients": recipients
+            "recipients": recipients,
+            "user_ids": userIds
         ]
         try await post("/email/rule-proposal", body: body)
     }
@@ -135,7 +138,8 @@ final class XomperAPIClient: XomperAPIClientProtocol {
         proposal: RuleProposalEmailPayload,
         approvedBy: [String],
         rejectedBy: [String],
-        recipients: [String]
+        recipients: [String],
+        userIds: [String]
     ) async throws {
         let body: [String: Any] = [
             "proposal": [
@@ -146,7 +150,8 @@ final class XomperAPIClient: XomperAPIClientProtocol {
             ],
             "approved_by": approvedBy,
             "rejected_by": rejectedBy,
-            "recipients": recipients
+            "recipients": recipients,
+            "user_ids": userIds
         ]
         try await post("/email/rule-accept", body: body)
     }
@@ -155,7 +160,8 @@ final class XomperAPIClient: XomperAPIClientProtocol {
         proposal: RuleProposalEmailPayload,
         approvedBy: [String],
         rejectedBy: [String],
-        recipients: [String]
+        recipients: [String],
+        userIds: [String]
     ) async throws {
         let body: [String: Any] = [
             "proposal": [
@@ -166,7 +172,8 @@ final class XomperAPIClient: XomperAPIClientProtocol {
             ],
             "approved_by": approvedBy,
             "rejected_by": rejectedBy,
-            "recipients": recipients
+            "recipients": recipients,
+            "user_ids": userIds
         ]
         try await post("/email/rule-deny", body: body)
     }
@@ -178,6 +185,7 @@ final class XomperAPIClient: XomperAPIClientProtocol {
         player: TaxiPlayerPayload,
         owner: TaxiOwnerPayload,
         recipients: [String],
+        userIds: [String],
         leagueName: String
     ) async throws {
         let body: [String: Any] = [
@@ -196,9 +204,29 @@ final class XomperAPIClient: XomperAPIClientProtocol {
                 "email": owner.email
             ],
             "recipients": recipients,
+            "user_ids": userIds,
             "league_name": leagueName
         ]
         try await post("/email/taxi", body: body)
+    }
+
+    // MARK: - Device Registration
+
+    func registerDevice(userId: String, deviceToken: String) async throws {
+        let body: [String: Any] = [
+            "user_id": userId,
+            "device_token": deviceToken,
+            "platform": "ios"
+        ]
+        try await post("/device/register", body: body)
+    }
+
+    func unregisterDevice(userId: String, deviceToken: String) async throws {
+        let body: [String: Any] = [
+            "user_id": userId,
+            "device_token": deviceToken
+        ]
+        try await post("/device/unregister", body: body)
     }
 
     // MARK: - Private

@@ -347,18 +347,20 @@ final class RulesStore {
 
     // MARK: - Private: Email Notifications
 
-    private func getLeagueMemberEmails() async -> [String] {
+    private func getLeagueMembers() async -> (emails: [String], userIds: [String]) {
         do {
-            let rows: [SupabaseEmailRow] = try await supabase
+            let rows: [SupabaseEmailUserIdRow] = try await supabase
                 .from("whitelisted_users")
-                .select("email")
+                .select("email, user_id")
                 .eq("is_active", value: true)
                 .execute()
                 .value
 
-            return rows.map(\.email).filter { !$0.isEmpty }
+            let emails = rows.map(\.email).filter { !$0.isEmpty }
+            let userIds = rows.compactMap(\.userId).filter { !$0.isEmpty }
+            return (emails, userIds)
         } catch {
-            return []
+            return ([], [])
         }
     }
 
@@ -368,8 +370,8 @@ final class RulesStore {
         proposerName: String,
         leagueName: String
     ) async {
-        let recipients = await getLeagueMemberEmails()
-        guard !recipients.isEmpty else { return }
+        let members = await getLeagueMembers()
+        guard !members.emails.isEmpty else { return }
 
         let payload = RuleProposalEmailPayload(
             title: title,
@@ -378,7 +380,11 @@ final class RulesStore {
             leagueName: leagueName
         )
 
-        try? await apiClient.sendRuleProposalEmail(proposal: payload, recipients: recipients)
+        try? await apiClient.sendRuleProposalEmail(
+            proposal: payload,
+            recipients: members.emails,
+            userIds: members.userIds
+        )
     }
 
     private func sendStatusEmail(
@@ -387,10 +393,10 @@ final class RulesStore {
         leagueName: String
     ) async {
         async let voterNames = getVoterNames(proposalId: proposal.id)
-        async let recipients = getLeagueMemberEmails()
+        async let members = getLeagueMembers()
 
-        let (voters, emails) = await (voterNames, recipients)
-        guard !emails.isEmpty else { return }
+        let (voters, leagueMembers) = await (voterNames, members)
+        guard !leagueMembers.emails.isEmpty else { return }
 
         let payload = RuleProposalEmailPayload(
             title: proposal.title,
@@ -404,14 +410,16 @@ final class RulesStore {
                 proposal: payload,
                 approvedBy: voters.approvedBy,
                 rejectedBy: voters.rejectedBy,
-                recipients: emails
+                recipients: leagueMembers.emails,
+                userIds: leagueMembers.userIds
             )
         } else {
             try? await apiClient.sendRuleDeniedEmail(
                 proposal: payload,
                 approvedBy: voters.approvedBy,
                 rejectedBy: voters.rejectedBy,
-                recipients: emails
+                recipients: leagueMembers.emails,
+                userIds: leagueMembers.userIds
             )
         }
     }
@@ -498,6 +506,12 @@ private struct SupabaseVoteWithProfileRow: Decodable, Sendable {
     let profiles: SupabaseProfileJoin?
 }
 
-private struct SupabaseEmailRow: Decodable, Sendable {
+private struct SupabaseEmailUserIdRow: Decodable, Sendable {
     let email: String
+    let userId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case email
+        case userId = "user_id"
+    }
 }
