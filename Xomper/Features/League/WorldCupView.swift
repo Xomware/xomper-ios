@@ -129,7 +129,6 @@ private struct WorldCupDivisionSection: View {
         VStack(spacing: XomperTheme.Spacing.md) {
             divisionHeader
             standingsTable
-            qualifyLine
         }
         .padding(XomperTheme.Spacing.lg)
         .background(XomperColors.bgCard.opacity(0.6))
@@ -159,8 +158,42 @@ private struct WorldCupDivisionSection: View {
                     rank: index + 1,
                     seasons: seasons
                 )
+
+                if index + 1 == qualificationCutoff, index + 1 < division.teams.count {
+                    qualificationDivider
+                }
             }
         }
+    }
+
+    private var qualificationCutoff: Int { 2 }
+
+    private var qualificationDivider: some View {
+        HStack(spacing: XomperTheme.Spacing.sm) {
+            Rectangle()
+                .fill(XomperColors.championGold.opacity(0.4))
+                .frame(height: 2)
+
+            HStack(spacing: XomperTheme.Spacing.xs) {
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.caption2)
+                Text("QUALIFIED")
+                    .font(.caption2)
+                    .fontWeight(.heavy)
+                    .tracking(1)
+            }
+            .foregroundStyle(XomperColors.championGold)
+            .padding(.horizontal, XomperTheme.Spacing.sm)
+            .padding(.vertical, XomperTheme.Spacing.xs)
+            .background(XomperColors.championGold.opacity(0.12))
+            .clipShape(Capsule())
+
+            Rectangle()
+                .fill(XomperColors.championGold.opacity(0.4))
+                .frame(height: 2)
+        }
+        .padding(.vertical, XomperTheme.Spacing.sm)
+        .accessibilityLabel("Qualification cutoff. Top \(qualificationCutoff) teams above this line are qualified.")
     }
 
     private var tableHeader: some View {
@@ -194,27 +227,6 @@ private struct WorldCupDivisionSection: View {
             .frame(width: width, alignment: alignment)
     }
 
-    @ViewBuilder
-    private var qualifyLine: some View {
-        if division.teams.count > 2 {
-            HStack(spacing: XomperTheme.Spacing.sm) {
-                Text("Qualified")
-                    .font(.caption2)
-                    .fontWeight(.bold)
-                    .foregroundStyle(XomperColors.championGold)
-                    .padding(.horizontal, XomperTheme.Spacing.sm)
-                    .padding(.vertical, XomperTheme.Spacing.xs)
-                    .background(XomperColors.championGold.opacity(0.15))
-                    .clipShape(Capsule())
-
-                Rectangle()
-                    .fill(XomperColors.championGold.opacity(0.3))
-                    .frame(height: 1)
-            }
-            .padding(.top, XomperTheme.Spacing.xs)
-            .accessibilityLabel("Top 2 teams above this line are qualified")
-        }
-    }
 }
 
 // MARK: - Team Row
@@ -263,17 +275,33 @@ private struct WorldCupTeamRow: View {
 
     private var teamInfoCell: some View {
         VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
-            Text(team.teamName.isEmpty ? team.username : team.teamName)
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundStyle(XomperColors.textPrimary)
-                .lineLimit(1)
+            HStack(spacing: XomperTheme.Spacing.xs) {
+                Text(team.teamName.isEmpty ? team.username : team.teamName)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(XomperColors.textPrimary)
+                    .lineLimit(1)
+
+                if team.qualified {
+                    qualifiedBadge
+                }
+            }
             Text(team.username)
                 .font(.caption2)
                 .foregroundStyle(XomperColors.textSecondary)
                 .lineLimit(1)
         }
         .frame(width: 120, alignment: .leading)
+    }
+
+    private var qualifiedBadge: some View {
+        Text("Q")
+            .font(.system(size: 9, weight: .heavy, design: .rounded))
+            .foregroundStyle(XomperColors.bgDark)
+            .frame(width: 16, height: 16)
+            .background(XomperColors.successGreen)
+            .clipShape(Circle())
+            .accessibilityLabel("Qualified")
     }
 
     private func statCell(
@@ -316,7 +344,7 @@ private struct WorldCupTeamRow: View {
 
     private var rowBackground: Color {
         team.qualified
-            ? XomperColors.championGold.opacity(0.05)
+            ? XomperColors.successGreen.opacity(0.1)
             : XomperColors.bgCard.opacity(0.3)
     }
 

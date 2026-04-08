@@ -13,20 +13,41 @@ struct TeamView: View {
         league.rosterPositions ?? []
     }
 
+    private var hasPlayers: Bool {
+        !playerStore.players.isEmpty
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: XomperTheme.Spacing.lg) {
                 teamHeader
-                startersSection
-                benchSection
-                taxiSection
-                irSection
+
+                if !hasPlayers && playerStore.isLoading {
+                    LoadingView(message: "Loading players...")
+                        .frame(height: 200)
+                } else if !hasPlayers {
+                    EmptyStateView(
+                        icon: "arrow.clockwise",
+                        title: "Players Not Loaded",
+                        message: "Pull to refresh to load player data."
+                    )
+                } else {
+                    startersSection
+                    benchSection
+                    taxiSection
+                    irSection
+                }
             }
             .padding(.horizontal, XomperTheme.Spacing.md)
             .padding(.bottom, XomperTheme.Spacing.xl)
         }
         .refreshable {
             await refreshRoster()
+        }
+        .task {
+            if !hasPlayers {
+                await playerStore.loadPlayers()
+            }
         }
         .background(XomperColors.bgDark)
         .sheet(item: $selectedPlayer) { player in
