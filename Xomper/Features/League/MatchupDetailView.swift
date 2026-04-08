@@ -284,23 +284,67 @@ struct MatchupDetailView: View {
 
     private func playerCell(player: Player?, playerId: String?, alignment: HorizontalAlignment) -> some View {
         let isLeading = alignment == .leading
-        let textAlignment: TextAlignment = isLeading ? .leading : .trailing
         let frameAlignment: Alignment = isLeading ? .leading : .trailing
 
-        return VStack(alignment: alignment, spacing: 0) {
-            Text(player?.fullDisplayName ?? playerId ?? "-")
-                .font(.caption)
-                .fontWeight(.medium)
-                .foregroundStyle(XomperColors.textPrimary)
-                .lineLimit(1)
-                .multilineTextAlignment(textAlignment)
+        return HStack(spacing: XomperTheme.Spacing.xs) {
+            if !isLeading { Spacer(minLength: 0) }
 
-            Text(player?.displayPosition ?? "")
-                .font(.caption2)
-                .foregroundStyle(positionColor(player?.displayPosition))
-                .multilineTextAlignment(textAlignment)
+            if isLeading {
+                playerAvatar(player: player)
+            }
+
+            VStack(alignment: isLeading ? .leading : .trailing, spacing: 0) {
+                Text(player?.fullDisplayName ?? playerId ?? "-")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundStyle(XomperColors.textPrimary)
+                    .lineLimit(1)
+
+                HStack(spacing: XomperTheme.Spacing.xs) {
+                    if !isLeading, let team = player?.team {
+                        Text(team)
+                            .font(.caption2)
+                            .foregroundStyle(XomperColors.textMuted)
+                    }
+
+                    Text(player?.displayPosition ?? "")
+                        .font(.caption2)
+                        .foregroundStyle(positionColor(player?.displayPosition))
+
+                    if isLeading, let team = player?.team {
+                        Text(team)
+                            .font(.caption2)
+                            .foregroundStyle(XomperColors.textMuted)
+                    }
+                }
+            }
+
+            if !isLeading {
+                playerAvatar(player: player)
+            }
+
+            if isLeading { Spacer(minLength: 0) }
         }
         .frame(maxWidth: .infinity, alignment: frameAlignment)
+    }
+
+    private func playerAvatar(player: Player?) -> some View {
+        Group {
+            if let url = player?.thumbnailImageURL {
+                AsyncImage(url: url) { image in
+                    image.resizable().scaledToFill()
+                } placeholder: {
+                    Image(systemName: "person.fill")
+                        .foregroundStyle(XomperColors.textMuted)
+                }
+            } else {
+                Image(systemName: "person.fill")
+                    .foregroundStyle(XomperColors.textMuted)
+            }
+        }
+        .frame(width: 28, height: 28)
+        .clipShape(Circle())
+        .background(Circle().fill(XomperColors.surfaceLight))
     }
 
     // MARK: - Bench Section
@@ -393,6 +437,11 @@ struct MatchupDetailView: View {
     private func loadDetail() async {
         isLoading = true
         loadError = nil
+
+        // Ensure players are loaded for name/avatar display
+        if playerStore.players.isEmpty {
+            await playerStore.loadPlayers()
+        }
 
         do {
             let pairs = try await historyStore.fetchRawMatchups(
