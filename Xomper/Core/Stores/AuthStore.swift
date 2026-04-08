@@ -24,9 +24,19 @@ final class AuthStore {
         isAuthenticated && isWhitelisted && sleeperUserId != nil
     }
 
+    // MARK: - Dependencies
+
+    private let pushManager: PushNotificationManager
+    private let apiClient: XomperAPIClientProtocol
+
     // MARK: - Init
 
-    init() {
+    init(
+        pushManager: PushNotificationManager = PushNotificationManager.shared,
+        apiClient: XomperAPIClientProtocol = XomperAPIClient()
+    ) {
+        self.pushManager = pushManager
+        self.apiClient = apiClient
         Task { await listenForAuthChanges() }
     }
 
@@ -105,6 +115,12 @@ final class AuthStore {
 
     func signOut() async {
         errorMessage = nil
+
+        // Unregister device token before signing out
+        if let token = pushManager.deviceToken, let userId = sleeperUserId {
+            try? await apiClient.unregisterDevice(userId: userId, deviceToken: token)
+        }
+
         do {
             try await supabase.auth.signOut()
         } catch {
@@ -120,6 +136,15 @@ final class AuthStore {
     private func loadUserData() async {
         await checkWhitelist()
         await resolveSleeperUser()
+        await registerForPushNotifications()
+    }
+
+    private func registerForPushNotifications() async {
+        await pushManager.requestPermission()
+
+        if let token = pushManager.deviceToken, let userId = sleeperUserId {
+            try? await apiClient.registerDevice(userId: userId, deviceToken: token)
+        }
     }
 
     /// Resolve Sleeper user ID from the whitelist's sleeper_username via Sleeper API

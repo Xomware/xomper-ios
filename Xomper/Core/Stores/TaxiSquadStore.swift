@@ -23,6 +23,12 @@ private struct OwnerEmailRow: Decodable, Sendable {
 
 private struct MemberEmailRow: Decodable, Sendable {
     let email: String
+    let userId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case email
+        case userId = "user_id"
+    }
 }
 
 // MARK: - TaxiSquadStore
@@ -165,12 +171,12 @@ final class TaxiSquadStore {
                 ])
                 .execute()
 
-            // 2. Fetch owner email and all league member emails in parallel
+            // 2. Fetch owner email and all league members in parallel
             async let ownerInfoTask = fetchOwnerEmail(sleeperUsername: player.ownerUsername)
-            async let recipientsTask = fetchLeagueMemberEmails()
+            async let membersTask = fetchLeagueMembers()
 
             let ownerInfo = await ownerInfoTask
-            let recipients = await recipientsTask
+            let members = await membersTask
 
             // 3. Send email notification (fire and forget, don't block on failure)
             let team = player.player.displayTeam
@@ -195,7 +201,8 @@ final class TaxiSquadStore {
                 stealer: stealerPayload,
                 player: playerPayload,
                 owner: ownerPayload,
-                recipients: recipients,
+                recipients: members.emails,
+                userIds: members.userIds,
                 leagueName: leagueName
             )
 
@@ -279,18 +286,20 @@ final class TaxiSquadStore {
         }
     }
 
-    /// Fetches all active league member emails from whitelisted_users.
-    private func fetchLeagueMemberEmails() async -> [String] {
+    /// Fetches all active league member emails and user IDs from whitelisted_users.
+    private func fetchLeagueMembers() async -> (emails: [String], userIds: [String]) {
         do {
             let rows: [MemberEmailRow] = try await supabase
                 .from("whitelisted_users")
-                .select("email")
+                .select("email, user_id")
                 .eq("is_active", value: true)
                 .execute()
                 .value
-            return rows.map(\.email).filter { !$0.isEmpty }
+            let emails = rows.map(\.email).filter { !$0.isEmpty }
+            let userIds = rows.compactMap(\.userId).filter { !$0.isEmpty }
+            return (emails, userIds)
         } catch {
-            return []
+            return ([], [])
         }
     }
 
