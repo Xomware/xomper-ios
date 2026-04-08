@@ -47,7 +47,6 @@ struct ContentView: View {
                 authStore: authStore,
                 leagueStore: leagueStore,
                 userStore: userStore,
-                teamStore: teamStore,
                 nflStateStore: nflStateStore,
                 router: router
             )
@@ -61,26 +60,9 @@ struct ContentView: View {
                 playerStore: playerStore,
                 worldCupStore: worldCupStore,
                 rulesStore: rulesStore,
+                taxiSquadStore: taxiSquadStore,
                 router: router
             )
-        case .myTeam:
-            if let team = teamStore.myTeam,
-               let roster = leagueStore.myLeagueRosters.first(where: { $0.rosterId == team.rosterId }),
-               let league = leagueStore.myLeague {
-                TeamView(
-                    team: team,
-                    roster: roster,
-                    league: league,
-                    playerStore: playerStore
-                )
-                .navigationTitle("My Team")
-            } else {
-                EmptyStateView(
-                    icon: "person.3.fill",
-                    title: "No Team",
-                    message: "Load your league first to see your team."
-                )
-            }
         case .profile:
             MyProfileView(
                 authStore: authStore,
@@ -106,6 +88,7 @@ struct ContentView: View {
                 playerStore: playerStore,
                 worldCupStore: worldCupStore,
                 rulesStore: rulesStore,
+                taxiSquadStore: taxiSquadStore,
                 router: router
             )
         case .teamDetail(let rosterId):
@@ -178,7 +161,7 @@ struct ContentView: View {
         _ = await (leagueLoad, nflLoad, playerLoad)
     }
 
-    /// Phase 2: Once sleeperUserId resolves, load user info and build my team.
+    /// Phase 2: Once sleeperUserId resolves, load user info, team, and all leagues.
     /// Re-triggers automatically when authStore.sleeperUserId changes.
     private func bootstrapPhase2() async {
         guard let sleeperUserId = authStore.sleeperUserId else { return }
@@ -193,6 +176,10 @@ struct ContentView: View {
             )
             teamStore.loadMyTeam(from: standings, userId: sleeperUserId)
         }
+
+        // Load all user's leagues for the home screen
+        let season = nflStateStore.nflState?.season ?? leagueStore.myLeague?.season ?? "2024"
+        await leagueStore.loadUserLeagues(userId: sleeperUserId, season: season)
     }
 }
 

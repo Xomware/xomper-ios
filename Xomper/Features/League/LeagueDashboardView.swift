@@ -9,6 +9,7 @@ struct LeagueDashboardView: View {
     var playerStore: PlayerStore
     var worldCupStore: WorldCupStore
     var rulesStore: RulesStore
+    var taxiSquadStore: TaxiSquadStore
     var router: AppRouter
 
     @State private var activeTab: LeagueTab = .standings
@@ -111,6 +112,13 @@ struct LeagueDashboardView: View {
                 historyStore: historyStore,
                 leagueStore: leagueStore
             )
+        case .taxiSquad:
+            TaxiSquadView(
+                leagueStore: leagueStore,
+                playerStore: playerStore,
+                authStore: authStore,
+                taxiSquadStore: taxiSquadStore
+            )
         case .rules:
             RulesView(
                 league: league,
@@ -128,6 +136,7 @@ private enum LeagueTab: String, CaseIterable, Identifiable {
     case matchups
     case playoffs
     case worldCup
+    case taxiSquad
     case rules
 
     var id: String { rawValue }
@@ -138,6 +147,7 @@ private enum LeagueTab: String, CaseIterable, Identifiable {
         case .matchups: "Matchups"
         case .playoffs: "Playoffs"
         case .worldCup: "World Cup"
+        case .taxiSquad: "Taxi Squad"
         case .rules: "Rules"
         }
     }
@@ -154,6 +164,7 @@ private enum LeagueTab: String, CaseIterable, Identifiable {
             playerStore: PlayerStore(),
             worldCupStore: WorldCupStore(),
             rulesStore: RulesStore(),
+            taxiSquadStore: TaxiSquadStore(),
             router: AppRouter()
         )
     }

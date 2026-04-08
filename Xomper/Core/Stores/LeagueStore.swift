@@ -6,6 +6,8 @@ final class LeagueStore {
 
     // MARK: - State
 
+    private(set) var userLeagues: [League] = []
+    private(set) var isLoadingUserLeagues = false
     private(set) var myLeague: League?
     private(set) var currentLeague: League?
     private(set) var myLeagueUsers: [SleeperUser] = []
@@ -21,10 +23,25 @@ final class LeagueStore {
     private(set) var error: Error?
 
     private let apiClient: SleeperAPIClientProtocol
-    private var leagueChainCache: [League]?
+    var leagueChainCache: [League]?
 
     init(apiClient: SleeperAPIClientProtocol = SleeperAPIClient()) {
         self.apiClient = apiClient
+    }
+
+    // MARK: - Load User Leagues
+
+    func loadUserLeagues(userId: String, season: String) async {
+        guard !isLoadingUserLeagues else { return }
+        isLoadingUserLeagues = true
+
+        do {
+            userLeagues = try await apiClient.fetchUserLeagues(userId, season: season)
+        } catch {
+            // Non-fatal — userLeagues stays empty
+        }
+
+        isLoadingUserLeagues = false
     }
 
     // MARK: - Fetch League
@@ -142,6 +159,7 @@ final class LeagueStore {
     // MARK: - Reset
 
     func reset() {
+        userLeagues = []
         myLeague = nil
         currentLeague = nil
         myLeagueUsers = []

@@ -4,7 +4,6 @@ struct HomeView: View {
     var authStore: AuthStore
     var leagueStore: LeagueStore
     var userStore: UserStore
-    var teamStore: TeamStore
     var nflStateStore: NflStateStore
     var router: AppRouter
 
@@ -12,8 +11,7 @@ struct HomeView: View {
         ScrollView {
             VStack(spacing: XomperTheme.Spacing.lg) {
                 headerSection
-                leagueCard
-                myTeamCard
+                leaguesSection
             }
             .padding(XomperTheme.Spacing.md)
         }
@@ -58,16 +56,34 @@ struct HomeView: View {
         .padding(.top, XomperTheme.Spacing.sm)
     }
 
-    // MARK: - League Card
+    // MARK: - Leagues Section
 
-    private var leagueCard: some View {
-        Group {
-            if leagueStore.isLoading {
+    private var leaguesSection: some View {
+        VStack(alignment: .leading, spacing: XomperTheme.Spacing.md) {
+            HStack {
+                Text("My Leagues")
+                    .font(.headline)
+                    .foregroundStyle(XomperColors.textPrimary)
+                Spacer()
+                if leagueStore.isLoadingUserLeagues {
+                    ProgressView()
+                        .tint(XomperColors.championGold)
+                        .scaleEffect(0.8)
+                }
+            }
+
+            if leagueStore.isLoading && leagueStore.userLeagues.isEmpty {
                 loadingCard
-            } else if let league = leagueStore.myLeague {
-                leagueCardContent(league)
-            } else if leagueStore.error != nil {
-                errorCard
+            } else if leagueStore.userLeagues.isEmpty {
+                if let league = leagueStore.myLeague {
+                    leagueCardContent(league)
+                } else if leagueStore.error != nil {
+                    errorCard
+                }
+            } else {
+                ForEach(leagueStore.userLeagues, id: \.leagueId) { league in
+                    leagueCardContent(league)
+                }
             }
         }
     }
@@ -76,7 +92,11 @@ struct HomeView: View {
         Button {
             let generator = UIImpactFeedbackGenerator(style: .medium)
             generator.impactOccurred()
-            router.switchTab(.league)
+            Task {
+                await leagueStore.switchToLeague(id: league.leagueId)
+                leagueStore.leagueChainCache = nil
+                router.switchTab(.league)
+            }
         } label: {
             HStack(spacing: XomperTheme.Spacing.md) {
                 AvatarView(avatarID: league.avatar, size: XomperTheme.AvatarSize.lg, isTeam: true)
@@ -119,74 +139,13 @@ struct HomeView: View {
         .accessibilityHint("Double tap to open league standings")
     }
 
-    // MARK: - My Team Card
-
-    private var myTeamCard: some View {
-        Group {
-            if let team = teamStore.myTeam {
-                myTeamCardContent(team)
-            }
-        }
-    }
-
-    private func myTeamCardContent(_ team: StandingsTeam) -> some View {
-        VStack(alignment: .leading, spacing: XomperTheme.Spacing.sm) {
-            HStack {
-                Text("My Team")
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(XomperColors.textSecondary)
-                Spacer()
-                Text("#\(team.leagueRank)")
-                    .font(.caption)
-                    .fontWeight(.bold)
-                    .foregroundStyle(XomperColors.championGold)
-            }
-
-            HStack(spacing: XomperTheme.Spacing.md) {
-                AvatarView(avatarID: team.avatarId, size: XomperTheme.AvatarSize.md)
-
-                VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
-                    Text(team.teamName)
-                        .font(.headline)
-                        .foregroundStyle(XomperColors.textPrimary)
-                        .lineLimit(1)
-
-                    Text(team.record)
-                        .font(.subheadline)
-                        .foregroundStyle(XomperColors.textSecondary)
-                }
-
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: XomperTheme.Spacing.xs) {
-                    Text(team.fpts.formattedPoints)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(XomperColors.textPrimary)
-
-                    Text("PF")
-                        .font(.caption2)
-                        .foregroundStyle(XomperColors.textMuted)
-                }
-            }
-        }
-        .xomperCard()
-        .overlay(
-            RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg)
-                .stroke(XomperColors.championGold.opacity(0.3), lineWidth: 1)
-        )
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(team.teamName), record \(team.record), rank \(team.leagueRank)")
-    }
-
     // MARK: - Loading / Error Cards
 
     private var loadingCard: some View {
         HStack(spacing: XomperTheme.Spacing.md) {
             ProgressView()
                 .tint(XomperColors.championGold)
-            Text("Loading league...")
+            Text("Loading leagues...")
                 .font(.subheadline)
                 .foregroundStyle(XomperColors.textSecondary)
         }
@@ -198,7 +157,7 @@ struct HomeView: View {
         VStack(spacing: XomperTheme.Spacing.sm) {
             Image(systemName: "exclamationmark.triangle")
                 .foregroundStyle(XomperColors.errorRed)
-            Text("Failed to load league")
+            Text("Failed to load leagues")
                 .font(.subheadline)
                 .foregroundStyle(XomperColors.textSecondary)
         }
@@ -213,7 +172,6 @@ struct HomeView: View {
             authStore: AuthStore(),
             leagueStore: LeagueStore(),
             userStore: UserStore(),
-            teamStore: TeamStore(),
             nflStateStore: NflStateStore(),
             router: AppRouter()
         )
