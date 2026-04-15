@@ -24,6 +24,17 @@ struct MyProfileView: View {
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.large)
         .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    router.navigate(to: .settings)
+                } label: {
+                    Image(systemName: "gearshape.fill")
+                        .foregroundStyle(XomperColors.championGold)
+                }
+                .accessibilityLabel("Settings")
+            }
+        }
         .confirmationDialog(
             "Sign Out",
             isPresented: $showSignOutConfirmation,
@@ -112,15 +123,21 @@ struct MyProfileView: View {
 
     @ViewBuilder
     private var leagueSection: some View {
-        if let league = leagueStore.myLeague {
+        let leagues = leagueStore.userLeagues.isEmpty
+            ? (leagueStore.myLeague.map { [$0] } ?? [])
+            : leagueStore.userLeagues
+
+        if !leagues.isEmpty {
             VStack(alignment: .leading, spacing: XomperTheme.Spacing.sm) {
-                Text("My League")
+                Text("My Leagues")
                     .font(.subheadline)
                     .fontWeight(.semibold)
                     .foregroundStyle(XomperColors.textSecondary)
                     .padding(.leading, XomperTheme.Spacing.xs)
 
-                leagueRow(league)
+                ForEach(leagues, id: \.leagueId) { league in
+                    leagueRow(league)
+                }
             }
         }
     }
@@ -129,7 +146,10 @@ struct MyProfileView: View {
         Button {
             let generator = UIImpactFeedbackGenerator(style: .medium)
             generator.impactOccurred()
-            router.switchTab(.league)
+            Task {
+                await leagueStore.switchToLeague(id: league.leagueId)
+                router.switchTab(.league)
+            }
         } label: {
             HStack(spacing: XomperTheme.Spacing.md) {
                 AvatarView(
@@ -150,6 +170,17 @@ struct MyProfileView: View {
                     }
                     .font(.caption)
                     .foregroundStyle(XomperColors.textSecondary)
+
+                    if league.isDynasty {
+                        Text("Dynasty")
+                            .font(.caption2)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(XomperColors.deepNavy)
+                            .padding(.horizontal, XomperTheme.Spacing.sm)
+                            .padding(.vertical, XomperTheme.Spacing.xs)
+                            .background(XomperColors.championGold)
+                            .clipShape(Capsule())
+                    }
                 }
 
                 Spacer()

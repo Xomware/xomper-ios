@@ -146,6 +146,8 @@ struct ContentView: View {
                 leagueStore: leagueStore,
                 router: router
             )
+        case .settings:
+            SettingsView(pushManager: PushNotificationManager.shared)
         }
     }
 
