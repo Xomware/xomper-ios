@@ -9,6 +9,7 @@ enum AppRoute: Hashable {
     case matchupHistory
     case taxiSquad
     case search
+    case settings
 }
 
 @Observable

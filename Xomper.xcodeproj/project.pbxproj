@@ -41,6 +41,7 @@
 		7607DB7C775FCCC3B7C3377B /* StandingsTeam.swift in Sources */ = {isa = PBXBuildFile; fileRef = B29D510D87CD290AE7F76FBF /* StandingsTeam.swift */; };
 		76260F26A40213A62E5F22FB /* RecordBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AD376EFB7AD4A192FAB3E8F /* RecordBadge.swift */; };
 		77A0EFCEE4340D3A7853BF08 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43685B0C212A644C0EF202E5 /* ProfileView.swift */; };
+		77CFB7F9C5E4975E6350662B /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3AFC2ADE424F95E3121BF22 /* SettingsView.swift */; };
 		7D94ADAC136455C3056D5867 /* PushNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEAEC7A4917990425085AE71 /* PushNotificationManager.swift */; };
 		7E34464209AAF9EC6801191A /* NflState.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1E5A60EE78F668F02CF63C0 /* NflState.swift */; };
 		7EA8F8FCEFFE3C165655208C /* MatchupHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF491605034E9F8C00BC0572 /* MatchupHistoryView.swift */; };
@@ -132,6 +133,7 @@
 		BB5E661424C55F695BF96281 /* AuthGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthGateView.swift; sourceTree = "<group>"; };
 		BC44D14381C74E97D8AF868F /* PlayerDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerDetailView.swift; sourceTree = "<group>"; };
 		C1CD5644F6F8376CA86092AF /* Xomper.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Xomper.entitlements; sourceTree = "<group>"; };
+		C3AFC2ADE424F95E3121BF22 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		C82B0FEAAB9BC80BA0801E98 /* XomperColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XomperColors.swift; sourceTree = "<group>"; };
 		C83EF3C6C93199CF3FCBAE42 /* Matchup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Matchup.swift; sourceTree = "<group>"; };
 		C9382BCB18DFEB416A50A039 /* RulesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RulesView.swift; sourceTree = "<group>"; };
@@ -180,6 +182,7 @@
 			children = (
 				558164667DF7D89C4DF2F32E /* MyProfileView.swift */,
 				43685B0C212A644C0EF202E5 /* ProfileView.swift */,
+				C3AFC2ADE424F95E3121BF22 /* SettingsView.swift */,
 			);
 			path = Profile;
 			sourceTree = "<group>";
@@ -550,6 +553,7 @@
 				133F58C70F4FA02676079E9A /* RulesStore.swift in Sources */,
 				80E6A85F05ED2AFFC648FAFA /* RulesView.swift in Sources */,
 				F7E0A8B9AECD0291527E0D0E /* SearchView.swift in Sources */,
+				77CFB7F9C5E4975E6350662B /* SettingsView.swift in Sources */,
 				65DC95B6907B22347616C3D7 /* SleeperAPIClient.swift in Sources */,
 				B48B9F6061A67CFC74A096CC /* StandingsStore.swift in Sources */,
 				7607DB7C775FCCC3B7C3377B /* StandingsTeam.swift in Sources */,
