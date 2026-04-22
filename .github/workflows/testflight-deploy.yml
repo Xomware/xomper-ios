@@ -1,0 +1,236 @@
+name: Deploy to TestFlight
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      release_notes:
+        description: 'Release notes for this build'
+        required: false
+        default: 'Automated TestFlight build'
+
+jobs:
+  deploy:
+    name: Build & Upload to TestFlight
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Generate Config.swift
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          API_GATEWAY_URL: ${{ secrets.API_GATEWAY_URL }}
+          WHITELISTED_LEAGUE_ID: ${{ secrets.WHITELISTED_LEAGUE_ID }}
+        run: |
+          cat > Xomper/Config/Config.swift <<EOF
+          import Foundation
+
+          enum Config {
+              static let supabaseURL = "${SUPABASE_URL}"
+              static let supabaseAnonKey = "${SUPABASE_ANON_KEY}"
+              static let oauthCallbackURL = "xomper://login-callback"
+              static let apiGatewayURL = "${API_GATEWAY_URL}"
+              static let whitelistedLeagueId = "${WHITELISTED_LEAGUE_ID}"
+
+              static var isConfigured: Bool {
+                  !supabaseURL.contains("YOUR_") && !supabaseAnonKey.contains("YOUR_")
+              }
+          }
+          EOF
+
+      - name: Write App Store Connect API key
+        env:
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$ASC_API_KEY_P8" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_${ASC_API_KEY_ID}.p8
+          chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${ASC_API_KEY_ID}.p8
+
+      - name: Compute version and build number
+        id: version
+        run: |
+          MARKETING_VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "2.0.0")
+          BUILD_NUMBER=$(date +%Y%m%d%H%M)
+          echo "marketing=$MARKETING_VERSION" >> "$GITHUB_OUTPUT"
+          echo "build=$BUILD_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "Marketing version: $MARKETING_VERSION"
+          echo "Build number: $BUILD_NUMBER"
+
+      - name: Archive
+        env:
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project Xomper.xcodeproj \
+            -scheme Xomper \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/Xomper.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyID "$ASC_API_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_API_ISSUER_ID" \
+            -authenticationKeyPath "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_API_KEY_ID}.p8" \
+            MARKETING_VERSION=${{ steps.version.outputs.marketing }} \
+            CURRENT_PROJECT_VERSION=${{ steps.version.outputs.build }}
+
+      - name: Create ExportOptions.plist
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>destination</key>
+              <string>export</string>
+              <key>method</key>
+              <string>app-store-connect</string>
+              <key>signingStyle</key>
+              <string>automatic</string>
+              <key>stripSwiftSymbols</key>
+              <true/>
+              <key>teamID</key>
+              <string>${TEAM_ID}</string>
+              <key>uploadSymbols</key>
+              <true/>
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Export IPA
+        env:
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+        run: |
+          set -o pipefail
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Xomper.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyID "$ASC_API_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_API_ISSUER_ID" \
+            -authenticationKeyPath "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_API_KEY_ID}.p8"
+
+      - name: Upload to TestFlight
+        env:
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+        run: |
+          IPA_PATH=$(find "$RUNNER_TEMP/export" -name "*.ipa" | head -1)
+          echo "Uploading: $IPA_PATH"
+          xcrun altool --upload-app \
+            -f "$IPA_PATH" \
+            -t ios \
+            --apiKey "$ASC_API_KEY_ID" \
+            --apiIssuer "$ASC_API_ISSUER_ID"
+
+      - name: Install Python deps for TestFlight group assignment
+        run: pip3 install --quiet PyJWT cryptography requests
+
+      - name: Assign build to TestFlight groups
+        env:
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+          BUNDLE_ID: com.Xomware.Xomper
+          BUILD_NUMBER: ${{ steps.version.outputs.build }}
+          BETA_GROUPS: 'Beta'
+        run: |
+          python3 <<'PY'
+          import os, sys, time
+          import jwt, requests
+
+          key_id = os.environ["ASC_API_KEY_ID"]
+          issuer = os.environ["ASC_API_ISSUER_ID"]
+          bundle_id = os.environ["BUNDLE_ID"]
+          build_num = os.environ["BUILD_NUMBER"]
+          groups = [g.strip() for g in os.environ["BETA_GROUPS"].split(",") if g.strip()]
+
+          with open(os.path.expanduser(f"~/.appstoreconnect/private_keys/AuthKey_{key_id}.p8")) as f:
+              private_key = f.read()
+
+          def make_token():
+              return jwt.encode(
+                  {"iss": issuer, "iat": int(time.time()), "exp": int(time.time()) + 1200, "aud": "appstoreconnect-v1"},
+                  private_key,
+                  algorithm="ES256",
+                  headers={"kid": key_id, "typ": "JWT"},
+              )
+
+          base = "https://api.appstoreconnect.apple.com/v1"
+          headers = {"Authorization": f"Bearer {make_token()}"}
+
+          r = requests.get(f"{base}/apps", headers=headers, params={"filter[bundleId]": bundle_id})
+          r.raise_for_status()
+          apps = r.json()["data"]
+          if not apps:
+              print(f"No app found for bundle {bundle_id}", file=sys.stderr)
+              sys.exit(1)
+          app_id = apps[0]["id"]
+          print(f"App ID: {app_id}")
+
+          build_id = None
+          for attempt in range(30):
+              r = requests.get(
+                  f"{base}/builds",
+                  headers=headers,
+                  params={
+                      "filter[app]": app_id,
+                      "filter[version]": build_num,
+                      "sort": "-uploadedDate",
+                      "limit": 1,
+                  },
+              )
+              r.raise_for_status()
+              data = r.json()["data"]
+              if data:
+                  build_id = data[0]["id"]
+                  state = data[0]["attributes"].get("processingState", "?")
+                  print(f"Build {build_num} found: id={build_id} state={state}")
+                  break
+              print(f"Build {build_num} not yet visible, retry {attempt + 1}/30")
+              time.sleep(20)
+
+          if not build_id:
+              print("Build never appeared in ASC API", file=sys.stderr)
+              sys.exit(1)
+
+          for name in groups:
+              r = requests.get(
+                  f"{base}/betaGroups",
+                  headers=headers,
+                  params={"filter[app]": app_id, "filter[name]": name},
+              )
+              r.raise_for_status()
+              data = r.json()["data"]
+              if not data:
+                  print(f"!! Beta group {name!r} not found — skipping. Create it in App Store Connect.")
+                  continue
+              group_id = data[0]["id"]
+              r = requests.post(
+                  f"{base}/betaGroups/{group_id}/relationships/builds",
+                  headers={**headers, "Content-Type": "application/json"},
+                  json={"data": [{"type": "builds", "id": build_id}]},
+              )
+              if r.status_code >= 400:
+                  print(f"!! Failed to assign to {name}: {r.status_code} {r.text}", file=sys.stderr)
+                  sys.exit(1)
+              print(f"Assigned build to group {name!r} ({group_id})")
+          PY
+
+      - name: Cleanup API key
+        if: always()
+        run: rm -f ~/.appstoreconnect/private_keys/*.p8
