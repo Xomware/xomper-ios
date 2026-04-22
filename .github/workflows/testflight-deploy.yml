@@ -84,8 +84,7 @@ jobs:
             -authenticationKeyIssuerID "$ASC_API_ISSUER_ID" \
             -authenticationKeyPath "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_API_KEY_ID}.p8" \
             MARKETING_VERSION=${{ steps.version.outputs.marketing }} \
-            CURRENT_PROJECT_VERSION=${{ steps.version.outputs.build }} \
-            SWIFT_STRICT_CONCURRENCY=minimal
+            CURRENT_PROJECT_VERSION=${{ steps.version.outputs.build }}
 
       - name: Create ExportOptions.plist
         env:
@@ -141,7 +140,7 @@ jobs:
             --apiIssuer "$ASC_API_ISSUER_ID"
 
       - name: Install Python deps for TestFlight group assignment
-        run: pip3 install --quiet PyJWT cryptography requests
+        run: pip3 install --quiet --break-system-packages PyJWT cryptography requests
 
       - name: Assign build to TestFlight groups
         env:
