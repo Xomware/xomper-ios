@@ -220,7 +220,11 @@ jobs:
               if not data:
                   print(f"!! Beta group {name!r} not found — skipping. Create it in App Store Connect.")
                   continue
-              group_id = data[0]["id"]
+              group = data[0]
+              group_id = group["id"]
+              if group["attributes"].get("isInternalGroup"):
+                  print(f"Group {name!r} is internal — auto-receives all builds, skipping manual assignment")
+                  continue
               r = requests.post(
                   f"{base}/betaGroups/{group_id}/relationships/builds",
                   headers={**headers, "Content-Type": "application/json"},
