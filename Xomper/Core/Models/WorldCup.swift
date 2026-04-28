@@ -1,5 +1,18 @@
 import Foundation
 
+// MARK: - Clinch Status
+
+/// Three-state qualification status for World Cup standings.
+/// Computed by `ClinchCalculator`; replaces the old boolean `qualified` flag.
+enum ClinchStatus: String, Sendable {
+    /// Team has mathematically clinched a top-2 seed — no remaining opponent can catch them.
+    case clinched
+    /// Qualification is still undetermined.
+    case alive
+    /// Team cannot reach the 2nd-seed win total even by winning all remaining games.
+    case eliminated
+}
+
 /// Computed at runtime from matchup history data.
 /// Not Codable -- assembled from cross-season divisional matchup analysis.
 struct WorldCupDivision: Identifiable, Sendable {
@@ -21,10 +34,13 @@ struct WorldCupTeamRecord: Identifiable, Sendable {
     var ties: Int
     var pointsFor: Double
     var pointsAgainst: Double
-    var qualified: Bool
+    var clinchStatus: ClinchStatus
     var seasonBreakdown: [SeasonBreakdown]
 
     var id: String { userId }
+
+    /// Convenience: `true` only when the team has mathematically clinched a qualifying seat.
+    var qualifiedForBracket: Bool { clinchStatus == .clinched }
 
     var record: String {
         if ties > 0 {

@@ -56,7 +56,7 @@ struct WorldCupView: View {
                 .font(.subheadline)
                 .foregroundStyle(XomperColors.textSecondary)
 
-            Text("Top 2 in each division qualify")
+            Text("Top 2 per division qualify · \(ClinchCalculator.defaultGamesRemaining) games remaining")
                 .font(.caption)
                 .fontWeight(.medium)
                 .foregroundStyle(XomperColors.successGreen)
@@ -175,9 +175,9 @@ private struct WorldCupDivisionSection: View {
                 .frame(height: 2)
 
             HStack(spacing: XomperTheme.Spacing.xs) {
-                Image(systemName: "checkmark.seal.fill")
+                Image(systemName: "line.horizontal.star.fill.line.horizontal")
                     .font(.caption2)
-                Text("QUALIFIED")
+                Text("QUALIFICATION LINE")
                     .font(.caption2)
                     .fontWeight(.heavy)
                     .tracking(1)
@@ -193,7 +193,7 @@ private struct WorldCupDivisionSection: View {
                 .frame(height: 2)
         }
         .padding(.vertical, XomperTheme.Spacing.sm)
-        .accessibilityLabel("Qualification cutoff. Top \(qualificationCutoff) teams above this line are qualified.")
+        .accessibilityLabel("Qualification line. Top \(qualificationCutoff) teams per division qualify for the bracket.")
     }
 
     private var tableHeader: some View {
@@ -252,7 +252,7 @@ private struct WorldCupTeamRow: View {
         }
         .background(rowBackground)
         .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
-        .opacity(team.qualified ? 1.0 : 0.6)
+        .opacity(team.clinchStatus == .eliminated ? 0.4 : 1.0)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityDescription)
     }
@@ -266,24 +266,30 @@ private struct WorldCupTeamRow: View {
     }
 
     private var rankColor: Color {
+        if team.clinchStatus == .eliminated { return XomperColors.textMuted }
+        if team.clinchStatus == .clinched { return XomperColors.championGold }
         switch rank {
-        case 1: XomperColors.championGold
-        case 2: XomperColors.textSecondary
-        default: XomperColors.textMuted
+        case 1: return XomperColors.championGold
+        case 2: return XomperColors.textSecondary
+        default: return XomperColors.textMuted
         }
     }
 
     private var teamInfoCell: some View {
-        VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
+        let isEliminated = team.clinchStatus == .eliminated
+        return VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
             HStack(spacing: XomperTheme.Spacing.xs) {
                 Text(team.teamName.isEmpty ? team.username : team.teamName)
                     .font(.caption)
                     .fontWeight(.semibold)
-                    .foregroundStyle(XomperColors.textPrimary)
+                    .foregroundStyle(isEliminated ? XomperColors.textMuted : XomperColors.textPrimary)
+                    .strikethrough(isEliminated, color: XomperColors.textMuted)
                     .lineLimit(1)
 
-                if team.qualified {
-                    qualifiedBadge
+                if team.clinchStatus == .clinched {
+                    clinchedBadge
+                } else if team.clinchStatus == .eliminated {
+                    eliminatedBadge
                 }
             }
             Text(team.username)
@@ -294,14 +300,30 @@ private struct WorldCupTeamRow: View {
         .frame(width: 120, alignment: .leading)
     }
 
-    private var qualifiedBadge: some View {
-        Text("Q")
-            .font(.system(size: 9, weight: .heavy, design: .rounded))
-            .foregroundStyle(XomperColors.bgDark)
-            .frame(width: 16, height: 16)
-            .background(XomperColors.successGreen)
-            .clipShape(Circle())
-            .accessibilityLabel("Qualified")
+    private var clinchedBadge: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "trophy.fill")
+                .font(.system(size: 9))
+            Text("CLINCHED")
+                .font(.caption2)
+                .fontWeight(.heavy)
+                .tracking(0.5)
+        }
+        .foregroundStyle(XomperColors.championGold)
+        .accessibilityLabel("Clinched")
+    }
+
+    private var eliminatedBadge: some View {
+        Text("OUT")
+            .font(.caption2)
+            .fontWeight(.heavy)
+            .tracking(0.5)
+            .foregroundStyle(XomperColors.accentRed.opacity(0.7))
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(XomperColors.accentRed.opacity(0.15))
+            .clipShape(Capsule())
+            .accessibilityLabel("Eliminated")
     }
 
     private func statCell(
@@ -343,9 +365,11 @@ private struct WorldCupTeamRow: View {
     }
 
     private var rowBackground: Color {
-        team.qualified
-            ? XomperColors.successGreen.opacity(0.1)
-            : XomperColors.bgCard.opacity(0.3)
+        switch team.clinchStatus {
+        case .clinched:    XomperColors.championGold.opacity(0.14)
+        case .alive:       XomperColors.bgCard.opacity(0.3)
+        case .eliminated:  XomperColors.bgCard.opacity(0.15)
+        }
     }
 
     private var accessibilityDescription: String {
@@ -353,7 +377,11 @@ private struct WorldCupTeamRow: View {
         desc += "\(team.record), "
         desc += "Points for \(String(format: "%.1f", team.pointsFor)), "
         desc += "Points against \(String(format: "%.1f", team.pointsAgainst))"
-        if team.qualified { desc += ", Qualified" }
+        switch team.clinchStatus {
+        case .clinched:   desc += ", Clinched"
+        case .eliminated: desc += ", Eliminated from contention"
+        case .alive:      break
+        }
         return desc
     }
 }
