@@ -5,6 +5,7 @@ struct MyProfileView: View {
     var userStore: UserStore
     var leagueStore: LeagueStore
     var router: AppRouter
+    var navStore: NavigationStore
 
     @State private var isSigningOut = false
     @State private var showSignOutConfirmation = false
@@ -21,20 +22,8 @@ struct MyProfileView: View {
             .padding(XomperTheme.Spacing.md)
         }
         .background(XomperColors.bgDark.ignoresSafeArea())
-        .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.large)
         .toolbarColorScheme(.dark, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    router.navigate(to: .settings)
-                } label: {
-                    Image(systemName: "gearshape.fill")
-                        .foregroundStyle(XomperColors.championGold)
-                }
-                .accessibilityLabel("Settings")
-            }
-        }
         .confirmationDialog(
             "Sign Out",
             isPresented: $showSignOutConfirmation,
@@ -148,7 +137,7 @@ struct MyProfileView: View {
             generator.impactOccurred()
             Task {
                 await leagueStore.switchToLeague(id: league.leagueId)
-                router.switchTab(.league)
+                navStore.select(.standings, router: router)
             }
         } label: {
             HStack(spacing: XomperTheme.Spacing.md) {
@@ -277,7 +266,8 @@ struct MyProfileView: View {
             authStore: AuthStore(),
             userStore: UserStore(),
             leagueStore: LeagueStore(),
-            router: AppRouter()
+            router: AppRouter(),
+            navStore: NavigationStore()
         )
     }
     .preferredColorScheme(.dark)

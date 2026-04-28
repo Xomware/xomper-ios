@@ -4,6 +4,7 @@ import Combine
 struct SearchView: View {
     var leagueStore: LeagueStore
     var router: AppRouter
+    var navStore: NavigationStore
 
     @State private var searchText = ""
     @State private var searchMode: SearchMode = .user
@@ -394,7 +395,7 @@ struct SearchView: View {
     private func navigateToLeague(_ league: League) {
         Task {
             await leagueStore.switchToLeague(id: league.leagueId)
-            router.switchTab(.league)
+            navStore.select(.standings, router: router)
         }
     }
 }
@@ -438,7 +439,8 @@ private enum SearchResult {
     NavigationStack {
         SearchView(
             leagueStore: LeagueStore(),
-            router: AppRouter()
+            router: AppRouter(),
+            navStore: NavigationStore()
         )
     }
     .preferredColorScheme(.dark)
