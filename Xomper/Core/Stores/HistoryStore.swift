@@ -160,6 +160,74 @@ final class HistoryStore {
         )
     }
 
+    // MARK: - Championships (Trophy Case)
+
+    /// Returns every championship the given user has won across the loaded
+    /// matchup history. Pure derived computation — no network, no side effects.
+    ///
+    /// Selection rule: a record is a championship win if `isChampionship == true`
+    /// AND the user is on the winning side. We dedupe by `season` (a season can
+    /// have at most one champ; if both week 16 and week 17 records flag this
+    /// user as winner — typical for multi-week playoff schemas — we keep the
+    /// later week, which is the actual title game).
+    ///
+    /// Sorted descending by season (newest first).
+    func championships(forUserId userId: String) -> [Championship] {
+        guard !userId.isEmpty else { return [] }
+
+        // Filter to championship-flagged records this user won.
+        let wins = matchupHistory.filter { record in
+            guard record.isChampionship else { return false }
+
+            if record.teamAUserId == userId,
+               record.winnerRosterId == record.teamARosterId {
+                return true
+            }
+            if record.teamBUserId == userId,
+               record.winnerRosterId == record.teamBRosterId {
+                return true
+            }
+            return false
+        }
+
+        // Map to Championship, picking the user's side as "team" and
+        // the opponent's side as "opponent".
+        let mapped: [Championship] = wins.map { record in
+            let userIsTeamA = record.teamAUserId == userId
+            let teamName = userIsTeamA ? record.teamATeamName : record.teamBTeamName
+            let opponent = userIsTeamA ? record.teamBTeamName : record.teamATeamName
+            let pointsFor = userIsTeamA ? record.teamAPoints : record.teamBPoints
+            let pointsAgainst = userIsTeamA ? record.teamBPoints : record.teamAPoints
+
+            return Championship(
+                season: record.season,
+                leagueId: record.leagueId,
+                week: record.week,
+                teamName: teamName,
+                pointsFor: pointsFor,
+                pointsAgainst: pointsAgainst,
+                opponentTeamName: opponent
+            )
+        }
+
+        // Dedupe by season — prefer the later week (title game over semi).
+        var bySeason: [String: Championship] = [:]
+        for champ in mapped {
+            if let existing = bySeason[champ.season] {
+                if champ.week > existing.week {
+                    bySeason[champ.season] = champ
+                }
+            } else {
+                bySeason[champ.season] = champ
+            }
+        }
+
+        // Sort descending by season (newest first).
+        return bySeason.values.sorted { a, b in
+            (Int(a.season) ?? 0) > (Int(b.season) ?? 0)
+        }
+    }
+
     // MARK: - Fetch Raw Matchups for Detail
 
     /// Fetches the raw matchup data for a specific week to get player-level lineups and points.
