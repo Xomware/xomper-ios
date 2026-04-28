@@ -14,6 +14,7 @@ enum AppRoute: Hashable {
     case taxiSquad
     case search
     case settings
+    case playerDetail(playerId: String)
 }
 
 /// Owns the inner `NavigationStack` path inside `MainShell`. The drawer

@@ -73,6 +73,7 @@ struct HeaderBar: View {
                     let generator = UIImpactFeedbackGenerator(style: .light)
                     generator.impactOccurred()
                     router.navigate(to: .search)
+                    navStore.closeDrawer()
                 } label: {
                     Image(systemName: "magnifyingglass")
                         .font(.body.weight(.semibold))
