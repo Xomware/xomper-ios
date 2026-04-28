@@ -5,6 +5,17 @@ struct WorldCupView: View {
     var historyStore: HistoryStore
     var leagueStore: LeagueStore
 
+    @Environment(\.selectedSeason) private var seasonStore: SeasonStore?
+
+    private var activeSeason: String? {
+        let season = seasonStore?.selectedSeason ?? ""
+        return season.isEmpty ? nil : season
+    }
+
+    private var displayedDivisions: [WorldCupDivision] {
+        worldCupStore.filteredDivisions(for: activeSeason)
+    }
+
     var body: some View {
         ScrollView {
             if worldCupStore.isLoading {
@@ -68,6 +79,9 @@ struct WorldCupView: View {
     }
 
     private var seasonsSummary: String {
+        if let season = activeSeason, worldCupStore.seasons.contains(season) {
+            return "Divisional records for \(season)"
+        }
         let count = worldCupStore.seasons.count
         let seasonList = worldCupStore.seasons.joined(separator: ", ")
         let plural = count != 1 ? "s" : ""
@@ -77,14 +91,25 @@ struct WorldCupView: View {
     // MARK: - Divisions
 
     private var divisionsSection: some View {
-        VStack(spacing: XomperTheme.Spacing.lg) {
-            ForEach(worldCupStore.divisions) { division in
+        let columns = displayedColumnSeasons
+        return VStack(spacing: XomperTheme.Spacing.lg) {
+            ForEach(displayedDivisions) { division in
                 WorldCupDivisionSection(
                     division: division,
-                    seasons: worldCupStore.seasons
+                    seasons: columns
                 )
             }
         }
+    }
+
+    /// Per-season columns to render in each division's stat table. When a
+    /// single season is selected, we only show that season's column. When the
+    /// selection is unset (or "All"), we keep the multi-season layout.
+    private var displayedColumnSeasons: [String] {
+        if let season = activeSeason, worldCupStore.seasons.contains(season) {
+            return [season]
+        }
+        return worldCupStore.seasons
     }
 
     // MARK: - Actions

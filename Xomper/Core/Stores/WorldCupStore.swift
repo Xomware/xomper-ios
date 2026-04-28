@@ -13,6 +13,19 @@ final class WorldCupStore {
 
     var hasData: Bool { !divisions.isEmpty }
 
+    // MARK: - Cached inputs (for filtered recomputes)
+
+    /// Last chain passed into `loadStandings(chain:matchups:)`. Used by
+    /// `filteredDivisions(for:)` to recompute without re-fetching.
+    private var lastChain: [League] = []
+
+    /// Last matchups array passed into `loadStandings(chain:matchups:)`.
+    private var lastMatchups: [MatchupHistoryRecord] = []
+
+    /// Memoization for the most recently filtered divisions. Keyed by the
+    /// season string and the matchup count to invalidate on data refresh.
+    private var filteredCache: (season: String, count: Int, divisions: [WorldCupDivision])?
+
     // MARK: - Load World Cup Standings
 
     /// Computes World Cup standings from the league chain and matchup history.
@@ -35,11 +48,41 @@ final class WorldCupStore {
             // Gather unique seasons sorted ascending
             seasons = Array(Set(matchups.map(\.season)))
                 .sorted { (Int($0) ?? 0) < (Int($1) ?? 0) }
+
+            // Cache inputs so filtered recomputes don't need re-fetch.
+            lastChain = chain
+            lastMatchups = matchups
+            filteredCache = nil
         } catch {
             self.error = error
         }
 
         isLoading = false
+    }
+
+    // MARK: - Filtered Standings
+
+    /// Returns divisions recomputed using only matchups from `season`.
+    /// Falls back to the unfiltered `divisions` when:
+    /// - `season` is `nil` or empty (no selection),
+    /// - the cached chain/matchup pair hasn't been populated yet.
+    ///
+    /// Memoized on `(season, matchupCount)` so repeated reads during scroll
+    /// are O(1).
+    func filteredDivisions(for season: String?) -> [WorldCupDivision] {
+        guard let season, !season.isEmpty else { return divisions }
+        guard !lastChain.isEmpty, !lastMatchups.isEmpty else { return divisions }
+
+        if let cached = filteredCache,
+           cached.season == season,
+           cached.count == lastMatchups.count {
+            return cached.divisions
+        }
+
+        let filtered = lastMatchups.filter { $0.season == season }
+        let result = (try? computeStandings(chain: lastChain, matchups: filtered)) ?? []
+        filteredCache = (season: season, count: lastMatchups.count, divisions: result)
+        return result
     }
 
     // MARK: - Reset
@@ -48,6 +91,9 @@ final class WorldCupStore {
         divisions = []
         seasons = []
         error = nil
+        lastChain = []
+        lastMatchups = []
+        filteredCache = nil
     }
 
     // MARK: - Private: Compute Standings

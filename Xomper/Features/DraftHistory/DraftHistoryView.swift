@@ -6,10 +6,15 @@ struct DraftHistoryView: View {
     var playerStore: PlayerStore
     var userStore: UserStore
 
-    @State private var selectedSeason: String = ""
+    @Environment(\.selectedSeason) private var seasonStore: SeasonStore?
+
     @State private var filterMode: PickFilter = .all
     @State private var selectedPlayer: Player?
     @State private var hasLoaded = false
+
+    private var currentSeason: String {
+        seasonStore?.selectedSeason ?? ""
+    }
 
     var body: some View {
         Group {
@@ -44,7 +49,6 @@ struct DraftHistoryView: View {
     private var draftContent: some View {
         ScrollView {
             VStack(spacing: XomperTheme.Spacing.md) {
-                seasonPicker
                 filterPicker
                 roundsList
             }
@@ -57,29 +61,6 @@ struct DraftHistoryView: View {
             hasLoaded = false
             await loadDraftHistory()
             hasLoaded = true
-        }
-    }
-
-    // MARK: - Season Picker
-
-    @ViewBuilder
-    private var seasonPicker: some View {
-        let seasons = historyStore.availableDraftSeasons
-        if seasons.count > 1 {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: XomperTheme.Spacing.xs) {
-                    ForEach(seasons, id: \.self) { season in
-                        SeasonButton(
-                            season: season,
-                            isSelected: season == selectedSeason
-                        ) {
-                            withAnimation(XomperTheme.defaultAnimation) {
-                                selectedSeason = season
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 
@@ -152,16 +133,15 @@ struct DraftHistoryView: View {
         guard !chain.isEmpty else { return }
 
         await historyStore.loadDraftHistory(chain: chain)
-
-        if selectedSeason.isEmpty, let first = historyStore.availableDraftSeasons.first {
-            selectedSeason = first
-        }
+        // `MainShell` reacts to `historyStore.draftHistory.count` changes and
+        // refreshes `seasonStore.availableSeasons` automatically — nothing to
+        // seed here.
     }
 
     // MARK: - Filtering
 
     private var filteredRounds: [DraftRound] {
-        let allRounds = historyStore.draftPicksByRound(forSeason: selectedSeason)
+        let allRounds = historyStore.draftPicksByRound(forSeason: currentSeason)
 
         switch filterMode {
         case .all:
@@ -196,35 +176,6 @@ private enum PickFilter: CaseIterable, Sendable {
         case .all: "All Picks"
         case .myPicks: "My Picks"
         }
-    }
-}
-
-// MARK: - Season Button
-
-private struct SeasonButton: View {
-    let season: String
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button {
-            let generator = UIImpactFeedbackGenerator(style: .light)
-            generator.impactOccurred()
-            action()
-        } label: {
-            Text(season)
-                .font(.subheadline)
-                .fontWeight(isSelected ? .semibold : .regular)
-                .foregroundStyle(isSelected ? XomperColors.deepNavy : XomperColors.textSecondary)
-                .padding(.horizontal, XomperTheme.Spacing.md)
-                .padding(.vertical, XomperTheme.Spacing.sm)
-                .frame(minHeight: XomperTheme.minTouchTarget)
-                .background(isSelected ? XomperColors.championGold : XomperColors.surfaceLight)
-                .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Season \(season)")
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
