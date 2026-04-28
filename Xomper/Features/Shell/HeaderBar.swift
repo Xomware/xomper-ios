@@ -5,13 +5,45 @@ import SwiftUI
 /// - Centered: "Xomper" wordmark
 /// - Trailing 44pt button: magnifying glass → search route
 ///
-/// Height: 44, background `XomperColors.bgDark`.
+/// On season-scoped destinations (`.matchups`, `.draftHistory`, `.worldCup`),
+/// a 36pt sub-row appears below the wordmark hosting `SeasonPickerBar`.
+/// The sub-row collapses when there is only one (or zero) seasons available
+/// to avoid a 36pt empty strip.
+///
+/// Heights:
+/// - Wordmark row: 44pt fixed.
+/// - Sub-row:      36pt when visible, otherwise 0.
 struct HeaderBar: View {
     let navStore: NavigationStore
     let router: AppRouter
     let avatarID: String?
+    let seasonStore: SeasonStore
+
+    /// Destinations that opt into the season picker sub-row. Other
+    /// destinations render only the 44pt wordmark row.
+    private static let seasonScopedDestinations: Set<TrayDestination> = [
+        .matchups,
+        .draftHistory,
+        .worldCup,
+    ]
 
     var body: some View {
+        VStack(spacing: 0) {
+            wordmarkRow
+
+            if showsPickerRow {
+                SeasonPickerBar(seasonStore: seasonStore)
+                    .frame(height: 36)
+                    .frame(maxWidth: .infinity)
+                    .background(XomperColors.bgDark)
+            }
+        }
+        .background(XomperColors.bgDark)
+    }
+
+    // MARK: - Wordmark row
+
+    private var wordmarkRow: some View {
         ZStack {
             // Center wordmark — independent of leading/trailing buttons so it
             // stays optically centered.
@@ -54,6 +86,14 @@ struct HeaderBar: View {
         }
         .padding(.horizontal, XomperTheme.Spacing.sm)
         .frame(height: 44)
-        .background(XomperColors.bgDark)
+    }
+
+    // MARK: - Sub-row visibility
+
+    private var showsPickerRow: Bool {
+        guard Self.seasonScopedDestinations.contains(navStore.currentDestination) else {
+            return false
+        }
+        return seasonStore.availableSeasons.count > 1
     }
 }

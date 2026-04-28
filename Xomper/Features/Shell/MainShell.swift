@@ -27,6 +27,7 @@ struct MainShell: View {
 
     @State private var navStore = NavigationStore()
     @State private var router = AppRouter()
+    @State private var seasonStore = SeasonStore()
 
     // MARK: - Body
 
@@ -39,13 +40,16 @@ struct MainShell: View {
                 HeaderBar(
                     navStore: navStore,
                     router: router,
-                    avatarID: userStore.myUser?.avatar
+                    avatarID: userStore.myUser?.avatar,
+                    seasonStore: seasonStore
                 )
 
                 NavigationStack(path: $router.path) {
                     destinationRoot
+                        .environment(\.selectedSeason, seasonStore)
                         .navigationDestination(for: AppRoute.self) { route in
                             destinationView(for: route)
+                                .environment(\.selectedSeason, seasonStore)
                         }
                 }
             }
@@ -63,10 +67,37 @@ struct MainShell: View {
         .gesture(edgeDragGesture)
         .task {
             await bootstrapPhase1()
+            seasonStore.bootstrap(currentSeason: nflStateStore.currentSeason)
+            refreshSeasons()
         }
         .task(id: authStore.sleeperUserId) {
             await bootstrapPhase2()
+            refreshSeasons()
         }
+        .onChange(of: historyStore.matchupHistory.count) { _, _ in
+            refreshSeasons()
+        }
+        .onChange(of: historyStore.draftHistory.count) { _, _ in
+            refreshSeasons()
+        }
+        .onChange(of: leagueStore.leagueChain.count) { _, _ in
+            refreshSeasons()
+        }
+        .onChange(of: nflStateStore.currentSeason) { _, _ in
+            seasonStore.bootstrap(currentSeason: nflStateStore.currentSeason)
+            refreshSeasons()
+        }
+    }
+
+    // MARK: - Season Store Refresh
+
+    private func refreshSeasons() {
+        seasonStore.refreshAvailable(
+            matchupSeasons: historyStore.availableMatchupSeasons,
+            draftSeasons: historyStore.availableDraftSeasons,
+            chainSeasons: leagueStore.leagueChain.map(\.season),
+            currentSeason: nflStateStore.currentSeason
+        )
     }
 
     // MARK: - Top-level destination root

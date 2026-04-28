@@ -6,10 +6,15 @@ struct MatchupsView: View {
     var playerStore: PlayerStore
     var router: AppRouter
 
-    @State private var selectedSeason: String = ""
+    @Environment(\.selectedSeason) private var seasonStore: SeasonStore?
+
     @State private var expandedWeek: Int?
     @State private var selectedMatchup: MatchupHistoryRecord?
     @State private var hasLoaded = false
+
+    private var currentSeason: String {
+        seasonStore?.selectedSeason ?? ""
+    }
 
     var body: some View {
         Group {
@@ -50,7 +55,6 @@ struct MatchupsView: View {
     private var matchupsContent: some View {
         ScrollView {
             VStack(spacing: XomperTheme.Spacing.md) {
-                seasonPicker
                 weeksList
             }
             .padding(.horizontal, XomperTheme.Spacing.md)
@@ -63,52 +67,17 @@ struct MatchupsView: View {
             await loadMatchups()
             hasLoaded = true
         }
-    }
-
-    // MARK: - Season Picker
-
-    @ViewBuilder
-    private var seasonPicker: some View {
-        let seasons = historyStore.availableMatchupSeasons
-        if seasons.count > 1 {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: XomperTheme.Spacing.sm) {
-                    ForEach(seasons, id: \.self) { season in
-                        seasonButton(season)
-                    }
-                }
-            }
-        }
-    }
-
-    private func seasonButton(_ season: String) -> some View {
-        Button {
-            let generator = UIImpactFeedbackGenerator(style: .light)
-            generator.impactOccurred()
+        .onChange(of: seasonStore?.selectedSeason) { _, newSeason in
             withAnimation(XomperTheme.defaultAnimation) {
-                selectedSeason = season
-                expandedWeek = historyStore.latestScoredWeek(forSeason: season)
+                expandedWeek = historyStore.latestScoredWeek(forSeason: newSeason ?? "")
             }
-        } label: {
-            Text(season)
-                .font(.subheadline)
-                .fontWeight(selectedSeason == season ? .semibold : .regular)
-                .foregroundStyle(selectedSeason == season ? XomperColors.deepNavy : XomperColors.textSecondary)
-                .padding(.horizontal, XomperTheme.Spacing.md)
-                .padding(.vertical, XomperTheme.Spacing.sm)
-                .frame(minHeight: XomperTheme.minTouchTarget)
-                .background(selectedSeason == season ? XomperColors.championGold : XomperColors.surfaceLight)
-                .clipShape(Capsule())
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Season \(season)")
-        .accessibilityAddTraits(selectedSeason == season ? .isSelected : [])
     }
 
     // MARK: - Weeks List
 
     private var weeksList: some View {
-        let weeks = historyStore.weeklyMatchups(forSeason: selectedSeason)
+        let weeks = historyStore.weeklyMatchups(forSeason: currentSeason)
 
         return LazyVStack(spacing: XomperTheme.Spacing.md) {
             if weeks.isEmpty {
@@ -200,10 +169,12 @@ struct MatchupsView: View {
 
         await historyStore.loadMatchupHistory(chain: chain)
 
-        // Default to most recent season
-        if selectedSeason.isEmpty, let first = historyStore.availableMatchupSeasons.first {
-            selectedSeason = first
-            expandedWeek = historyStore.latestScoredWeek(forSeason: first)
+        // Seed expandedWeek from whatever season the shared store currently
+        // has selected. `MainShell` already refreshes `availableSeasons`
+        // reactively when matchup history changes, so we don't manage that
+        // here.
+        if expandedWeek == nil {
+            expandedWeek = historyStore.latestScoredWeek(forSeason: currentSeason)
         }
     }
 }
