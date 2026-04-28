@@ -296,12 +296,24 @@ struct MainShell: View {
         case .search:
             SearchView(
                 leagueStore: leagueStore,
+                playerStore: playerStore,
                 router: router,
                 navStore: navStore
             )
 
         case .settings:
             SettingsView(pushManager: PushNotificationManager.shared)
+
+        case .playerDetail(let playerId):
+            if let player = playerStore.player(for: playerId) {
+                PlayerDetailView(player: player)
+            } else {
+                EmptyStateView(
+                    icon: "person.fill",
+                    title: "Player Not Found",
+                    message: "We couldn't load this player's details."
+                )
+            }
         }
     }
 

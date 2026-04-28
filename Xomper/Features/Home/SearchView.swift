@@ -1,22 +1,35 @@
 import SwiftUI
-import Combine
 
+/// Three-mode search surface: Sleeper user, Sleeper league, or NFL player.
+/// State and async work live on `SearchStore`; this view is a thin observer
+/// that binds the field, picks the mode, and renders results via
+/// `SearchResultGroup`.
+///
+/// `SearchStore` is held in view-local `@State`. Search state is intentionally
+/// ephemeral — leaving and re-entering search resets the query and mode.
 struct SearchView: View {
     var leagueStore: LeagueStore
+    var playerStore: PlayerStore
     var router: AppRouter
     var navStore: NavigationStore
 
-    @State private var searchText = ""
-    @State private var searchMode: SearchMode = .user
-    @State private var isSearching = false
-    @State private var searchResult: SearchResult?
-    @State private var errorMessage: String?
-    @State private var hasSearched = false
+    @State private var searchStore: SearchStore
     @State private var searchButtonPressed = false
-    @State private var debouncedText = ""
-    @State private var debounceTask: Task<Void, Never>?
 
-    private let apiClient: SleeperAPIClientProtocol = SleeperAPIClient()
+    init(
+        leagueStore: LeagueStore,
+        playerStore: PlayerStore,
+        router: AppRouter,
+        navStore: NavigationStore
+    ) {
+        self.leagueStore = leagueStore
+        self.playerStore = playerStore
+        self.router = router
+        self.navStore = navStore
+        _searchStore = State(
+            initialValue: SearchStore(playerStore: playerStore)
+        )
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -57,22 +70,21 @@ struct SearchView: View {
             let generator = UIImpactFeedbackGenerator(style: .light)
             generator.impactOccurred()
             withAnimation(XomperTheme.defaultAnimation) {
-                searchMode = mode
-                clearResults()
+                searchStore.setMode(mode)
             }
         } label: {
             Text(mode.title)
                 .font(.subheadline)
-                .fontWeight(searchMode == mode ? .semibold : .regular)
+                .fontWeight(searchStore.mode == mode ? .semibold : .regular)
                 .foregroundStyle(
-                    searchMode == mode
+                    searchStore.mode == mode
                         ? XomperColors.deepNavy
                         : XomperColors.textSecondary
                 )
                 .frame(maxWidth: .infinity)
                 .frame(minHeight: XomperTheme.minTouchTarget)
                 .background(
-                    searchMode == mode
+                    searchStore.mode == mode
                         ? XomperColors.championGold
                         : Color.clear
                 )
@@ -80,7 +92,7 @@ struct SearchView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(mode.title) search")
-        .accessibilityAddTraits(searchMode == mode ? .isSelected : [])
+        .accessibilityAddTraits(searchStore.mode == mode ? .isSelected : [])
     }
 
     private var searchField: some View {
@@ -91,23 +103,22 @@ struct SearchView: View {
                     .accessibilityHidden(true)
 
                 TextField(
-                    searchMode.placeholder,
-                    text: $searchText
+                    searchStore.mode.placeholder,
+                    text: Binding(
+                        get: { searchStore.query },
+                        set: { searchStore.setQuery($0) }
+                    )
                 )
                 .font(.body)
                 .foregroundStyle(XomperColors.textPrimary)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
                 .submitLabel(.search)
-                .onSubmit { performSearch() }
-                .onChange(of: searchText) { _, newValue in
-                    scheduleDebounce(newValue)
-                }
+                .onSubmit { searchStore.performSearch() }
 
-                if !searchText.isEmpty {
+                if !searchStore.query.isEmpty {
                     Button {
-                        searchText = ""
-                        clearResults()
+                        searchStore.clear()
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(XomperColors.textMuted)
@@ -123,7 +134,7 @@ struct SearchView: View {
             Button {
                 let generator = UIImpactFeedbackGenerator(style: .medium)
                 generator.impactOccurred()
-                performSearch()
+                searchStore.performSearch()
             } label: {
                 Text("Search")
                     .font(.subheadline)
@@ -142,15 +153,15 @@ struct SearchView: View {
                     .onChanged { _ in searchButtonPressed = true }
                     .onEnded { _ in searchButtonPressed = false }
             )
-            .disabled(searchText.trimmingCharacters(in: .whitespaces).isEmpty || isSearching)
-            .opacity(searchText.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1.0)
+            .disabled(searchStore.query.trimmingCharacters(in: .whitespaces).isEmpty || searchStore.isSearching)
+            .opacity(searchStore.query.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1.0)
             .accessibilityLabel("Search")
-            .accessibilityHint("Double tap to search for \(searchMode.title.lowercased())")
+            .accessibilityHint("Double tap to search for \(searchStore.mode.title.lowercased())")
         }
     }
 
     private var searchHint: some View {
-        Text(searchMode.hint)
+        Text(searchStore.mode.hint)
             .font(.caption)
             .foregroundStyle(XomperColors.textMuted)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -160,19 +171,31 @@ struct SearchView: View {
 
     @ViewBuilder
     private var resultArea: some View {
-        if isSearching {
+        if searchStore.isSearching {
             Spacer()
             ProgressView()
                 .tint(XomperColors.championGold)
                 .accessibilityLabel("Searching")
             Spacer()
-        } else if let errorMessage {
+        } else if let errorMessage = searchStore.errorMessage {
             Spacer()
             searchErrorView(errorMessage)
             Spacer()
-        } else if let result = searchResult {
-            searchResultView(result)
-        } else if hasSearched {
+        } else if !searchStore.results.isEmpty {
+            SearchResultGroup(
+                results: searchStore.results,
+                mode: searchStore.mode,
+                onUserTap: { user in
+                    router.navigate(to: .userProfile(userId: user.userId ?? ""))
+                },
+                onLeagueTap: { league in
+                    navigateToLeague(league)
+                },
+                onPlayerTap: { playerId in
+                    router.navigate(to: .playerDetail(playerId: playerId))
+                }
+            )
+        } else if searchStore.hasSearched {
             Spacer()
             noResultsView
             Spacer()
@@ -183,109 +206,7 @@ struct SearchView: View {
         }
     }
 
-    // MARK: - Result Views
-
-    private func searchResultView(_ result: SearchResult) -> some View {
-        ScrollView {
-            VStack(spacing: XomperTheme.Spacing.md) {
-                switch result {
-                case .user(let user):
-                    userResultCard(user)
-                case .league(let league):
-                    leagueResultCard(league)
-                }
-            }
-            .padding(XomperTheme.Spacing.md)
-        }
-    }
-
-    private func userResultCard(_ user: SleeperUser) -> some View {
-        Button {
-            let generator = UIImpactFeedbackGenerator(style: .medium)
-            generator.impactOccurred()
-            router.navigate(to: .userProfile(userId: user.userId ?? ""))
-        } label: {
-            HStack(spacing: XomperTheme.Spacing.md) {
-                AvatarView(
-                    avatarID: user.avatar,
-                    size: XomperTheme.AvatarSize.lg
-                )
-
-                VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
-                    Text(user.resolvedDisplayName)
-                        .font(.headline)
-                        .foregroundStyle(XomperColors.textPrimary)
-
-                    if let username = user.username {
-                        Text("@\(username)")
-                            .font(.caption)
-                            .foregroundStyle(XomperColors.textSecondary)
-                    }
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(XomperColors.textMuted)
-            }
-            .xomperCard()
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("View profile for \(user.resolvedDisplayName)")
-        .accessibilityHint("Double tap to open profile")
-    }
-
-    private func leagueResultCard(_ league: League) -> some View {
-        Button {
-            let generator = UIImpactFeedbackGenerator(style: .medium)
-            generator.impactOccurred()
-            navigateToLeague(league)
-        } label: {
-            HStack(spacing: XomperTheme.Spacing.md) {
-                AvatarView(
-                    avatarID: league.avatar,
-                    size: XomperTheme.AvatarSize.lg,
-                    isTeam: true
-                )
-
-                VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
-                    Text(league.displayName)
-                        .font(.headline)
-                        .foregroundStyle(XomperColors.textPrimary)
-                        .lineLimit(1)
-
-                    HStack(spacing: XomperTheme.Spacing.sm) {
-                        Label("\(league.season)", systemImage: "calendar")
-                        Label("\(league.totalRosters ?? 0) teams", systemImage: "person.3")
-                    }
-                    .font(.caption)
-                    .foregroundStyle(XomperColors.textSecondary)
-
-                    if league.isDynasty {
-                        Text("Dynasty")
-                            .font(.caption2)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(XomperColors.deepNavy)
-                            .padding(.horizontal, XomperTheme.Spacing.sm)
-                            .padding(.vertical, XomperTheme.Spacing.xs)
-                            .background(XomperColors.championGold)
-                            .clipShape(Capsule())
-                    }
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(XomperColors.textMuted)
-            }
-            .xomperCard()
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("View \(league.displayName)")
-        .accessibilityHint("Double tap to open league")
-    }
+    // MARK: - Empty / prompt / error states
 
     private var noResultsView: some View {
         VStack(spacing: XomperTheme.Spacing.md) {
@@ -298,7 +219,7 @@ struct SearchView: View {
                 .font(.headline)
                 .foregroundStyle(XomperColors.textPrimary)
 
-            Text("Try a different \(searchMode == .user ? "username" : "league ID").")
+            Text("Try a different \(searchStore.mode.emptyNoun).")
                 .font(.subheadline)
                 .foregroundStyle(XomperColors.textSecondary)
         }
@@ -328,69 +249,14 @@ struct SearchView: View {
                 .foregroundStyle(XomperColors.textMuted)
                 .accessibilityHidden(true)
 
-            Text("Search for \(searchMode == .user ? "Sleeper users" : "Sleeper leagues")")
+            Text(searchStore.mode.promptCopy)
                 .font(.subheadline)
                 .foregroundStyle(XomperColors.textSecondary)
         }
         .accessibilityElement(children: .combine)
     }
 
-    // MARK: - Search Logic
-
-    private func scheduleDebounce(_ text: String) {
-        debounceTask?.cancel()
-        debounceTask = Task {
-            try? await Task.sleep(for: .milliseconds(500))
-            guard !Task.isCancelled else { return }
-            debouncedText = text
-        }
-    }
-
-    private func performSearch() {
-        let term = searchText.trimmingCharacters(in: .whitespaces)
-        guard !term.isEmpty else { return }
-
-        debounceTask?.cancel()
-        isSearching = true
-        errorMessage = nil
-        searchResult = nil
-        hasSearched = true
-
-        Task {
-            switch searchMode {
-            case .user:
-                await searchUser(term)
-            case .league:
-                await searchLeague(term)
-            }
-        }
-    }
-
-    private func searchUser(_ term: String) async {
-        do {
-            let user = try await apiClient.fetchUser(term)
-            searchResult = .user(user)
-        } catch {
-            searchResult = nil
-        }
-        isSearching = false
-    }
-
-    private func searchLeague(_ term: String) async {
-        do {
-            let league = try await apiClient.fetchLeague(term)
-            searchResult = .league(league)
-        } catch {
-            searchResult = nil
-        }
-        isSearching = false
-    }
-
-    private func clearResults() {
-        searchResult = nil
-        errorMessage = nil
-        hasSearched = false
-    }
+    // MARK: - League navigation
 
     private func navigateToLeague(_ league: League) {
         Task {
@@ -400,45 +266,11 @@ struct SearchView: View {
     }
 }
 
-// MARK: - Supporting Types
-
-private enum SearchMode: String, CaseIterable, Identifiable {
-    case user
-    case league
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .user: "User"
-        case .league: "League"
-        }
-    }
-
-    var placeholder: String {
-        switch self {
-        case .user: "Enter a Sleeper username..."
-        case .league: "Enter a Sleeper league ID..."
-        }
-    }
-
-    var hint: String {
-        switch self {
-        case .user: "Search by Sleeper username or user ID"
-        case .league: "Paste a Sleeper league ID to view any league"
-        }
-    }
-}
-
-private enum SearchResult {
-    case user(SleeperUser)
-    case league(League)
-}
-
 #Preview {
     NavigationStack {
         SearchView(
             leagueStore: LeagueStore(),
+            playerStore: PlayerStore(),
             router: AppRouter(),
             navStore: NavigationStore()
         )
