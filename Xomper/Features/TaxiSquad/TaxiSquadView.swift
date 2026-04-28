@@ -193,6 +193,13 @@ struct TaxiSquadView: View {
     private func loadTaxiSquad() async {
         guard let leagueId = leagueStore.currentLeague?.leagueId else { return }
 
+        // Defensive preflight: TaxiSquadStore.loadTaxiSquadPlayers skips players
+        // via `guard let player = playerStore.player(for:)` when the store is empty.
+        // Ensure players are loaded before we ask for taxi squad members.
+        if playerStore.players.isEmpty {
+            await playerStore.loadPlayers()
+        }
+
         async let playersLoad: () = taxiSquadStore.loadTaxiSquadPlayers(
             rosters: leagueStore.currentLeagueRosters,
             users: leagueStore.currentLeagueUsers,

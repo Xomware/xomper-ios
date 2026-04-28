@@ -25,32 +25,53 @@ final class PlayerStore {
         isLoading = true
         error = nil
 
-        // Step 1: Load from disk cache if available
+        // Step 1: Load from disk cache if available (empty cache is treated as no cache)
         if players.isEmpty, let cached = loadFromDisk() {
             players = cached
         }
 
         // Step 2: Revalidate with API using ETag
+        await fetchAndApplyPlayers()
+
+        isLoading = false
+    }
+
+    // MARK: - Private
+
+    /// Fetches from Sleeper, applying the stored ETag for conditional requests.
+    /// If the server returns 304 but our local store is empty (poisoned cache),
+    /// clears the stored ETag and retries with a forced fresh fetch.
+    private func fetchAndApplyPlayers() async {
         do {
             let storedETag = UserDefaults.standard.string(forKey: etagKey)
             let result = try await apiClient.fetchAllPlayersRaw(etag: storedETag)
 
             switch result {
             case .notModified:
-                break
+                // Cache confirmed up-to-date — but if local store is empty the
+                // on-disk cache was poisoned (e.g. written as `{}`). Clear the
+                // ETag and force a fresh fetch so players actually populate.
+                if players.isEmpty {
+                    UserDefaults.standard.removeObject(forKey: etagKey)
+                    await fetchAndApplyPlayers()
+                }
             case .updated(let data, let newEtag):
                 let decoded = try JSONDecoder().decode([String: Player].self, from: data)
-                players = decoded
-                saveToDisk(data: data, etag: newEtag)
+                if decoded.isEmpty {
+                    // Server returned a valid but empty payload — do not poison
+                    // the cache. Surface an error so the UI can show a retry.
+                    self.error = PlayerStoreError.emptyPayload
+                } else {
+                    players = decoded
+                    saveToDisk(data: data, etag: newEtag)
+                }
             }
         } catch {
-            // If we have cached data, the error is non-fatal
+            // If we have cached data, the network/decode error is non-fatal
             if players.isEmpty {
                 self.error = error
             }
         }
-
-        isLoading = false
     }
 
     func player(for id: String) -> Player? {
@@ -70,13 +91,15 @@ final class PlayerStore {
             .sorted { ($0.searchRank ?? Int.max) < ($1.searchRank ?? Int.max) }
     }
 
-    // MARK: - Private
+    // MARK: - Cache helpers
 
     private func loadFromDisk() -> [String: Player]? {
         guard FileManager.default.fileExists(atPath: cacheURL.path) else { return nil }
         do {
             let data = try Data(contentsOf: cacheURL)
-            return try JSONDecoder().decode([String: Player].self, from: data)
+            let decoded = try JSONDecoder().decode([String: Player].self, from: data)
+            // An empty dict means the cache was poisoned — treat as no cache
+            return decoded.isEmpty ? nil : decoded
         } catch {
             return nil
         }
@@ -88,6 +111,19 @@ final class PlayerStore {
             if let etag {
                 UserDefaults.standard.set(etag, forKey: etagKey)
             }
+        }
+    }
+}
+
+// MARK: - Errors
+
+enum PlayerStoreError: LocalizedError {
+    case emptyPayload
+
+    var errorDescription: String? {
+        switch self {
+        case .emptyPayload:
+            return "Player data returned from Sleeper was empty. Please try again."
         }
     }
 }
