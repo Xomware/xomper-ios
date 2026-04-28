@@ -4,6 +4,7 @@ struct MyProfileView: View {
     var authStore: AuthStore
     var userStore: UserStore
     var leagueStore: LeagueStore
+    var historyStore: HistoryStore
     var router: AppRouter
     var navStore: NavigationStore
 
@@ -16,6 +17,7 @@ struct MyProfileView: View {
             VStack(spacing: XomperTheme.Spacing.lg) {
                 profileHeader
                 sleeperLinkStatus
+                trophyCaseSection
                 leagueSection
                 signOutSection
             }
@@ -106,6 +108,21 @@ struct MyProfileView: View {
         .xomperCard()
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Sleeper account \(authStore.isFullySetUp ? "linked" : "not linked")")
+    }
+
+    // MARK: - Trophy Case
+
+    @ViewBuilder
+    private var trophyCaseSection: some View {
+        if authStore.isFullySetUp,
+           let userId = authStore.sleeperUserId,
+           !userId.isEmpty {
+            TrophyCaseSection(
+                historyStore: historyStore,
+                leagueStore: leagueStore,
+                userId: userId
+            )
+        }
     }
 
     // MARK: - League Section
@@ -266,6 +283,7 @@ struct MyProfileView: View {
             authStore: AuthStore(),
             userStore: UserStore(),
             leagueStore: LeagueStore(),
+            historyStore: HistoryStore(),
             router: AppRouter(),
             navStore: NavigationStore()
         )
