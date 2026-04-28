@@ -4,6 +4,7 @@ struct ProfileView: View {
     let userId: String
     var leagueStore: LeagueStore
     var router: AppRouter
+    var navStore: NavigationStore
 
     @State private var user: SleeperUser?
     @State private var leagues: [League] = []
@@ -211,7 +212,7 @@ struct ProfileView: View {
     private func navigateToLeague(_ league: League) {
         Task {
             await leagueStore.switchToLeague(id: league.leagueId)
-            router.switchTab(.league)
+            navStore.select(.standings, router: router)
         }
     }
 }
@@ -221,7 +222,8 @@ struct ProfileView: View {
         ProfileView(
             userId: "457981263849623552",
             leagueStore: LeagueStore(),
-            router: AppRouter()
+            router: AppRouter(),
+            navStore: NavigationStore()
         )
     }
     .preferredColorScheme(.dark)
