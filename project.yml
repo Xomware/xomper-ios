@@ -47,13 +47,30 @@ targets:
         product: Supabase
     postCompileScripts: []
 
+  XomperTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - XomperTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.xomware.XomperTests
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: Xomper
+
 schemes:
   Xomper:
     build:
       targets:
         Xomper: all
+        XomperTests: [test]
     run:
       config: Debug
+    test:
+      config: Debug
+      targets:
+        - XomperTests
     profile:
       config: Release
     analyze:

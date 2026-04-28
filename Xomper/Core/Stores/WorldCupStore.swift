@@ -161,7 +161,7 @@ final class WorldCupStore {
                 ties: rec.ties,
                 pointsFor: rec.pointsFor,
                 pointsAgainst: rec.pointsAgainst,
-                qualified: false,
+                clinchStatus: .alive,
                 seasonBreakdown: seasonBreakdown
             )
 
@@ -177,9 +177,11 @@ final class WorldCupStore {
                 return b.pointsFor < a.pointsFor
             }
 
-            // Top 2 qualify
-            if teams.count >= 1 { teams[0].qualified = true }
-            if teams.count >= 2 { teams[1].qualified = true }
+            // Compute clinch status for each team in this division
+            let statuses = ClinchCalculator.calculate(teams: teams)
+            for i in teams.indices {
+                teams[i].clinchStatus = statuses[teams[i].userId] ?? .alive
+            }
 
             result.append(WorldCupDivision(
                 divisionNumber: divNum,

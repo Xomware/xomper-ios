@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		02AC6FBAE68011749AA17644 /* ClinchCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3893B13276074EF6033CEA2 /* ClinchCalculatorTests.swift */; };
 		063FCD6AA342CA5D64ED79ED /* HistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F013CD37874EFB0FA1CB4261 /* HistoryStore.swift */; };
 		08251EFB3181B634553CDCE1 /* TaxiSquadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57940AEB84889A20016648F2 /* TaxiSquadView.swift */; };
 		0C2B77E0A46ECE55AE8CE46F /* DivisionBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B670A3A0762D22FB3202E1E /* DivisionBadge.swift */; };
@@ -51,6 +52,7 @@
 		8C67D3AAFE5A0A124BDE5F1A /* AppRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EABD25CAB8BF973C4709720 /* AppRouter.swift */; };
 		8E8B3EC17A43676ACA176FC3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6F2D6E80C100927C4C20FAD7 /* Assets.xcassets */; };
 		901F54CB41785D269CC63160 /* WorldCupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43E1C6D5A18697DE79586C1B /* WorldCupStore.swift */; };
+		9134D2C8A8737083C9FB8F7F /* ClinchCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3728C5F6BEF61FE509A3EA32 /* ClinchCalculator.swift */; };
 		98F895FBCECB23325658339C /* StandingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6A47FD1CF3BE7AE0B940DEC /* StandingsView.swift */; };
 		9D9E8D2C4A8A0C623AC1EF0D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E767CD5492176E84C2092B0F /* AppDelegate.swift */; };
 		9E5C71DAB504EDCDF2084DF3 /* MyProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 558164667DF7D89C4DF2F32E /* MyProfileView.swift */; };
@@ -80,6 +82,16 @@
 		FCD03562C1879183A5DC02E2 /* PlayerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC3F6B5022E8151683A45F4F /* PlayerStore.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		79810B120AB5B95C9CAF22BA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BC3354FD7288A47D76144A98 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 01BCCBEA9A65778F086DA1AE;
+			remoteInfo = Xomper;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		09DF8F2FE857C55AFB1C1205 /* NFLTeamColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NFLTeamColors.swift; sourceTree = "<group>"; };
 		10CD226D313FDD91E4037D8E /* SupabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseManager.swift; sourceTree = "<group>"; };
@@ -91,6 +103,7 @@
 		2B670A3A0762D22FB3202E1E /* DivisionBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DivisionBadge.swift; sourceTree = "<group>"; };
 		2B6C68E1131F2BBBE625DEAF /* RuleProposalFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuleProposalFormView.swift; sourceTree = "<group>"; };
 		36A01820FD0F6643BBF8511D /* TeamStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamStore.swift; sourceTree = "<group>"; };
+		3728C5F6BEF61FE509A3EA32 /* ClinchCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClinchCalculator.swift; sourceTree = "<group>"; };
 		42C8A3FA617E9FEB48852C45 /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profile.swift; sourceTree = "<group>"; };
 		42F46A0AAE61A4E963BB15B0 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
 		43685B0C212A644C0EF202E5 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
@@ -126,8 +139,10 @@
 		A789B8D49FA4430886626289 /* DraftHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DraftHistory.swift; sourceTree = "<group>"; };
 		A83A8FEFFD8FA91F498D03A0 /* EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
 		A8BD31456E25771C8D7D39C9 /* XomperApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XomperApp.swift; sourceTree = "<group>"; };
+		ACCFF9888476668EBE7AA0CC /* XomperTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = XomperTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		AE543CB2E49335ADD02E8000 /* Roster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Roster.swift; sourceTree = "<group>"; };
 		B29D510D87CD290AE7F76FBF /* StandingsTeam.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingsTeam.swift; sourceTree = "<group>"; };
+		B3893B13276074EF6033CEA2 /* ClinchCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClinchCalculatorTests.swift; sourceTree = "<group>"; };
 		B6060C3A4F2B355757F1E3A2 /* DraftHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DraftHistoryView.swift; sourceTree = "<group>"; };
 		B66A2C896FE4C62CF9719D7A /* TaxiStealConfirmView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaxiStealConfirmView.swift; sourceTree = "<group>"; };
 		BB5E661424C55F695BF96281 /* AuthGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthGateView.swift; sourceTree = "<group>"; };
@@ -240,6 +255,14 @@
 			path = Auth;
 			sourceTree = "<group>";
 		};
+		391A14F36D43146CBE38D666 /* XomperTests */ = {
+			isa = PBXGroup;
+			children = (
+				B3893B13276074EF6033CEA2 /* ClinchCalculatorTests.swift */,
+			);
+			path = XomperTests;
+			sourceTree = "<group>";
+		};
 		3E62B7EC555EA6961ADE3151 /* Team */ = {
 			isa = PBXGroup;
 			children = (
@@ -303,6 +326,7 @@
 			isa = PBXGroup;
 			children = (
 				460030AF84E8D0E83D8F5896 /* Xomper.app */,
+				ACCFF9888476668EBE7AA0CC /* XomperTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -383,6 +407,7 @@
 			isa = PBXGroup;
 			children = (
 				536B3E71286A0BC3A7CD8DA6 /* AuthStore.swift */,
+				3728C5F6BEF61FE509A3EA32 /* ClinchCalculator.swift */,
 				F013CD37874EFB0FA1CB4261 /* HistoryStore.swift */,
 				56BB91320E3D5EBE1F777838 /* LeagueStore.swift */,
 				94E125AD2AA5212D0EB4C13A /* NflStateStore.swift */,
@@ -427,6 +452,7 @@
 			isa = PBXGroup;
 			children = (
 				D35130CF3DC0C4469E9698DA /* Xomper */,
+				391A14F36D43146CBE38D666 /* XomperTests */,
 				9D11A8E9A3D94E1378C15DEF /* Products */,
 			);
 			sourceTree = "<group>";
@@ -454,6 +480,24 @@
 			productReference = 460030AF84E8D0E83D8F5896 /* Xomper.app */;
 			productType = "com.apple.product-type.application";
 		};
+		9D1498F6F1EE276C15F84822 /* XomperTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0C72AA288B9E6499FB71620D /* Build configuration list for PBXNativeTarget "XomperTests" */;
+			buildPhases = (
+				932FB6525421E1633E87259E /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C4510861533ADD704B754B54 /* PBXTargetDependency */,
+			);
+			name = XomperTests;
+			packageProductDependencies = (
+			);
+			productName = XomperTests;
+			productReference = ACCFF9888476668EBE7AA0CC /* XomperTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -464,6 +508,10 @@
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					01BCCBEA9A65778F086DA1AE = {
+						DevelopmentTeam = A3HMLDS2AL;
+						ProvisioningStyle = Automatic;
+					};
+					9D1498F6F1EE276C15F84822 = {
 						DevelopmentTeam = A3HMLDS2AL;
 						ProvisioningStyle = Automatic;
 					};
@@ -487,6 +535,7 @@
 			projectRoot = "";
 			targets = (
 				01BCCBEA9A65778F086DA1AE /* Xomper */,
+				9D1498F6F1EE276C15F84822 /* XomperTests */,
 			);
 		};
 /* End PBXProject section */
@@ -503,6 +552,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		932FB6525421E1633E87259E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				02AC6FBAE68011749AA17644 /* ClinchCalculatorTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		E14696B88B966463EB2548FF /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -513,6 +570,7 @@
 				D78D5302B3D17DE9BE7D557C /* AuthGateView.swift in Sources */,
 				602B6E0F6BCF1DA7E3D75F07 /* AuthStore.swift in Sources */,
 				C1D86EAE02F0D6EA70291876 /* AvatarView.swift in Sources */,
+				9134D2C8A8737083C9FB8F7F /* ClinchCalculator.swift in Sources */,
 				2F50FD9BC26550139DAD2E96 /* Config.swift in Sources */,
 				578172B9CCF7AD92CB66821E /* ContentView.swift in Sources */,
 				0C2B77E0A46ECE55AE8CE46F /* DivisionBadge.swift in Sources */,
@@ -580,6 +638,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		C4510861533ADD704B754B54 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 01BCCBEA9A65778F086DA1AE /* Xomper */;
+			targetProxy = 79810B120AB5B95C9CAF22BA /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		0FF38452827C9F38FB4B1E52 /* Release */ = {
@@ -733,6 +799,40 @@
 			};
 			name = Debug;
 		};
+		6BC7DA348F2AA23CC70F84D7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.xomware.XomperTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Xomper.app/Xomper";
+			};
+			name = Debug;
+		};
+		751EBEEC4605CFBE692770E7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.xomware.XomperTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Xomper.app/Xomper";
+			};
+			name = Release;
+		};
 		E5F7904928DC64A0D6628B93 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -760,6 +860,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		0C72AA288B9E6499FB71620D /* Build configuration list for PBXNativeTarget "XomperTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6BC7DA348F2AA23CC70F84D7 /* Debug */,
+				751EBEEC4605CFBE692770E7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		4568C07142A3D24E6E2A8B45 /* Build configuration list for PBXNativeTarget "Xomper" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
