@@ -469,7 +469,7 @@ final class HistoryStore {
 
             for pick in picks {
                 // Resolve user from roster data
-                let roster = rosters.first { String($0.rosterId) == pick.rosterId }
+                let roster = rosters.first { $0.rosterId == pick.rosterId }
                 let user = users.first { $0.userId == (pick.pickedBy ?? roster?.ownerId) }
 
                 let playerName = [
@@ -491,7 +491,7 @@ final class HistoryStore {
                     playerPosition: pick.metadata?.position ?? "",
                     playerTeam: pick.metadata?.team ?? "",
                     pickedByUserId: pick.pickedBy ?? roster?.ownerId ?? "",
-                    pickedByRosterId: Int(pick.rosterId ?? "0") ?? 0,
+                    pickedByRosterId: pick.rosterId ?? 0,
                     pickedByUsername: user?.username ?? "",
                     pickedByTeamName: user?.teamName ?? "",
                     isKeeper: pick.isKeeper ?? false

@@ -196,12 +196,15 @@ private struct WorldCupDivisionSection: View {
                     .font(.caption2)
                     .fontWeight(.heavy)
                     .tracking(1)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
             }
             .foregroundStyle(XomperColors.championGold)
-            .padding(.horizontal, XomperTheme.Spacing.sm)
+            .padding(.horizontal, XomperTheme.Spacing.md)
             .padding(.vertical, XomperTheme.Spacing.xs)
             .background(XomperColors.championGold.opacity(0.12))
             .clipShape(Capsule())
+            .layoutPriority(1)
 
             Rectangle()
                 .fill(XomperColors.championGold.opacity(0.4))

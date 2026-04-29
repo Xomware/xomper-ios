@@ -151,7 +151,8 @@ struct MainShell: View {
             case .matchupHistory:
                 MatchupHistoryBrowserView(
                     leagueStore: leagueStore,
-                    historyStore: historyStore
+                    historyStore: historyStore,
+                    playerStore: playerStore
                 )
 
             case .worldCup:

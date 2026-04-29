@@ -89,7 +89,12 @@ struct DraftMetadata: Codable, Sendable {
 struct DraftPick: Codable, Identifiable, Sendable {
     let playerId: String
     let pickedBy: String?
-    let rosterId: String?
+    /// Sleeper returns this as an Int (e.g. `9`), NOT a String. Decoding
+    /// it as `String?` made the whole picks-array decode throw silently
+    /// — that's why "No Draft History" was rendering even though the
+    /// 2025 draft is complete and 60 picks exist on Sleeper. Same class
+    /// of bug as Player.depthChartPosition (#44).
+    let rosterId: Int?
     let round: Int
     let draftSlot: Int
     let pickNo: Int
@@ -109,6 +114,44 @@ struct DraftPick: Codable, Identifiable, Sendable {
         case metadata
         case isKeeper = "is_keeper"
         case draftId = "draft_id"
+    }
+
+    /// Lenient decoder — same defense applied to Player after #44.
+    /// Mismatched field types degrade to nil instead of taking down
+    /// the whole array.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.playerId = try c.decode(String.self, forKey: .playerId)
+        self.pickedBy = try? c.decodeIfPresent(String.self, forKey: .pickedBy)
+        self.rosterId = try? c.decodeIfPresent(Int.self, forKey: .rosterId)
+        self.round = (try? c.decode(Int.self, forKey: .round)) ?? 0
+        self.draftSlot = (try? c.decode(Int.self, forKey: .draftSlot)) ?? 0
+        self.pickNo = (try? c.decode(Int.self, forKey: .pickNo)) ?? 0
+        self.metadata = try? c.decodeIfPresent(DraftPickMetadata.self, forKey: .metadata)
+        self.isKeeper = try? c.decodeIfPresent(Bool.self, forKey: .isKeeper)
+        self.draftId = try? c.decodeIfPresent(String.self, forKey: .draftId)
+    }
+
+    init(
+        playerId: String,
+        pickedBy: String? = nil,
+        rosterId: Int? = nil,
+        round: Int,
+        draftSlot: Int,
+        pickNo: Int,
+        metadata: DraftPickMetadata? = nil,
+        isKeeper: Bool? = nil,
+        draftId: String? = nil
+    ) {
+        self.playerId = playerId
+        self.pickedBy = pickedBy
+        self.rosterId = rosterId
+        self.round = round
+        self.draftSlot = draftSlot
+        self.pickNo = pickNo
+        self.metadata = metadata
+        self.isKeeper = isKeeper
+        self.draftId = draftId
     }
 }
 
