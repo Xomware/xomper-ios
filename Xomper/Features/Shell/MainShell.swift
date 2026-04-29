@@ -395,9 +395,17 @@ struct MainShell: View {
 
     // MARK: - Bootstrap
 
-    /// Phase 1: Load league, NFL state, and players in parallel.
-    /// These don't depend on sleeperUserId.
+    /// Phase 1: Resolve the home league from Supabase first (source of
+    /// truth), then load that league's data + NFL state + all players
+    /// in parallel. Resolves the long-standing problem of hardcoded
+    /// league IDs drifting across dynasty rollovers — Supabase is the
+    /// single source of truth.
     private func bootstrapPhase1() async {
+        // Resolve home league from Supabase before fetching it from
+        // Sleeper, so loadMyLeague reads the right ID. Non-fatal — falls
+        // back to Config.whitelistedLeagueId on failure.
+        await leagueStore.fetchActiveWhitelistedLeague()
+
         async let leagueLoad: () = leagueStore.loadMyLeague()
         async let nflLoad: () = nflStateStore.fetchState()
         async let playerLoad: () = playerStore.loadPlayers()
