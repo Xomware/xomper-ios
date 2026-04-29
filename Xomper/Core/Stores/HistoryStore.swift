@@ -16,6 +16,19 @@ final class HistoryStore {
     private(set) var isLoadingDrafts = false
     private(set) var draftError: Error?
 
+    // MARK: - Upcoming Draft State
+
+    /// Snapshot of the next-season draft (status = `pre_draft` /
+    /// `drafting`). Loaded on demand by `loadUpcomingDraft` when the
+    /// user picks the upcoming-season chip in Draft History. Anchored
+    /// by leagueId so re-renders are cheap and don't re-fetch.
+    private(set) var upcomingDraft: Draft?
+    private(set) var upcomingLeague: League?
+    private(set) var upcomingRosters: [Roster] = []
+    private(set) var upcomingUsers: [SleeperUser] = []
+    private(set) var isLoadingUpcoming = false
+    private(set) var upcomingError: Error?
+
     // MARK: - Derived
 
     var availableMatchupSeasons: [String] {
@@ -428,6 +441,76 @@ final class HistoryStore {
         draftPicks(forSeason: season).filter { $0.pickedByUserId == userId }
     }
 
+    // MARK: - Load Upcoming Draft
+
+    /// Loads the upcoming-season draft for a league with the given
+    /// `homeLeagueName` (e.g. "CLT DYNASTY") in the user's account.
+    /// Sleeper exposes `/user/{user_id}/leagues/nfl/{season}` for that
+    /// year's leagues, so we can find the next-season league forward
+    /// from `myLeague` (which only walks `previous_league_id`
+    /// backward). Once located, fetches its first draft + context
+    /// (users + rosters) so the view can render the bracket-set draft
+    /// order before any picks are made.
+    ///
+    /// No-op if a draft is already loaded for the same `season`.
+    func loadUpcomingDraft(
+        season: String,
+        homeLeagueName: String,
+        userId: String
+    ) async {
+        guard !isLoadingUpcoming else { return }
+        // Cache: same-season already loaded? Skip the network round trip.
+        if upcomingDraft != nil, upcomingLeague?.season == season { return }
+
+        isLoadingUpcoming = true
+        upcomingError = nil
+        defer { isLoadingUpcoming = false }
+
+        do {
+            let leagues = try await apiClient.fetchUserLeagues(userId, season: season)
+            // Match by name first (handles renames in either direction);
+            // fall back to the only league of that season if just one
+            // exists in the user's account.
+            let target = leagues.first(where: {
+                $0.name?.caseInsensitiveCompare(homeLeagueName) == .orderedSame
+            }) ?? (leagues.count == 1 ? leagues.first : nil)
+
+            guard let league = target else {
+                // No upcoming league created yet — leave state empty
+                // so the view can fall through to a "draft not yet
+                // scheduled" empty state.
+                upcomingDraft = nil
+                upcomingLeague = nil
+                upcomingRosters = []
+                upcomingUsers = []
+                return
+            }
+
+            async let draftsTask = apiClient.fetchDrafts(league.leagueId)
+            async let usersTask = apiClient.fetchLeagueUsers(league.leagueId)
+            async let rostersTask = apiClient.fetchLeagueRosters(league.leagueId)
+
+            let drafts = try await draftsTask
+            let users = try await usersTask
+            let rosters = try await rostersTask
+
+            // Most leagues have one draft per season; if there are
+            // multiple, prefer drafting > pre_draft > complete to
+            // surface the most actionable one.
+            let priority: [String?: Int] = ["drafting": 0, "pre_draft": 1, "complete": 2]
+            let sortedDrafts = drafts.sorted {
+                (priority[$0.status] ?? 99) < (priority[$1.status] ?? 99)
+            }
+
+            upcomingLeague = league
+            upcomingUsers = users
+            upcomingRosters = rosters
+            upcomingDraft = sortedDrafts.first
+        } catch {
+            upcomingError = error
+        }
+    }
+
     // MARK: - Reset
 
     func reset() {
@@ -437,6 +520,11 @@ final class HistoryStore {
         draftHistory = []
         draftCache = nil
         draftError = nil
+        upcomingDraft = nil
+        upcomingLeague = nil
+        upcomingRosters = []
+        upcomingUsers = []
+        upcomingError = nil
     }
 
     // MARK: - Private: Fetch Draft Records for a Single League

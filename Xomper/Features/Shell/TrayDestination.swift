@@ -46,7 +46,7 @@ enum TrayDestination: Hashable {
         case .leagueSettings: "League Settings"
         case .ruleProposals:  "Rule Proposals"
         case .payouts:        "Payouts"
-        case .draftOrder:     "Draft Order"
+        case .draftOrder:     "Draft Order Proposal"
         case .profile:        "Profile"
         case .settings:       "Settings"
         }
