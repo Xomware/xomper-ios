@@ -19,9 +19,10 @@ struct DraftHistoryView: View {
     }
 
     /// True when the selected chip is the in-progress NFL season AND
-    /// no draft picks have been ingested for it yet — meaning the
-    /// draft hasn't run yet. Falls through to the projected
-    /// reverse-HPP order so the user can see where they're picking.
+    /// no completed draft has been ingested for it yet. Triggers the
+    /// upcoming-draft view, which fetches the league + draft from
+    /// Sleeper and renders the actual commissioner-set draft order
+    /// (slots-by-team) in both list and board modes.
     private var isUpcomingDraft: Bool {
         !currentSeason.isEmpty
             && currentSeason == nflStateStore.currentSeason
@@ -53,7 +54,7 @@ struct DraftHistoryView: View {
         }
         .task(id: isUpcomingDraft) {
             if isUpcomingDraft {
-                await ensurePerfectLineupLoaded()
+                await loadUpcomingDraft()
             }
         }
         .sheet(item: $selectedPlayer) { player in
@@ -90,96 +91,111 @@ struct DraftHistoryView: View {
     // MARK: - Upcoming-draft content
 
     /// Pre-draft state: the season's chip is selected but no picks
-    /// have been ingested yet (the draft hasn't run). Show the
-    /// projected reverse-HPP order from #57 so the user can see
-    /// where they're picking before it starts.
+    /// have been ingested. Pulls the actual league + draft from
+    /// Sleeper (the commissioner has set the draft order in advance)
+    /// and renders both list and grid views with the slot-by-team
+    /// mapping. Empty cells stand in for picks that haven't happened
+    /// yet.
     private var upcomingDraftContent: some View {
         Group {
-            if leagueStore.myLeagueRosters.isEmpty {
-                LoadingView(message: "Loading league...")
-            } else if !playerPointsStore.hasData {
-                if playerPointsStore.isLoading {
-                    LoadingView(message: "Computing projected order...")
-                } else {
-                    EmptyStateView(
-                        icon: "list.number",
-                        title: "Projected Order Pending",
-                        message: "Per-week data not yet aggregated. Pull to refresh."
-                    )
+            if historyStore.isLoadingUpcoming && historyStore.upcomingDraft == nil {
+                LoadingView(message: "Loading \(currentSeason) draft…")
+            } else if let error = historyStore.upcomingError, historyStore.upcomingDraft == nil {
+                ErrorView(message: error.localizedDescription) {
+                    Task { await loadUpcomingDraft() }
                 }
+            } else if let draft = historyStore.upcomingDraft {
+                upcomingDraftReady(draft)
             } else {
-                upcomingDraftScroll
+                EmptyStateView(
+                    icon: "calendar.badge.exclamationmark",
+                    title: "\(currentSeason) Draft Not Scheduled",
+                    message: "The commissioner hasn't set up next season's draft yet. Check back once it's created in Sleeper."
+                )
             }
         }
         .background(XomperColors.bgDark)
         .refreshable {
-            await ensurePerfectLineupLoaded()
+            await loadUpcomingDraft()
         }
     }
 
-    private var upcomingDraftScroll: some View {
-        let projection = DraftOrderProjection.compute(
-            leagueStore: leagueStore,
-            playerStore: playerStore,
-            playerPointsStore: playerPointsStore,
-            regularSeasonLastWeek: regularSeasonLastWeek
-        )
+    private func upcomingDraftReady(_ draft: Draft) -> some View {
+        VStack(spacing: 0) {
+            controlsBar
+
+            switch viewMode {
+            case .rounds:
+                upcomingRoundsScroll(draft: draft)
+            case .board:
+                upcomingDraftBoard(draft: draft)
+            }
+        }
+    }
+
+    // MARK: Upcoming rounds (list mode)
+
+    private func upcomingRoundsScroll(draft: Draft) -> some View {
+        let teamsBySlot = upcomingTeamsBySlot(draft: draft)
+        let slots = upcomingSlots(draft: draft, teamsBySlot: teamsBySlot)
+        let totalRounds = max(draft.settings?.rounds ?? 0, 1)
+        let myUserId = userStore.myUser?.userId
 
         return ScrollView {
             VStack(alignment: .leading, spacing: XomperTheme.Spacing.md) {
-                upcomingHeader
+                upcomingHeader(draft: draft)
 
-                if !projection.nonPlayoffOrder.isEmpty {
-                    Text("Reverse-HPP order (picks 1–\(projection.nonPlayoffOrder.count))")
-                        .font(.caption.weight(.bold))
-                        .textCase(.uppercase)
-                        .tracking(0.5)
-                        .foregroundStyle(XomperColors.textMuted)
-                        .padding(.top, XomperTheme.Spacing.sm)
+                ForEach(1...totalRounds, id: \.self) { round in
+                    VStack(alignment: .leading, spacing: XomperTheme.Spacing.sm) {
+                        Text("Round \(round)")
+                            .font(.headline)
+                            .foregroundStyle(XomperColors.championGold)
+                            .padding(.leading, XomperTheme.Spacing.xs)
 
-                    ForEach(Array(projection.nonPlayoffOrder.enumerated()), id: \.offset) { idx, entry in
-                        upcomingRow(rank: idx + 1, entry: entry, isPlayoff: false)
-                    }
-                }
-
-                if !projection.playoffOrder.isEmpty {
-                    Text(
-                        "Playoff teams (picks "
-                        + "\(projection.nonPlayoffOrder.count + 1)–"
-                        + "\(projection.nonPlayoffOrder.count + projection.playoffOrder.count))"
-                    )
-                    .font(.caption.weight(.bold))
-                    .textCase(.uppercase)
-                    .tracking(0.5)
-                    .foregroundStyle(XomperColors.textMuted)
-                    .padding(.top, XomperTheme.Spacing.sm)
-
-                    ForEach(Array(projection.playoffOrder.enumerated()), id: \.offset) { idx, entry in
-                        upcomingRow(
-                            rank: projection.nonPlayoffOrder.count + idx + 1,
-                            entry: entry,
-                            isPlayoff: true
-                        )
+                        ForEach(slots, id: \.self) { slot in
+                            let team = teamsBySlot[slot]
+                            let isMine = team?.userId != nil && team?.userId == myUserId
+                            let pickNo = (round - 1) * slots.count + slot
+                            upcomingRoundRow(
+                                round: round,
+                                slot: slot,
+                                pickNo: pickNo,
+                                team: team,
+                                isMine: isMine
+                            )
+                        }
                     }
                 }
             }
             .padding(.horizontal, XomperTheme.Spacing.md)
             .padding(.vertical, XomperTheme.Spacing.sm)
         }
+        .refreshable {
+            await loadUpcomingDraft()
+        }
     }
 
-    private var upcomingHeader: some View {
+    private func upcomingHeader(draft: Draft) -> some View {
         VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
             HStack(spacing: XomperTheme.Spacing.xs) {
-                Image(systemName: "hourglass")
+                Image(systemName: draft.status == "drafting" ? "play.circle.fill" : "hourglass")
                     .foregroundStyle(XomperColors.championGold)
-                Text("\(currentSeason) draft hasn't started")
+                Text(draft.status == "drafting"
+                     ? "\(currentSeason) draft in progress"
+                     : "\(currentSeason) draft scheduled")
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(XomperColors.championGold)
             }
-            Text("Projected order using last season's reverse-HPP rule. Non-playoff teams pick first in ascending order of season Highest Possible Points; playoff teams pick at the back.")
-                .font(.caption)
-                .foregroundStyle(XomperColors.textSecondary)
+
+            if let startTime = draft.startTime, startTime > 0 {
+                Text("Starts \(formattedStart(epochMillis: startTime))")
+                    .font(.caption)
+                    .foregroundStyle(XomperColors.textSecondary)
+            } else {
+                Text("Slot order is locked. Picks will populate as the draft runs.")
+                    .font(.caption)
+                    .foregroundStyle(XomperColors.textSecondary)
+            }
         }
         .padding(XomperTheme.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -191,69 +207,219 @@ struct DraftHistoryView: View {
         )
     }
 
-    private func upcomingRow(rank: Int, entry: DraftOrderProjection.Entry, isPlayoff: Bool) -> some View {
-        HStack(spacing: XomperTheme.Spacing.md) {
-            Text("\(rank)")
-                .font(.title3.weight(.bold))
-                .foregroundStyle(rank == 1 ? XomperColors.championGold : XomperColors.textSecondary)
-                .frame(width: 36, alignment: .leading)
+    private func upcomingRoundRow(
+        round: Int,
+        slot: Int,
+        pickNo: Int,
+        team: UpcomingDraftTeam?,
+        isMine: Bool
+    ) -> some View {
+        // Apply the same dim treatment as the grid + list filtered
+        // views so "My Picks" reads consistently across both.
+        let dimmed = filterMode == .myPicks && !isMine
+
+        return HStack(spacing: XomperTheme.Spacing.md) {
+            Text("\(slot)")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(isMine ? XomperColors.championGold : XomperColors.textSecondary)
+                .frame(width: 32, alignment: .leading)
+                .monospacedDigit()
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(entry.teamName)
+                Text(team?.teamName ?? "Slot \(slot)")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(XomperColors.textPrimary)
                     .lineLimit(1)
-
-                HStack(spacing: XomperTheme.Spacing.sm) {
-                    Text(entry.recordLabel)
-                        .font(.caption2)
-                        .foregroundStyle(XomperColors.textMuted)
-                        .monospacedDigit()
-                    if isPlayoff {
-                        Text("PLAYOFFS")
-                            .font(.caption2.weight(.bold))
-                            .foregroundStyle(XomperColors.bgDark)
-                            .padding(.horizontal, XomperTheme.Spacing.xs)
-                            .background(XomperColors.successGreen)
-                            .clipShape(Capsule())
-                    }
-                }
+                Text("Pick #\(pickNo)")
+                    .font(.caption2)
+                    .foregroundStyle(XomperColors.textMuted)
+                    .monospacedDigit()
             }
 
             Spacer()
 
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(String(format: "%.1f", entry.seasonHPP))
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(XomperColors.championGold)
-                    .monospacedDigit()
-                Text("season HPP")
-                    .font(.caption2)
-                    .foregroundStyle(XomperColors.textMuted)
+            if isMine {
+                Text("YOU")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(XomperColors.bgDark)
+                    .padding(.horizontal, XomperTheme.Spacing.xs)
+                    .background(XomperColors.championGold)
+                    .clipShape(Capsule())
             }
         }
         .padding(XomperTheme.Spacing.md)
         .background(XomperColors.bgCard)
-        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
+        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
+        .overlay(
+            RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md)
+                .strokeBorder(
+                    isMine ? XomperColors.championGold.opacity(0.4) : Color.clear,
+                    lineWidth: 1
+                )
+        )
+        .opacity(dimmed ? 0.25 : 1.0)
     }
 
-    private func ensurePerfectLineupLoaded() async {
-        if !playerPointsStore.hasData,
-           let leagueId = leagueStore.myLeague?.leagueId {
-            await playerPointsStore.loadRegularSeason(
-                leagueId: leagueId,
-                regularSeasonLastWeek: regularSeasonLastWeek
+    // MARK: Upcoming board (grid mode)
+
+    private func upcomingDraftBoard(draft: Draft) -> some View {
+        let teamsBySlot = upcomingTeamsBySlot(draft: draft)
+        let slots = upcomingSlots(draft: draft, teamsBySlot: teamsBySlot)
+        let totalRounds = max(draft.settings?.rounds ?? 0, 1)
+        let myUserId = userStore.myUser?.userId
+
+        return ScrollView([.horizontal, .vertical], showsIndicators: false) {
+            VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
+                slotHeaderRow(slots: slots, teamsBySlot: teamsBySlot, myUserId: myUserId)
+
+                ForEach(1...totalRounds, id: \.self) { round in
+                    HStack(spacing: XomperTheme.Spacing.xs) {
+                        Text("\(round)")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(XomperColors.championGold)
+                            .frame(width: 22)
+
+                        ForEach(slots, id: \.self) { slot in
+                            let team = teamsBySlot[slot]
+                            let isMine = team?.userId != nil && team?.userId == myUserId
+                            upcomingBoardCell(
+                                round: round,
+                                slot: slot,
+                                team: team,
+                                isMine: isMine
+                            )
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, XomperTheme.Spacing.md)
+            .padding(.vertical, XomperTheme.Spacing.sm)
+        }
+        .refreshable {
+            await loadUpcomingDraft()
+        }
+    }
+
+    private func slotHeaderRow(
+        slots: [Int],
+        teamsBySlot: [Int: UpcomingDraftTeam],
+        myUserId: String?
+    ) -> some View {
+        HStack(spacing: XomperTheme.Spacing.xs) {
+            Text("R")
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(XomperColors.textMuted)
+                .frame(width: 22)
+
+            ForEach(slots, id: \.self) { slot in
+                let team = teamsBySlot[slot]
+                let isMine = team?.userId != nil && team?.userId == myUserId
+                VStack(spacing: 1) {
+                    Text("\(slot)")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(isMine ? XomperColors.championGold : XomperColors.textMuted)
+                    Text(team?.teamName ?? "—")
+                        .font(.caption2)
+                        .foregroundStyle(isMine ? XomperColors.championGold : XomperColors.textSecondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                .frame(width: boardCellWidth, alignment: .center)
+            }
+        }
+    }
+
+    private func upcomingBoardCell(
+        round: Int,
+        slot: Int,
+        team: UpcomingDraftTeam?,
+        isMine: Bool
+    ) -> some View {
+        let dimmed = filterMode == .myPicks && !isMine
+
+        return VStack(alignment: .leading, spacing: 2) {
+            Text(team?.teamName ?? "Slot \(slot)")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(XomperColors.textPrimary)
+                .lineLimit(2)
+                .minimumScaleFactor(0.7)
+
+            Spacer(minLength: 0)
+
+            if isMine {
+                Text("YOU")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(XomperColors.bgDark)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 1)
+                    .background(XomperColors.championGold)
+                    .clipShape(Capsule())
+            }
+        }
+        .padding(6)
+        .frame(width: boardCellWidth, height: boardCellHeight, alignment: .topLeading)
+        .background(XomperColors.bgCard)
+        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
+        .overlay(
+            RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md)
+                .strokeBorder(
+                    isMine ? XomperColors.championGold.opacity(0.5) : Color.clear,
+                    lineWidth: 1
+                )
+        )
+        .opacity(dimmed ? 0.25 : 1.0)
+    }
+
+    // MARK: Upcoming helpers
+
+    /// Resolves the slot → team mapping from `draft.draftOrder`
+    /// (`[user_id: slot]`) cross-referenced with the league's users
+    /// for display names. Falls back to roster ownerId when the
+    /// `draft_order` map is missing a user (rare edge case during
+    /// commissioner reshuffles).
+    private func upcomingTeamsBySlot(draft: Draft) -> [Int: UpcomingDraftTeam] {
+        var byUser: [String: UpcomingDraftTeam] = [:]
+        for user in historyStore.upcomingUsers {
+            guard let userId = user.userId else { continue }
+            byUser[userId] = UpcomingDraftTeam(
+                userId: userId,
+                teamName: user.teamName ?? user.resolvedDisplayName,
+                avatarId: user.avatar
             )
         }
+
+        var bySlot: [Int: UpcomingDraftTeam] = [:]
+        if let order = draft.draftOrder {
+            for (userId, slot) in order {
+                if let team = byUser[userId] {
+                    bySlot[slot] = team
+                }
+            }
+        }
+        return bySlot
     }
 
-    private var regularSeasonLastWeek: Int {
-        guard let value = leagueStore.myLeague?.settings?.additionalSettings?["playoff_week_start"] else {
-            return 14
-        }
-        if let i = value.intValue { return max(i - 1, 1) }
-        if let d = value.doubleValue { return max(Int(d) - 1, 1) }
-        return 14
+    private func upcomingSlots(draft: Draft, teamsBySlot: [Int: UpcomingDraftTeam]) -> [Int] {
+        let teamCount = draft.settings?.teams
+            ?? max(teamsBySlot.keys.max() ?? 0, historyStore.upcomingRosters.count)
+        return Array(1...max(teamCount, 1))
+    }
+
+    private func formattedStart(epochMillis: Int) -> String {
+        let date = Date(timeIntervalSince1970: TimeInterval(epochMillis) / 1000.0)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE, MMM d 'at' h:mm a"
+        return formatter.string(from: date)
+    }
+
+    private func loadUpcomingDraft() async {
+        guard let userId = userStore.myUser?.userId else { return }
+        let homeName = leagueStore.resolvedHomeLeagueName
+        await historyStore.loadUpcomingDraft(
+            season: currentSeason,
+            homeLeagueName: homeName,
+            userId: userId
+        )
     }
 
     // MARK: - Controls bar (filter + view-mode toggle)
@@ -369,6 +535,7 @@ struct DraftHistoryView: View {
 
     private func boardRoundRow(round: Int, slots: [Int], picks: [DraftHistoryRecord]) -> some View {
         let bySlot = Dictionary(uniqueKeysWithValues: picks.map { ($0.draftSlot, $0) })
+        let myUserId = userStore.myUser?.userId
         return HStack(spacing: XomperTheme.Spacing.xs) {
             Text("\(round)")
                 .font(.caption.weight(.bold))
@@ -377,7 +544,11 @@ struct DraftHistoryView: View {
 
             ForEach(slots, id: \.self) { slot in
                 if let pick = bySlot[slot] {
+                    let isMine = !pick.pickedByUserId.isEmpty && pick.pickedByUserId == myUserId
+                    let dimmed = filterMode == .myPicks && !isMine
                     boardPickCell(pick)
+                        .opacity(dimmed ? 0.18 : 1.0)
+                        .allowsHitTesting(!dimmed)
                 } else {
                     boardEmptyCell()
                 }
@@ -530,6 +701,17 @@ struct DraftHistoryView: View {
         generator.impactOccurred()
         selectedPlayer = playerStore.players[playerId]
     }
+}
+
+// MARK: - Upcoming-draft slot mapping
+
+/// Resolved team metadata for one slot in the upcoming-season
+/// draft. Built from the league's users + Sleeper's
+/// `Draft.draftOrder` map (`[user_id: slot]`).
+struct UpcomingDraftTeam: Sendable, Hashable {
+    let userId: String
+    let teamName: String
+    let avatarId: String?
 }
 
 // MARK: - Pick Filter

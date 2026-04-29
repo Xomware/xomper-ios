@@ -84,9 +84,30 @@ struct DraftOrderView: View {
 
     private var explainerCard: some View {
         VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
-            Text("Reverse-HPP draft order")
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(XomperColors.championGold)
+            HStack(spacing: XomperTheme.Spacing.xs) {
+                Text("PROPOSAL")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(XomperColors.bgDark)
+                    .padding(.horizontal, XomperTheme.Spacing.xs)
+                    .padding(.vertical, 2)
+                    .background(XomperColors.championGold)
+                    .clipShape(Capsule())
+                Text("Reverse-HPP draft order")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(XomperColors.championGold)
+            }
+
+            Text("This is a *proposed* rule, not the rule currently in effect. The actual upcoming draft order is set by the commissioner in Sleeper — see Draft History → \(currentSeasonForExplainer) for the live order.")
+                .font(.caption)
+                .foregroundStyle(XomperColors.textSecondary)
+
+            Divider()
+                .overlay(XomperColors.surfaceLight.opacity(0.4))
+                .padding(.vertical, 2)
+
+            Text("How it would work")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(XomperColors.textSecondary)
 
             Text("Non-playoff teams pick in ascending order of season Highest Possible Points (perfect-lineup score). Playoff teams pick at the back, ordered by playoff finish.")
                 .font(.caption)
@@ -104,6 +125,10 @@ struct DraftOrderView: View {
             RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg)
                 .strokeBorder(XomperColors.championGold.opacity(0.3), lineWidth: 1)
         )
+    }
+
+    private var currentSeasonForExplainer: String {
+        leagueStore.myLeague?.season ?? "current season"
     }
 
     private func sectionHeader(_ text: String) -> some View {
