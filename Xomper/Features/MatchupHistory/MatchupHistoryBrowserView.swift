@@ -11,11 +11,12 @@ import SwiftUI
 struct MatchupHistoryBrowserView: View {
     var leagueStore: LeagueStore
     var historyStore: HistoryStore
+    var playerStore: PlayerStore
 
     @Environment(\.selectedSeason) private var seasonStore: SeasonStore?
 
     @State private var expandedWeeks: Set<Int> = []
-    @State private var selectedDetail: WeekMatchupDetailKey?
+    @State private var selectedRecord: MatchupHistoryRecord?
 
     var body: some View {
         Group {
@@ -41,6 +42,15 @@ struct MatchupHistoryBrowserView: View {
         }
         .refreshable {
             await reload()
+        }
+        .sheet(item: $selectedRecord) { record in
+            NavigationStack {
+                MatchupDetailView(
+                    record: record,
+                    historyStore: historyStore,
+                    playerStore: playerStore
+                )
+            }
         }
     }
 
@@ -114,34 +124,39 @@ struct MatchupHistoryBrowserView: View {
         let bothScoreless = record.teamAPoints == 0 && record.teamBPoints == 0
 
         return Button {
-            selectedDetail = WeekMatchupDetailKey(
-                leagueId: record.leagueId,
-                week: record.week,
-                matchupId: record.matchupId
-            )
+            selectedRecord = record
         } label: {
-            HStack(spacing: XomperTheme.Spacing.md) {
-                teamColumn(
-                    name: record.teamATeamName.isEmpty ? record.teamAUsername : record.teamATeamName,
-                    points: record.teamAPoints,
-                    isWinner: aWin,
-                    showOutcome: !bothScoreless
-                )
+            VStack(spacing: 0) {
+                if let placement = placementLabel(for: record) {
+                    Text(placement)
+                        .font(.caption2.weight(.heavy))
+                        .tracking(0.5)
+                        .foregroundStyle(XomperColors.championGold)
+                        .padding(.bottom, 2)
+                }
+                HStack(spacing: XomperTheme.Spacing.md) {
+                    teamColumn(
+                        name: record.teamATeamName.isEmpty ? record.teamAUsername : record.teamATeamName,
+                        points: record.teamAPoints,
+                        isWinner: aWin,
+                        showOutcome: !bothScoreless
+                    )
 
-                Text("vs")
-                    .font(.caption2)
-                    .foregroundStyle(XomperColors.textMuted)
+                    Text("vs")
+                        .font(.caption2)
+                        .foregroundStyle(XomperColors.textMuted)
 
-                teamColumn(
-                    name: record.teamBTeamName.isEmpty ? record.teamBUsername : record.teamBTeamName,
-                    points: record.teamBPoints,
-                    isWinner: bWin,
-                    showOutcome: !bothScoreless
-                )
+                    teamColumn(
+                        name: record.teamBTeamName.isEmpty ? record.teamBUsername : record.teamBTeamName,
+                        points: record.teamBPoints,
+                        isWinner: bWin,
+                        showOutcome: !bothScoreless
+                    )
 
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(XomperColors.textMuted)
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(XomperColors.textMuted)
+                }
             }
             .padding(.horizontal, XomperTheme.Spacing.md)
             .padding(.vertical, XomperTheme.Spacing.sm)
@@ -149,6 +164,17 @@ struct MatchupHistoryBrowserView: View {
             .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md, style: .continuous))
         }
         .buttonStyle(.plain)
+    }
+
+    /// Surface a "CHAMPIONSHIP" / "3RD PLACE" / "PLAYOFFS" tag on
+    /// matchup rows so users can see at a glance which games were for
+    /// placement. The week-16/17 split + isChampionship/isPlayoff are
+    /// inherited from how `HistoryStore.convertMatchupResults` flags
+    /// records.
+    private func placementLabel(for record: MatchupHistoryRecord) -> String? {
+        if record.isChampionship { return "CHAMPIONSHIP" }
+        if record.isPlayoff { return "PLAYOFFS · WEEK \(record.week)" }
+        return nil
     }
 
     private func teamColumn(name: String, points: Double, isWinner: Bool, showOutcome: Bool) -> some View {
@@ -247,9 +273,3 @@ private struct WeekBundle: Identifiable {
     var id: Int { week }
 }
 
-private struct WeekMatchupDetailKey: Identifiable, Hashable {
-    let leagueId: String
-    let week: Int
-    let matchupId: Int
-    var id: String { "\(leagueId)-\(week)-\(matchupId)" }
-}
