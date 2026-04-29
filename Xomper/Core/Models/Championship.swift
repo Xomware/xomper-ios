@@ -6,6 +6,7 @@ import Foundation
 struct Championship: Identifiable, Sendable, Hashable {
     let season: String
     let leagueId: String
+    let leagueName: String
     let week: Int
     let teamName: String
     let pointsFor: Double

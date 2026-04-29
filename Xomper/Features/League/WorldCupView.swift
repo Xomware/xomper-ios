@@ -5,15 +5,11 @@ struct WorldCupView: View {
     var historyStore: HistoryStore
     var leagueStore: LeagueStore
 
-    @Environment(\.selectedSeason) private var seasonStore: SeasonStore?
-
-    private var activeSeason: String? {
-        let season = seasonStore?.selectedSeason ?? ""
-        return season.isEmpty ? nil : season
-    }
-
+    /// World Cup is a 3-year cumulative tournament — the full aggregate is
+    /// the only meaningful view. Season filtering does not apply (the picker
+    /// is hidden for this destination in HeaderBar).
     private var displayedDivisions: [WorldCupDivision] {
-        worldCupStore.filteredDivisions(for: activeSeason)
+        worldCupStore.divisions
     }
 
     var body: some View {
@@ -79,9 +75,6 @@ struct WorldCupView: View {
     }
 
     private var seasonsSummary: String {
-        if let season = activeSeason, worldCupStore.seasons.contains(season) {
-            return "Divisional records for \(season)"
-        }
         let count = worldCupStore.seasons.count
         let seasonList = worldCupStore.seasons.joined(separator: ", ")
         let plural = count != 1 ? "s" : ""
@@ -102,14 +95,10 @@ struct WorldCupView: View {
         }
     }
 
-    /// Per-season columns to render in each division's stat table. When a
-    /// single season is selected, we only show that season's column. When the
-    /// selection is unset (or "All"), we keep the multi-season layout.
+    /// Per-season columns rendered in each division's stat table. World Cup is
+    /// always the multi-season aggregate — no single-season filter.
     private var displayedColumnSeasons: [String] {
-        if let season = activeSeason, worldCupStore.seasons.contains(season) {
-            return [season]
-        }
-        return worldCupStore.seasons
+        worldCupStore.seasons
     }
 
     // MARK: - Actions
@@ -117,8 +106,9 @@ struct WorldCupView: View {
     private func loadIfNeeded() async {
         guard !worldCupStore.hasData, !worldCupStore.isLoading else { return }
 
-        // Ensure chain and matchup history are loaded before computing standings
-        if leagueStore.leagueChain.isEmpty, let leagueId = leagueStore.currentLeague?.leagueId ?? leagueStore.myLeague?.leagueId {
+        // World Cup is anchored to myLeague (CLT) regardless of currentLeague
+        // selection. The format is league-specific to the home league.
+        if leagueStore.leagueChain.isEmpty, let leagueId = leagueStore.myLeague?.leagueId {
             await leagueStore.loadLeagueChain(startingFrom: leagueId)
         }
         if historyStore.matchupHistory.isEmpty, !leagueStore.leagueChain.isEmpty {
@@ -135,8 +125,8 @@ struct WorldCupView: View {
     }
 
     private func refreshData() async {
-        // Re-load matchup history from chain, then recompute
-        if let leagueId = leagueStore.currentLeague?.leagueId {
+        // Anchored to myLeague (CLT) — see loadIfNeeded above.
+        if let leagueId = leagueStore.myLeague?.leagueId {
             await leagueStore.loadLeagueChain(startingFrom: leagueId)
             await historyStore.loadMatchupHistory(chain: leagueStore.leagueChain)
         }

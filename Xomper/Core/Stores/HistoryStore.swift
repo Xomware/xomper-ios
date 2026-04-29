@@ -166,18 +166,37 @@ final class HistoryStore {
     /// matchup history. Pure derived computation — no network, no side effects.
     ///
     /// Selection rule: a record is a championship win if `isChampionship == true`
-    /// AND the user is on the winning side. We dedupe by `season` (a season can
-    /// have at most one champ; if both week 16 and week 17 records flag this
-    /// user as winner — typical for multi-week playoff schemas — we keep the
-    /// later week, which is the actual title game).
+    /// AND the user is on the winning side AND the championship game is the
+    /// final week of that season's playoffs (filtering out non-final week-16/17
+    /// games that are flagged `isChampionship: true` due to the loose flag
+    /// semantics in `convertMatchupResults`). We dedupe by `season`.
+    ///
+    /// `leagueNamesById` maps `leagueId → human-readable name` for display.
+    /// If the map doesn't have an entry, falls back to the `season` string.
     ///
     /// Sorted descending by season (newest first).
-    func championships(forUserId userId: String) -> [Championship] {
+    func championships(
+        forUserId userId: String,
+        leagueNamesById: [String: String] = [:]
+    ) -> [Championship] {
         guard !userId.isEmpty else { return [] }
 
-        // Filter to championship-flagged records this user won.
+        // Determine the actual title-game week per (leagueId, season): the max
+        // championship-flagged week. The current ingest tags both week 16 and
+        // week 17 as `isChampionship`, but only the later week is the title
+        // game in a 2-week playoff format.
+        var titleWeekByKey: [String: Int] = [:]
+        for record in matchupHistory where record.isChampionship {
+            let key = "\(record.leagueId)-\(record.season)"
+            titleWeekByKey[key] = max(titleWeekByKey[key] ?? 0, record.week)
+        }
+
+        // Filter to championship-flagged records this user won, and only the
+        // actual title-game week per league/season.
         let wins = matchupHistory.filter { record in
             guard record.isChampionship else { return false }
+            let key = "\(record.leagueId)-\(record.season)"
+            guard record.week == titleWeekByKey[key] else { return false }
 
             if record.teamAUserId == userId,
                record.winnerRosterId == record.teamARosterId {
@@ -198,10 +217,12 @@ final class HistoryStore {
             let opponent = userIsTeamA ? record.teamBTeamName : record.teamATeamName
             let pointsFor = userIsTeamA ? record.teamAPoints : record.teamBPoints
             let pointsAgainst = userIsTeamA ? record.teamBPoints : record.teamAPoints
+            let leagueName = leagueNamesById[record.leagueId] ?? ""
 
             return Championship(
                 season: record.season,
                 leagueId: record.leagueId,
+                leagueName: leagueName,
                 week: record.week,
                 teamName: teamName,
                 pointsFor: pointsFor,
@@ -210,21 +231,26 @@ final class HistoryStore {
             )
         }
 
-        // Dedupe by season — prefer the later week (title game over semi).
-        var bySeason: [String: Championship] = [:]
+        // Dedupe by (leagueId, season) — a user can hold multiple titles
+        // across different leagues in the same year. Prefer later week.
+        var byKey: [String: Championship] = [:]
         for champ in mapped {
-            if let existing = bySeason[champ.season] {
+            let key = "\(champ.leagueId)-\(champ.season)"
+            if let existing = byKey[key] {
                 if champ.week > existing.week {
-                    bySeason[champ.season] = champ
+                    byKey[key] = champ
                 }
             } else {
-                bySeason[champ.season] = champ
+                byKey[key] = champ
             }
         }
 
-        // Sort descending by season (newest first).
-        return bySeason.values.sorted { a, b in
-            (Int(a.season) ?? 0) > (Int(b.season) ?? 0)
+        // Sort: descending by season, then by leagueId for stable order.
+        return byKey.values.sorted { a, b in
+            if a.season != b.season {
+                return (Int(a.season) ?? 0) > (Int(b.season) ?? 0)
+            }
+            return a.leagueId < b.leagueId
         }
     }
 

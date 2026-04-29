@@ -19,6 +19,13 @@ struct TrophyCaseCard: View {
                     .foregroundStyle(XomperColors.textPrimary)
                     .lineLimit(1)
 
+                if !championship.leagueName.isEmpty {
+                    Text(championship.leagueName)
+                        .font(.caption)
+                        .foregroundStyle(XomperColors.championGold.opacity(0.85))
+                        .lineLimit(1)
+                }
+
                 Text(championship.teamName)
                     .font(.subheadline)
                     .foregroundStyle(XomperColors.textSecondary)
@@ -71,6 +78,7 @@ struct TrophyCaseCard: View {
             championship: Championship(
                 season: "2024",
                 leagueId: "abc",
+                leagueName: "Charlotte Dynasty League",
                 week: 17,
                 teamName: "Dom's Dynasty",
                 pointsFor: 127.4,
@@ -83,6 +91,7 @@ struct TrophyCaseCard: View {
             championship: Championship(
                 season: "2022",
                 leagueId: "abc",
+                leagueName: "Charlotte Dynasty League",
                 week: 16,
                 teamName: "Dom's Dynasty",
                 pointsFor: 154.2,
