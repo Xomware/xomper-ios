@@ -93,6 +93,7 @@
 		E2EC532916CAA2FBB779DB35 /* UserStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62948D0A455E7CE99B15CB75 /* UserStore.swift */; };
 		EDDACB3FFB20E468D9D9D67D /* HeaderBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1E7D0FD804723AC6A3E4298 /* HeaderBar.swift */; };
 		F201A3A40D624F6AAA0C0CC1 /* PlayoffBracket.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B160A8ED14F5BE08B79C7FA /* PlayoffBracket.swift */; };
+		F57132F0D80EAB60AC0E07F3 /* WhitelistedLeague.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3747C6FC769C117588F8A93E /* WhitelistedLeague.swift */; };
 		F5AD059EF52A068C469AFB6E /* URL+Sleeper.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2452A5AEC270BE14CC085E1 /* URL+Sleeper.swift */; };
 		F7E0A8B9AECD0291527E0D0E /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42F46A0AAE61A4E963BB15B0 /* SearchView.swift */; };
 		FAE7847413A293EF8CE9090C /* NFLTeamColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09DF8F2FE857C55AFB1C1205 /* NFLTeamColors.swift */; };
@@ -122,6 +123,7 @@
 		323F422F2D0E1C2BA5D46C0A /* SearchResults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchResults.swift; sourceTree = "<group>"; };
 		36A01820FD0F6643BBF8511D /* TeamStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamStore.swift; sourceTree = "<group>"; };
 		3728C5F6BEF61FE509A3EA32 /* ClinchCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClinchCalculator.swift; sourceTree = "<group>"; };
+		3747C6FC769C117588F8A93E /* WhitelistedLeague.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhitelistedLeague.swift; sourceTree = "<group>"; };
 		3E4EC7FDB93C47A9EE601BA3 /* TrayItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrayItem.swift; sourceTree = "<group>"; };
 		42C8A3FA617E9FEB48852C45 /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profile.swift; sourceTree = "<group>"; };
 		42F46A0AAE61A4E963BB15B0 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
@@ -387,6 +389,7 @@
 				B29D510D87CD290AE7F76FBF /* StandingsTeam.swift */,
 				A2DA1B65780757E6CC78CD61 /* TaxiSquadPlayer.swift */,
 				9F49969EE42BDE6462664021 /* TradedPick.swift */,
+				3747C6FC769C117588F8A93E /* WhitelistedLeague.swift */,
 				E969C4A894017F9D0072CCFA /* WorldCup.swift */,
 			);
 			path = Models;
@@ -702,6 +705,7 @@
 				65444EF8D83F3582CE2FC023 /* TrophyCaseSection.swift in Sources */,
 				F5AD059EF52A068C469AFB6E /* URL+Sleeper.swift in Sources */,
 				E2EC532916CAA2FBB779DB35 /* UserStore.swift in Sources */,
+				F57132F0D80EAB60AC0E07F3 /* WhitelistedLeague.swift in Sources */,
 				61EBC3AC052763EAAC807AC9 /* WorldCup.swift in Sources */,
 				901F54CB41785D269CC63160 /* WorldCupStore.swift in Sources */,
 				BBBE8D43F297A49A915AA789 /* WorldCupView.swift in Sources */,

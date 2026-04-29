@@ -1,4 +1,5 @@
 import Foundation
+@preconcurrency import Supabase
 
 @Observable
 @MainActor
@@ -66,7 +67,9 @@ final class LeagueStore {
         error = nil
 
         do {
-            let leagueId = Config.whitelistedLeagueId
+            // Use Supabase-resolved league ID when available; falls back
+            // to Config.whitelistedLeagueId.
+            let leagueId = resolvedHomeLeagueId
             let league = try await apiClient.fetchLeague(leagueId)
             let context = try await fetchLeagueContext(leagueId: leagueId)
 
@@ -85,6 +88,45 @@ final class LeagueStore {
         isLoading = false
     }
 
+    // MARK: - Whitelisted league (Supabase source of truth)
+
+    /// The active row from Supabase `whitelisted_leagues`. Populated by
+    /// `fetchActiveWhitelistedLeague`. Acts as the source of truth for
+    /// which Sleeper league the app considers "home". Falls back to
+    /// `Config.whitelistedLeagueId` / `Config.whitelistedLeagueName`
+    /// when the Supabase fetch fails.
+    private(set) var whitelistedLeague: WhitelistedLeague?
+
+    /// Resolved league ID — Supabase first, hardcoded Config fallback.
+    var resolvedHomeLeagueId: String {
+        whitelistedLeague?.leagueId ?? Config.whitelistedLeagueId
+    }
+
+    /// Resolved league name — Supabase first, hardcoded Config fallback.
+    var resolvedHomeLeagueName: String {
+        whitelistedLeague?.leagueName ?? Config.whitelistedLeagueName
+    }
+
+    /// Fetches the single active row from Supabase `whitelisted_leagues`.
+    /// Result lives on `whitelistedLeague`. Non-fatal — if the query
+    /// fails, `whitelistedLeague` stays nil and the resolved-* helpers
+    /// fall through to `Config`.
+    func fetchActiveWhitelistedLeague() async {
+        do {
+            let results: [WhitelistedLeague] = try await supabase
+                .from("whitelisted_leagues")
+                .select()
+                .eq("is_active", value: true)
+                .limit(1)
+                .execute()
+                .value
+
+            self.whitelistedLeague = results.first
+        } catch {
+            // Non-fatal — Config fallback still works.
+        }
+    }
+
     // MARK: - Resolve current-season home league by name
 
     /// Re-anchors `myLeague` (and `currentLeague` if it currently equals
@@ -99,7 +141,8 @@ final class LeagueStore {
     /// goes stale every year. By matching on the stable league name we
     /// follow the league forward automatically.
     func resolveAndAnchorMyLeagueByName() async {
-        let targetName = Config.whitelistedLeagueName.trimmingCharacters(in: .whitespaces)
+        // Prefer the Supabase-resolved name; fall back to Config.
+        let targetName = resolvedHomeLeagueName.trimmingCharacters(in: .whitespaces)
         guard !targetName.isEmpty else { return }
 
         let resolvedLeague = userLeagues.first { league in
