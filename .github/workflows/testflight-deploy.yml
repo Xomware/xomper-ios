@@ -30,6 +30,7 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           API_GATEWAY_URL: ${{ secrets.API_GATEWAY_URL }}
           WHITELISTED_LEAGUE_ID: ${{ secrets.WHITELISTED_LEAGUE_ID }}
+          WHITELISTED_LEAGUE_NAME: ${{ secrets.WHITELISTED_LEAGUE_NAME }}
         run: |
           cat > Xomper/Config/Config.swift <<EOF
           import Foundation
@@ -40,6 +41,7 @@ jobs:
               static let oauthCallbackURL = "xomper://login-callback"
               static let apiGatewayURL = "${API_GATEWAY_URL}"
               static let whitelistedLeagueId = "${WHITELISTED_LEAGUE_ID}"
+              static let whitelistedLeagueName = "${WHITELISTED_LEAGUE_NAME}"
 
               static var isConfigured: Bool {
                   !supabaseURL.contains("YOUR_") && !supabaseAnonKey.contains("YOUR_")
@@ -59,8 +61,16 @@ jobs:
       - name: Compute version and build number
         id: version
         run: |
-          MARKETING_VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
-          MARKETING_VERSION=${MARKETING_VERSION:-2.0.0}
+          # Derive major.minor from the latest tag (e.g. v2.1.0 → 2.1).
+          # Fallback to 2.0 when no tags exist. Patch auto-increments on
+          # every workflow run via github.run_number, so the version
+          # bumps from 2.0.0 to 2.0.N on each deploy without manual
+          # tagging. Tag a new minor (e.g. v2.1.0) when you want to
+          # bump from 2.0.X → 2.1.X.
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
+          BASE_VERSION=${LATEST_TAG:-2.0.0}
+          MAJOR_MINOR=$(echo "$BASE_VERSION" | cut -d. -f1,2)
+          MARKETING_VERSION="${MAJOR_MINOR}.${{ github.run_number }}"
           BUILD_NUMBER=$(date +%Y%m%d%H%M)
           echo "marketing=$MARKETING_VERSION" >> "$GITHUB_OUTPUT"
           echo "build=$BUILD_NUMBER" >> "$GITHUB_OUTPUT"
