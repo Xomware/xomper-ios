@@ -167,10 +167,9 @@ struct MyProfileView: View {
         Button {
             let generator = UIImpactFeedbackGenerator(style: .medium)
             generator.impactOccurred()
-            Task {
-                await leagueStore.switchToLeague(id: league.leagueId)
-                navStore.select(.standings, router: router)
-            }
+            // Push a read-only overview of the tapped league. Does NOT
+            // mutate `myLeague` — tray destinations stay anchored to home.
+            router.navigate(to: .leagueOverview(leagueId: league.leagueId))
         } label: {
             HStack(spacing: XomperTheme.Spacing.md) {
                 AvatarView(

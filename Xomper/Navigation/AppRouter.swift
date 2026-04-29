@@ -15,6 +15,10 @@ enum AppRoute: Hashable {
     case search
     case settings
     case playerDetail(playerId: String)
+    /// Browse another league at high level (standings + basic info). Used
+    /// when the user taps a non-home league in profile or search. The
+    /// view fetches its own data — does NOT mutate `LeagueStore.myLeague`.
+    case leagueOverview(leagueId: String)
 }
 
 /// Owns the inner `NavigationStack` path inside `MainShell`. The drawer

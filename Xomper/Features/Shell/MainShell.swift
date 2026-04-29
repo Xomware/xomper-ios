@@ -355,6 +355,9 @@ struct MainShell: View {
                     message: "We couldn't load this player's details."
                 )
             }
+
+        case .leagueOverview(let leagueId):
+            LeagueOverviewView(leagueId: leagueId, router: router)
         }
     }
 
