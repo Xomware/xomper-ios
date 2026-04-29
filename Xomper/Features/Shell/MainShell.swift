@@ -151,7 +151,9 @@ struct MainShell: View {
                     leagueStore: leagueStore,
                     historyStore: historyStore,
                     playerStore: playerStore,
-                    userStore: userStore
+                    playerPointsStore: playerPointsStore,
+                    userStore: userStore,
+                    nflStateStore: nflStateStore
                 )
 
             case .matchupHistory:
@@ -355,7 +357,9 @@ struct MainShell: View {
                 leagueStore: leagueStore,
                 historyStore: historyStore,
                 playerStore: playerStore,
-                userStore: userStore
+                playerPointsStore: playerPointsStore,
+                userStore: userStore,
+                nflStateStore: nflStateStore
             )
 
         case .matchupHistory:

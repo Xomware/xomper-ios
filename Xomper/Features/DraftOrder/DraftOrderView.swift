@@ -170,45 +170,11 @@ struct DraftOrderView: View {
     // MARK: - Compute
 
     private func compute() -> DraftOrderProjection {
-        guard let league = leagueStore.myLeague else { return .empty }
-        let standings = StandingsBuilder.buildStandings(
-            rosters: leagueStore.myLeagueRosters,
-            users: leagueStore.myLeagueUsers,
-            league: league
-        )
-
-        let rosterPositions = league.rosterPositions ?? []
-        let playoffTeams = league.settings?.playoffTeams ?? 6
-        let regularSeasonLastWeek = regularSeasonLastWeek
-
-        let entries: [DraftOrderProjection.Entry] = standings.map { team in
-            let hpp = HighestPossibleCalculator.seasonHPP(
-                rosterId: team.rosterId,
-                rosterPositions: rosterPositions,
-                playerPointsStore: playerPointsStore,
-                playerStore: playerStore,
-                regularSeasonLastWeek: regularSeasonLastWeek
-            )
-            return DraftOrderProjection.Entry(
-                rosterId: team.rosterId,
-                teamName: team.teamName,
-                recordLabel: "\(team.wins)-\(team.losses)\(team.ties > 0 ? "-\(team.ties)" : "")",
-                actualPFLabel: String(format: "%.1f PF", team.fpts),
-                actualPF: team.fpts,
-                seasonHPP: hpp,
-                leagueRank: team.leagueRank
-            )
-        }
-
-        // Standings is already sorted by wins-DESC then PF-DESC. Top
-        // playoff_teams qualify; rest go to non-playoff.
-        let playoffEntries = Array(entries.prefix(playoffTeams))
-        let nonPlayoff = Array(entries.dropFirst(playoffTeams))
-            .sorted(by: { $0.seasonHPP < $1.seasonHPP })  // ascending HPP
-
-        return DraftOrderProjection(
-            nonPlayoffOrder: nonPlayoff,
-            playoffOrder: playoffEntries
+        DraftOrderProjection.compute(
+            leagueStore: leagueStore,
+            playerStore: playerStore,
+            playerPointsStore: playerPointsStore,
+            regularSeasonLastWeek: regularSeasonLastWeek
         )
     }
 
@@ -250,5 +216,53 @@ struct DraftOrderProjection: Sendable {
         let actualPF: Double
         let seasonHPP: Double
         let leagueRank: Int
+    }
+
+    @MainActor
+    static func compute(
+        leagueStore: LeagueStore,
+        playerStore: PlayerStore,
+        playerPointsStore: PlayerPointsStore,
+        regularSeasonLastWeek: Int
+    ) -> DraftOrderProjection {
+        guard let league = leagueStore.myLeague else { return .empty }
+        let standings = StandingsBuilder.buildStandings(
+            rosters: leagueStore.myLeagueRosters,
+            users: leagueStore.myLeagueUsers,
+            league: league
+        )
+
+        let rosterPositions = league.rosterPositions ?? []
+        let playoffTeams = league.settings?.playoffTeams ?? 6
+
+        let entries: [Entry] = standings.map { team in
+            let hpp = HighestPossibleCalculator.seasonHPP(
+                rosterId: team.rosterId,
+                rosterPositions: rosterPositions,
+                playerPointsStore: playerPointsStore,
+                playerStore: playerStore,
+                regularSeasonLastWeek: regularSeasonLastWeek
+            )
+            return Entry(
+                rosterId: team.rosterId,
+                teamName: team.teamName,
+                recordLabel: "\(team.wins)-\(team.losses)\(team.ties > 0 ? "-\(team.ties)" : "")",
+                actualPFLabel: String(format: "%.1f PF", team.fpts),
+                actualPF: team.fpts,
+                seasonHPP: hpp,
+                leagueRank: team.leagueRank
+            )
+        }
+
+        // Standings is already sorted by wins-DESC then PF-DESC. Top
+        // playoff_teams qualify; rest go to non-playoff.
+        let playoffEntries = Array(entries.prefix(playoffTeams))
+        let nonPlayoff = Array(entries.dropFirst(playoffTeams))
+            .sorted(by: { $0.seasonHPP < $1.seasonHPP })  // ascending HPP
+
+        return DraftOrderProjection(
+            nonPlayoffOrder: nonPlayoff,
+            playoffOrder: playoffEntries
+        )
     }
 }
