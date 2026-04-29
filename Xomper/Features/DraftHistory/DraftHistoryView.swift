@@ -125,7 +125,10 @@ struct DraftHistoryView: View {
     // MARK: - Data Loading
 
     private func loadDraftHistory() async {
-        guard let leagueId = leagueStore.currentLeague?.leagueId else { return }
+        // Fall back to home league if currentLeague hasn't resolved yet
+        // (bootstrap-vs-view-mount race).
+        guard let leagueId = leagueStore.currentLeague?.leagueId
+            ?? leagueStore.myLeague?.leagueId else { return }
 
         await leagueStore.loadLeagueChain(startingFrom: leagueId)
         let chain = leagueStore.leagueChain

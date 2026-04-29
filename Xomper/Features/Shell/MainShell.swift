@@ -200,6 +200,8 @@ struct MainShell: View {
 
     /// Resolves `teamStore.myTeam` to a TeamView at the root. Falls back to
     /// an empty-state placeholder if the team / roster / league hasn't loaded.
+    /// Triggers a `loadMyTeam` build if the league is loaded but the team
+    /// hasn't been resolved yet (bootstrap-vs-view-mount race).
     @ViewBuilder
     private var myTeamRoot: some View {
         if let team = teamStore.myTeam,
@@ -220,7 +222,28 @@ struct MainShell: View {
                 title: "Team Not Loaded",
                 message: "Your team will appear once your league finishes loading."
             )
+            .task {
+                await ensureMyTeamLoaded()
+            }
         }
+    }
+
+    /// Builds my-team from already-loaded league + rosters when bootstrap
+    /// raced ahead of the team-store population. Bails silently if data
+    /// isn't ready — the next view appearance retries.
+    private func ensureMyTeamLoaded() async {
+        guard teamStore.myTeam == nil,
+              let league = leagueStore.myLeague,
+              let userId = authStore.sleeperUserId,
+              !leagueStore.myLeagueRosters.isEmpty,
+              !leagueStore.myLeagueUsers.isEmpty else { return }
+
+        let standings = StandingsBuilder.buildStandings(
+            rosters: leagueStore.myLeagueRosters,
+            users: leagueStore.myLeagueUsers,
+            league: league
+        )
+        teamStore.loadMyTeam(from: standings, userId: userId)
     }
 
     // MARK: - Pushed routes
