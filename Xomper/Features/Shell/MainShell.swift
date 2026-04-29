@@ -161,20 +161,17 @@ struct MainShell: View {
                     taxiSquadStore: taxiSquadStore
                 )
 
-            case .rules:
-                if let league = leagueStore.currentLeague ?? leagueStore.myLeague {
-                    RulesView(
-                        league: league,
-                        rulesStore: rulesStore,
-                        authStore: authStore
-                    )
-                } else {
-                    EmptyStateView(
-                        icon: "book",
-                        title: "No League Loaded",
-                        message: "Rules will appear once your league is loaded."
-                    )
-                }
+            case .rulebook:
+                rulesPage(.rulebook)
+
+            case .scoring:
+                rulesPage(.scoring)
+
+            case .leagueSettings:
+                rulesPage(.leagueSettings)
+
+            case .ruleProposals:
+                rulesPage(.ruleProposals)
 
             case .profile:
                 MyProfileView(
@@ -197,6 +194,27 @@ struct MainShell: View {
     }
 
     // MARK: - My Team root
+
+    /// Resolves a `RulesView` filtered to a single page (Scoring / League
+    /// Settings / Rule Proposals / Rulebook). Falls back to an empty state
+    /// when the league isn't loaded yet.
+    @ViewBuilder
+    private func rulesPage(_ page: RulesPage) -> some View {
+        if let league = leagueStore.currentLeague ?? leagueStore.myLeague {
+            RulesView(
+                league: league,
+                rulesStore: rulesStore,
+                authStore: authStore,
+                page: page
+            )
+        } else {
+            EmptyStateView(
+                icon: "book",
+                title: "No League Loaded",
+                message: "Rules will appear once your league is loaded."
+            )
+        }
+    }
 
     /// Resolves `teamStore.myTeam` to a TeamView at the root. Falls back to
     /// an empty-state placeholder if the team / roster / league hasn't loaded.

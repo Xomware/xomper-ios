@@ -7,7 +7,7 @@ import Foundation
 /// - Compete:  standings, matchups, playoffs
 /// - History:  draftHistory, matchupHistory, worldCup
 /// - Roster:   myTeam, taxiSquad
-/// - Meta:     rules
+/// - Rules:    rulebook, scoring, leagueSettings, ruleProposals
 /// - Profile/Settings are surfaced via the profile card and pinned footer.
 enum TrayDestination: Hashable {
     case standings
@@ -18,7 +18,10 @@ enum TrayDestination: Hashable {
     case worldCup
     case myTeam
     case taxiSquad
-    case rules
+    case rulebook
+    case scoring
+    case leagueSettings
+    case ruleProposals
     case profile
     case settings
 
@@ -34,7 +37,10 @@ enum TrayDestination: Hashable {
         case .worldCup:       "World Cup"
         case .myTeam:         "My Team"
         case .taxiSquad:      "Taxi Squad"
-        case .rules:          "Rules"
+        case .rulebook:       "Rulebook"
+        case .scoring:        "Scoring"
+        case .leagueSettings: "League Settings"
+        case .ruleProposals:  "Rule Proposals"
         case .profile:        "Profile"
         case .settings:       "Settings"
         }
@@ -51,7 +57,10 @@ enum TrayDestination: Hashable {
         case .worldCup:       "globe.americas.fill"
         case .myTeam:         "person.crop.square.fill"
         case .taxiSquad:      "bus.fill"
-        case .rules:          "book.fill"
+        case .rulebook:       "book.fill"
+        case .scoring:        "function"
+        case .leagueSettings: "slider.horizontal.3"
+        case .ruleProposals:  "checkmark.bubble.fill"
         case .profile:        "person.crop.circle.fill"
         case .settings:       "gearshape.fill"
         }
