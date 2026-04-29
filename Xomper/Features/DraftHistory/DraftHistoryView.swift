@@ -4,7 +4,9 @@ struct DraftHistoryView: View {
     var leagueStore: LeagueStore
     var historyStore: HistoryStore
     var playerStore: PlayerStore
+    var playerPointsStore: PlayerPointsStore
     var userStore: UserStore
+    var nflStateStore: NflStateStore
 
     @Environment(\.selectedSeason) private var seasonStore: SeasonStore?
 
@@ -16,14 +18,26 @@ struct DraftHistoryView: View {
         seasonStore?.selectedSeason ?? ""
     }
 
+    /// True when the selected chip is the in-progress NFL season AND
+    /// no draft picks have been ingested for it yet — meaning the
+    /// draft hasn't run yet. Falls through to the projected
+    /// reverse-HPP order so the user can see where they're picking.
+    private var isUpcomingDraft: Bool {
+        !currentSeason.isEmpty
+            && currentSeason == nflStateStore.currentSeason
+            && historyStore.draftPicksByRound(forSeason: currentSeason).isEmpty
+    }
+
     var body: some View {
         Group {
-            if historyStore.isLoadingDrafts {
+            if historyStore.isLoadingDrafts && !historyStore.hasDrafts {
                 LoadingView(message: "Loading draft history...")
-            } else if let error = historyStore.draftError {
+            } else if let error = historyStore.draftError, !historyStore.hasDrafts {
                 ErrorView(message: error.localizedDescription) {
                     Task { await loadDraftHistory() }
                 }
+            } else if isUpcomingDraft {
+                upcomingDraftContent
             } else if historyStore.hasDrafts {
                 draftContent
             } else {
@@ -36,6 +50,11 @@ struct DraftHistoryView: View {
         }
         .task(id: leagueStore.myLeague?.leagueId) {
             await loadDraftHistory()
+        }
+        .task(id: isUpcomingDraft) {
+            if isUpcomingDraft {
+                await ensurePerfectLineupLoaded()
+            }
         }
         .sheet(item: $selectedPlayer) { player in
             PlayerDetailView(player: player, playerStore: playerStore)
@@ -66,6 +85,175 @@ struct DraftHistoryView: View {
             }
         }
         .background(XomperColors.bgDark)
+    }
+
+    // MARK: - Upcoming-draft content
+
+    /// Pre-draft state: the season's chip is selected but no picks
+    /// have been ingested yet (the draft hasn't run). Show the
+    /// projected reverse-HPP order from #57 so the user can see
+    /// where they're picking before it starts.
+    private var upcomingDraftContent: some View {
+        Group {
+            if leagueStore.myLeagueRosters.isEmpty {
+                LoadingView(message: "Loading league...")
+            } else if !playerPointsStore.hasData {
+                if playerPointsStore.isLoading {
+                    LoadingView(message: "Computing projected order...")
+                } else {
+                    EmptyStateView(
+                        icon: "list.number",
+                        title: "Projected Order Pending",
+                        message: "Per-week data not yet aggregated. Pull to refresh."
+                    )
+                }
+            } else {
+                upcomingDraftScroll
+            }
+        }
+        .background(XomperColors.bgDark)
+        .refreshable {
+            await ensurePerfectLineupLoaded()
+        }
+    }
+
+    private var upcomingDraftScroll: some View {
+        let projection = DraftOrderProjection.compute(
+            leagueStore: leagueStore,
+            playerStore: playerStore,
+            playerPointsStore: playerPointsStore,
+            regularSeasonLastWeek: regularSeasonLastWeek
+        )
+
+        return ScrollView {
+            VStack(alignment: .leading, spacing: XomperTheme.Spacing.md) {
+                upcomingHeader
+
+                if !projection.nonPlayoffOrder.isEmpty {
+                    Text("Reverse-HPP order (picks 1–\(projection.nonPlayoffOrder.count))")
+                        .font(.caption.weight(.bold))
+                        .textCase(.uppercase)
+                        .tracking(0.5)
+                        .foregroundStyle(XomperColors.textMuted)
+                        .padding(.top, XomperTheme.Spacing.sm)
+
+                    ForEach(Array(projection.nonPlayoffOrder.enumerated()), id: \.offset) { idx, entry in
+                        upcomingRow(rank: idx + 1, entry: entry, isPlayoff: false)
+                    }
+                }
+
+                if !projection.playoffOrder.isEmpty {
+                    Text(
+                        "Playoff teams (picks "
+                        + "\(projection.nonPlayoffOrder.count + 1)–"
+                        + "\(projection.nonPlayoffOrder.count + projection.playoffOrder.count))"
+                    )
+                    .font(.caption.weight(.bold))
+                    .textCase(.uppercase)
+                    .tracking(0.5)
+                    .foregroundStyle(XomperColors.textMuted)
+                    .padding(.top, XomperTheme.Spacing.sm)
+
+                    ForEach(Array(projection.playoffOrder.enumerated()), id: \.offset) { idx, entry in
+                        upcomingRow(
+                            rank: projection.nonPlayoffOrder.count + idx + 1,
+                            entry: entry,
+                            isPlayoff: true
+                        )
+                    }
+                }
+            }
+            .padding(.horizontal, XomperTheme.Spacing.md)
+            .padding(.vertical, XomperTheme.Spacing.sm)
+        }
+    }
+
+    private var upcomingHeader: some View {
+        VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
+            HStack(spacing: XomperTheme.Spacing.xs) {
+                Image(systemName: "hourglass")
+                    .foregroundStyle(XomperColors.championGold)
+                Text("\(currentSeason) draft hasn't started")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(XomperColors.championGold)
+            }
+            Text("Projected order using last season's reverse-HPP rule. Non-playoff teams pick first in ascending order of season Highest Possible Points; playoff teams pick at the back.")
+                .font(.caption)
+                .foregroundStyle(XomperColors.textSecondary)
+        }
+        .padding(XomperTheme.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(XomperColors.bgCard)
+        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
+        .overlay(
+            RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg)
+                .strokeBorder(XomperColors.championGold.opacity(0.3), lineWidth: 1)
+        )
+    }
+
+    private func upcomingRow(rank: Int, entry: DraftOrderProjection.Entry, isPlayoff: Bool) -> some View {
+        HStack(spacing: XomperTheme.Spacing.md) {
+            Text("\(rank)")
+                .font(.title3.weight(.bold))
+                .foregroundStyle(rank == 1 ? XomperColors.championGold : XomperColors.textSecondary)
+                .frame(width: 36, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(entry.teamName)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(XomperColors.textPrimary)
+                    .lineLimit(1)
+
+                HStack(spacing: XomperTheme.Spacing.sm) {
+                    Text(entry.recordLabel)
+                        .font(.caption2)
+                        .foregroundStyle(XomperColors.textMuted)
+                        .monospacedDigit()
+                    if isPlayoff {
+                        Text("PLAYOFFS")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(XomperColors.bgDark)
+                            .padding(.horizontal, XomperTheme.Spacing.xs)
+                            .background(XomperColors.successGreen)
+                            .clipShape(Capsule())
+                    }
+                }
+            }
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(String(format: "%.1f", entry.seasonHPP))
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(XomperColors.championGold)
+                    .monospacedDigit()
+                Text("season HPP")
+                    .font(.caption2)
+                    .foregroundStyle(XomperColors.textMuted)
+            }
+        }
+        .padding(XomperTheme.Spacing.md)
+        .background(XomperColors.bgCard)
+        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
+    }
+
+    private func ensurePerfectLineupLoaded() async {
+        if !playerPointsStore.hasData,
+           let leagueId = leagueStore.myLeague?.leagueId {
+            await playerPointsStore.loadRegularSeason(
+                leagueId: leagueId,
+                regularSeasonLastWeek: regularSeasonLastWeek
+            )
+        }
+    }
+
+    private var regularSeasonLastWeek: Int {
+        guard let value = leagueStore.myLeague?.settings?.additionalSettings?["playoff_week_start"] else {
+            return 14
+        }
+        if let i = value.intValue { return max(i - 1, 1) }
+        if let d = value.doubleValue { return max(Int(d) - 1, 1) }
+        return 14
     }
 
     // MARK: - Controls bar (filter + view-mode toggle)
@@ -230,8 +418,8 @@ struct DraftHistoryView: View {
                     .font(.caption2)
                     .foregroundStyle(XomperColors.textMuted)
             }
-            .frame(width: boardCellWidth, height: boardCellHeight, alignment: .topLeading)
             .padding(6)
+            .frame(width: boardCellWidth, height: boardCellHeight, alignment: .topLeading)
             .background(XomperColors.bgCard)
             .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
         }
@@ -577,7 +765,9 @@ enum DraftViewMode: String, CaseIterable, Identifiable {
             leagueStore: LeagueStore(),
             historyStore: HistoryStore(),
             playerStore: PlayerStore(),
-            userStore: UserStore()
+            playerPointsStore: PlayerPointsStore(),
+            userStore: UserStore(),
+            nflStateStore: NflStateStore()
         )
     }
     .preferredColorScheme(.dark)

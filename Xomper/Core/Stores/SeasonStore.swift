@@ -51,6 +51,12 @@ final class SeasonStore {
         var union = Set(matchupSeasons)
         union.formUnion(draftSeasons)
         union.formUnion(chainSeasons)
+        // Always surface the current NFL season as a chip even before
+        // we have draft/matchup data for it — that's how 2026 (about
+        // to draft, no picks yet) shows up alongside completed seasons.
+        if !currentSeason.isEmpty {
+            union.insert(currentSeason)
+        }
 
         let sorted = union
             .sorted { (Int($0) ?? 0) > (Int($1) ?? 0) }
