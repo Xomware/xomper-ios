@@ -27,6 +27,7 @@
 		2F50FD9BC26550139DAD2E96 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7F510E2F428E107F1AD75CD /* Config.swift */; };
 		2F60B09D13BABD5E49B3DCBF /* MainShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4A254D17EF062523E09C9D4 /* MainShell.swift */; };
 		366C0075FA9F4ABA1C88C1A9 /* Championship.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18383A0375F5728A9E3FE065 /* Championship.swift */; };
+		368D96609CAF02430F340657 /* MatchupHistoryBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01A3969B9E9E60F0C59D83C9 /* MatchupHistoryBrowserView.swift */; };
 		3B1DDBCA7B19B8703FAF717E /* DrawerScrim.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D921732971689E8096F9549 /* DrawerScrim.swift */; };
 		3B67875F822BE9AA9BD052EF /* DraftHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6060C3A4F2B355757F1E3A2 /* DraftHistoryView.swift */; };
 		3E5A98150356BEB75FD87145 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 72178EB48829A7D249085476 /* Supabase */; };
@@ -112,6 +113,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		01A3969B9E9E60F0C59D83C9 /* MatchupHistoryBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchupHistoryBrowserView.swift; sourceTree = "<group>"; };
 		09DF8F2FE857C55AFB1C1205 /* NFLTeamColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NFLTeamColors.swift; sourceTree = "<group>"; };
 		10CD226D313FDD91E4037D8E /* SupabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseManager.swift; sourceTree = "<group>"; };
 		18383A0375F5728A9E3FE065 /* Championship.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Championship.swift; sourceTree = "<group>"; };
@@ -282,6 +284,7 @@
 		2D1CA584D084FE022DC6401D /* MatchupHistory */ = {
 			isa = PBXGroup;
 			children = (
+				01A3969B9E9E60F0C59D83C9 /* MatchupHistoryBrowserView.swift */,
 				DF491605034E9F8C00BC0572 /* MatchupHistoryView.swift */,
 			);
 			path = MatchupHistory;
@@ -661,6 +664,7 @@
 				D106F60A597D780F32FFA5E8 /* Matchup.swift in Sources */,
 				D09FC43EBE71A0DFF28B83D2 /* MatchupDetailView.swift in Sources */,
 				2378DF41F2BB3933117897A7 /* MatchupHistory.swift in Sources */,
+				368D96609CAF02430F340657 /* MatchupHistoryBrowserView.swift in Sources */,
 				7EA8F8FCEFFE3C165655208C /* MatchupHistoryView.swift in Sources */,
 				16F47DD114B2470F88D007A5 /* MatchupsView.swift in Sources */,
 				9E5C71DAB504EDCDF2084DF3 /* MyProfileView.swift in Sources */,

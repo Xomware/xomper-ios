@@ -10,7 +10,6 @@ struct DraftHistoryView: View {
 
     @State private var filterMode: PickFilter = .all
     @State private var selectedPlayer: Player?
-    @State private var hasLoaded = false
 
     private var currentSeason: String {
         seasonStore?.selectedSeason ?? ""
@@ -34,10 +33,8 @@ struct DraftHistoryView: View {
                 )
             }
         }
-        .task {
-            guard !hasLoaded else { return }
+        .task(id: leagueStore.myLeague?.leagueId) {
             await loadDraftHistory()
-            hasLoaded = true
         }
         .sheet(item: $selectedPlayer) { player in
             PlayerDetailView(player: player)
@@ -58,9 +55,7 @@ struct DraftHistoryView: View {
         .background(XomperColors.bgDark)
         .refreshable {
             historyStore.reset()
-            hasLoaded = false
             await loadDraftHistory()
-            hasLoaded = true
         }
     }
 
