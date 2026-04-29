@@ -248,7 +248,7 @@ struct TeamAnalyzerView: View {
                 .background(isSelected ? Color.cyan : XomperColors.surfaceLight.opacity(0.4))
                 .clipShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

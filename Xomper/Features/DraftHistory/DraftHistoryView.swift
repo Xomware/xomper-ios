@@ -92,7 +92,7 @@ struct DraftHistoryView: View {
                             .background(viewMode == mode ? XomperColors.championGold : Color.clear)
                             .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.pressableCard)
                     .accessibilityLabel(mode.label)
                     .accessibilityAddTraits(viewMode == mode ? .isSelected : [])
                 }
@@ -235,7 +235,7 @@ struct DraftHistoryView: View {
             .background(XomperColors.bgCard)
             .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
         .accessibilityLabel(
             "Round \(pick.round), pick \(pick.pickNo). \(pick.playerName), \(pick.playerPosition), \(pick.playerTeam)."
         )
@@ -365,8 +365,6 @@ private struct FilterButton: View {
     let isSelected: Bool
     let action: () -> Void
 
-    @State private var isPressed = false
-
     var body: some View {
         Button {
             let generator = UIImpactFeedbackGenerator(style: .light)
@@ -383,14 +381,7 @@ private struct FilterButton: View {
                 .background(isSelected ? XomperColors.championGold : XomperColors.surfaceLight)
                 .clipShape(Capsule())
         }
-        .buttonStyle(.plain)
-        .scaleEffect(isPressed ? 0.95 : 1.0)
-        .animation(XomperTheme.defaultAnimation, value: isPressed)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
+        .buttonStyle(PressableCardButtonStyle(pressedScale: 0.95))
         .accessibilityLabel(label)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
@@ -402,8 +393,6 @@ private struct DraftPickCard: View {
     let pick: DraftHistoryRecord
     let playerStore: PlayerStore
     let onTap: () -> Void
-
-    @State private var isPressed = false
 
     private var teamColor: NFLTeamColor {
         NFLTeamColors.color(for: pick.playerTeam)
@@ -433,15 +422,8 @@ private struct DraftPickCard: View {
             )
             .xomperShadow(.sm)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
         .disabled(!hasPlayerDetail)
-        .scaleEffect(isPressed ? 0.98 : 1.0)
-        .animation(XomperTheme.defaultAnimation, value: isPressed)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityDescription)
         .accessibilityHint(hasPlayerDetail ? "Double tap to view player details" : "")

@@ -10,7 +10,6 @@ struct MyProfileView: View {
 
     @State private var isSigningOut = false
     @State private var showSignOutConfirmation = false
-    @State private var signOutPressed = false
 
     var body: some View {
         ScrollView {
@@ -211,7 +210,7 @@ struct MyProfileView: View {
             }
             .xomperCard()
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
         .accessibilityLabel("View \(league.displayName)")
         .accessibilityHint("Double tap to open league dashboard")
     }
@@ -242,14 +241,7 @@ struct MyProfileView: View {
             .background(XomperColors.errorRed.opacity(0.1))
             .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
         }
-        .buttonStyle(.plain)
-        .scaleEffect(signOutPressed ? 0.97 : 1.0)
-        .animation(XomperTheme.defaultAnimation, value: signOutPressed)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in signOutPressed = true }
-                .onEnded { _ in signOutPressed = false }
-        )
+        .buttonStyle(PressableCardButtonStyle(pressedScale: 0.97))
         .disabled(isSigningOut)
         .padding(.top, XomperTheme.Spacing.md)
         .accessibilityLabel("Sign out")

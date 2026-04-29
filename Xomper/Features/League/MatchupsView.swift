@@ -152,7 +152,7 @@ struct MatchupsView: View {
             .background(XomperColors.bgCard)
             .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
         .accessibilityLabel("Week \(weekData.week), \(weekData.matchups.count) matchups")
         .accessibilityHint(expandedWeek == weekData.week ? "Collapse" : "Expand to see matchups")
     }
@@ -184,8 +184,6 @@ struct MatchupsView: View {
 private struct MatchupCardView: View {
     let matchup: MatchupHistoryRecord
     let onTap: () -> Void
-
-    @State private var isPressed = false
 
     var body: some View {
         Button {
@@ -219,14 +217,7 @@ private struct MatchupCardView: View {
             )
             .xomperShadow(.sm)
         }
-        .buttonStyle(.plain)
-        .scaleEffect(isPressed ? 0.98 : 1.0)
-        .animation(XomperTheme.defaultAnimation, value: isPressed)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
+        .buttonStyle(.pressableCard)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityDescription)
         .accessibilityHint("Double tap to view matchup details")

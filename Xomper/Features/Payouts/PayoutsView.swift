@@ -68,7 +68,7 @@ struct PayoutsView: View {
                     } label: {
                         projectionRow(projection)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.pressableCard)
                     .disabled(projection.standings == nil)
                 }
             }

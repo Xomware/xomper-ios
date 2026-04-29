@@ -53,7 +53,7 @@ struct SeasonPickerBar: View {
                 .background(isSelected ? XomperColors.championGold : XomperColors.surfaceLight)
                 .clipShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
         .accessibilityLabel("Season \(season)")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }

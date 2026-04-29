@@ -73,7 +73,7 @@ struct HeaderBar: View {
                     AvatarView(avatarID: avatarID, size: 36)
                         .frame(width: 44, height: 44)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.pressableCard)
                 .accessibilityLabel("Open menu")
                 .accessibilityHint("Shows standings, history, roster and settings")
                 .accessibilityAddTraits(.isButton)
@@ -92,7 +92,7 @@ struct HeaderBar: View {
                         .foregroundStyle(XomperColors.championGold)
                         .frame(width: 44, height: 44)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.pressableCard)
                 .accessibilityLabel("Search")
                 .accessibilityHint("Search for users or leagues")
             }

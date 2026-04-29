@@ -96,7 +96,7 @@ private struct UserResultRow: View {
             }
             .xomperCard()
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
         .accessibilityLabel("View profile for \(user.resolvedDisplayName)")
         .accessibilityHint("Double tap to open profile")
     }
@@ -154,7 +154,7 @@ private struct LeagueResultRow: View {
             }
             .xomperCard()
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
         .accessibilityLabel("View \(league.displayName)")
         .accessibilityHint("Double tap to open league")
     }
@@ -206,7 +206,7 @@ private struct PlayerResultRow: View {
             }
             .xomperCard()
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
         .accessibilityLabel(accessibilityLabelText)
         .accessibilityHint("Double tap to view player details")
     }

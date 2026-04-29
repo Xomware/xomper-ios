@@ -96,7 +96,7 @@ struct PlayoffBracketView: View {
                         .background(bracketType == type ? XomperColors.championGold : XomperColors.surfaceLight)
                         .clipShape(Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.pressableCard)
                 .accessibilityLabel(type.title)
                 .accessibilityAddTraits(bracketType == type ? .isSelected : [])
             }

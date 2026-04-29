@@ -388,8 +388,6 @@ struct PlayerRow: View {
     var slotLabel: String?
     let onTap: () -> Void
 
-    @State private var isPressed = false
-
     private var teamColor: NFLTeamColor {
         NFLTeamColors.color(for: player.displayTeam)
     }
@@ -453,14 +451,7 @@ struct PlayerRow: View {
             )
             .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
         }
-        .buttonStyle(.plain)
-        .scaleEffect(isPressed ? 0.97 : 1.0)
-        .animation(XomperTheme.defaultAnimation, value: isPressed)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
+        .buttonStyle(PressableCardButtonStyle(pressedScale: 0.97))
         .accessibilityLabel(playerAccessibilityLabel)
         .accessibilityHint("Double tap to view player details")
     }

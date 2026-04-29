@@ -130,7 +130,7 @@ struct TaxiSquadView: View {
                     .background(XomperColors.surfaceLight.opacity(0.4))
                     .clipShape(Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.pressableCard)
                 .accessibilityLabel(sortDescending ? "Sort descending" : "Sort ascending")
             }
         }
@@ -314,8 +314,6 @@ private struct TaxiGroupModeButton: View {
     let isSelected: Bool
     let action: () -> Void
 
-    @State private var isPressed = false
-
     var body: some View {
         Button {
             let generator = UIImpactFeedbackGenerator(style: .light)
@@ -332,14 +330,7 @@ private struct TaxiGroupModeButton: View {
                 .background(isSelected ? XomperColors.championGold : XomperColors.surfaceLight)
                 .clipShape(Capsule())
         }
-        .buttonStyle(.plain)
-        .scaleEffect(isPressed ? 0.95 : 1.0)
-        .animation(XomperTheme.defaultAnimation, value: isPressed)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
+        .buttonStyle(PressableCardButtonStyle(pressedScale: 0.95))
         .accessibilityLabel("\(mode.label) grouping")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
@@ -352,8 +343,6 @@ private struct TaxiPlayerCard: View {
     let isStolen: Bool
     let isOwnPlayer: Bool
     let onTap: () -> Void
-
-    @State private var isPressed = false
 
     private var teamColor: NFLTeamColor {
         NFLTeamColors.color(for: player.player.displayTeam)
@@ -381,14 +370,7 @@ private struct TaxiPlayerCard: View {
             )
             .xomperShadow(.sm)
         }
-        .buttonStyle(.plain)
-        .scaleEffect(isPressed ? 0.98 : 1.0)
-        .animation(XomperTheme.defaultAnimation, value: isPressed)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
+        .buttonStyle(.pressableCard)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityDescription)
         .accessibilityHint("Double tap to view details")
@@ -546,7 +528,7 @@ private struct FilterChip: View {
                 .background(isSelected ? XomperColors.championGold : XomperColors.surfaceLight.opacity(0.4))
                 .clipShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

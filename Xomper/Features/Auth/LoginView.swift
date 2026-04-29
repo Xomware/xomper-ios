@@ -234,8 +234,6 @@ private struct PrimaryButton: View {
     var isLoading: Bool = false
     let action: () -> Void
 
-    @State private var isPressed = false
-
     enum Style {
         case primary, secondary
     }
@@ -265,14 +263,8 @@ private struct PrimaryButton: View {
             .background(style == .primary ? XomperColors.championGold : XomperColors.surfaceLight)
             .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
         }
+        .buttonStyle(PressableCardButtonStyle(pressedScale: 0.97))
         .disabled(isLoading)
-        .scaleEffect(isPressed ? 0.97 : 1.0)
-        .animation(XomperTheme.defaultAnimation, value: isPressed)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
         .accessibilityLabel(title)
         .accessibilityAddTraits(.isButton)
     }
@@ -314,8 +306,6 @@ private struct GoogleSignInButton: View {
     var isLoading: Bool = false
     let action: () -> Void
 
-    @State private var isPressed = false
-
     var body: some View {
         Button {
             let generator = UIImpactFeedbackGenerator(style: .medium)
@@ -342,14 +332,8 @@ private struct GoogleSignInButton: View {
                     .fill(Color(hex: 0x4285F4))
             )
         }
+        .buttonStyle(PressableCardButtonStyle(pressedScale: 0.97))
         .disabled(isLoading)
-        .scaleEffect(isPressed ? 0.97 : 1.0)
-        .animation(XomperTheme.defaultAnimation, value: isPressed)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
         .accessibilityLabel("Continue with Google")
     }
 
