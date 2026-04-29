@@ -1,9 +1,19 @@
 import SwiftUI
 
+/// Page filter — when set, RulesView renders only that single section.
+/// `nil` (default) renders the full multi-section page (legacy behavior).
+enum RulesPage {
+    case scoring
+    case leagueSettings
+    case ruleProposals
+    case rulebook
+}
+
 struct RulesView: View {
     var league: League
     var rulesStore: RulesStore
     var authStore: AuthStore
+    var page: RulesPage? = nil
 
     @State private var showProposalForm = false
     @State private var expandedRuleSections: Set<Int> = []
@@ -15,11 +25,23 @@ struct RulesView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: XomperTheme.Spacing.lg) {
-                scoringSettingsSection
-                rosterSlotsSection
-                leagueSettingsSection
-                proposalsSection
-                leagueRulebookSection
+                switch page {
+                case .scoring:
+                    scoringSettingsSection
+                    rosterSlotsSection
+                case .leagueSettings:
+                    leagueSettingsSection
+                case .ruleProposals:
+                    proposalsSection
+                case .rulebook:
+                    leagueRulebookSection
+                case .none:
+                    scoringSettingsSection
+                    rosterSlotsSection
+                    leagueSettingsSection
+                    proposalsSection
+                    leagueRulebookSection
+                }
             }
             .padding(.horizontal, XomperTheme.Spacing.md)
             .padding(.vertical, XomperTheme.Spacing.sm)
