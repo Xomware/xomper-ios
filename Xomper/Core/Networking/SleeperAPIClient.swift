@@ -18,6 +18,7 @@ protocol SleeperAPIClientProtocol: Sendable {
     func fetchNflState() async throws -> NflState
     func fetchAllPlayers() async throws -> [String: Player]
     func fetchAllPlayersRaw(etag: String?) async throws -> PlayerFetchResult
+    func fetchPlayerSeasonStats(season: String) async throws -> [String: PlayerSeasonStats]
 }
 
 // MARK: - Player Fetch Result
@@ -129,6 +130,10 @@ final class SleeperAPIClient: SleeperAPIClientProtocol {
 
     func fetchAllPlayers() async throws -> [String: Player] {
         try await get("/players/nfl")
+    }
+
+    func fetchPlayerSeasonStats(season: String) async throws -> [String: PlayerSeasonStats] {
+        try await get("/stats/nfl/regular/\(season)")
     }
 
     func fetchAllPlayersRaw(etag: String?) async throws -> PlayerFetchResult {

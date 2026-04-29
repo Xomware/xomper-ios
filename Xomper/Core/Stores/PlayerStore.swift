@@ -7,6 +7,12 @@ final class PlayerStore {
     private(set) var isLoading = false
     private(set) var error: Error?
 
+    /// Per-season stat cache keyed by season string (e.g. "2025"). Lazily
+    /// populated on first request so PlayerDetailView can render avg
+    /// fantasy points without forcing a 5MB download on app launch.
+    private(set) var seasonStats: [String: [String: PlayerSeasonStats]] = [:]
+    private(set) var loadingSeasons: Set<String> = []
+
     private let apiClient: SleeperAPIClientProtocol
     private let cacheURL: URL
     private let etagKey = "PlayerStore.etag"
@@ -76,6 +82,34 @@ final class PlayerStore {
 
     func player(for id: String) -> Player? {
         players[id]
+    }
+
+    /// Lazily fetches and caches per-season fantasy stats. No-op if
+    /// already cached or already in flight. Errors are swallowed
+    /// silently — calling sites can render `nil` averages on failure
+    /// without breaking the rest of the player view.
+    func loadSeasonStats(_ season: String) async {
+        let trimmed = season.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty,
+              seasonStats[trimmed] == nil,
+              !loadingSeasons.contains(trimmed) else { return }
+
+        loadingSeasons.insert(trimmed)
+        defer { loadingSeasons.remove(trimmed) }
+
+        do {
+            let stats = try await apiClient.fetchPlayerSeasonStats(season: trimmed)
+            seasonStats[trimmed] = stats
+        } catch {
+            // Non-fatal — stats just won't render for this season.
+        }
+    }
+
+    /// Direct accessor for a single player's stats in a single season.
+    /// Returns nil when the season hasn't been loaded yet OR when the
+    /// player has no recorded stats for that season.
+    func stats(for playerId: String, season: String) -> PlayerSeasonStats? {
+        seasonStats[season]?[playerId]
     }
 
     func search(query: String, limit: Int = 25) -> [Player] {
