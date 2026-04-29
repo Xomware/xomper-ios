@@ -265,10 +265,9 @@ struct SearchView: View {
     // MARK: - League navigation
 
     private func navigateToLeague(_ league: League) {
-        // switchToLeague is now a no-op (see LeagueStore docs) — tray
-        // destinations always show the home league. Future iteration:
-        // push a dedicated `.leagueOverview(leagueId:)` route here.
-        navStore.select(.standings, router: router)
+        // Push a read-only overview of the tapped league. Tray
+        // destinations stay anchored to the home league.
+        router.navigate(to: .leagueOverview(leagueId: league.leagueId))
     }
 
     // MARK: - Player ownership in home league

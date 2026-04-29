@@ -210,10 +210,8 @@ struct ProfileView: View {
     // MARK: - Navigation
 
     private func navigateToLeague(_ league: League) {
-        Task {
-            await leagueStore.switchToLeague(id: league.leagueId)
-            navStore.select(.standings, router: router)
-        }
+        // Push a read-only overview — does not mutate `myLeague`.
+        router.navigate(to: .leagueOverview(leagueId: league.leagueId))
     }
 }
 
