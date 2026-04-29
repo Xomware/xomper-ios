@@ -30,7 +30,7 @@ struct DrawerView: View {
         ),
         TraySection(
             title: "Roster",
-            entries: [.myTeam, .taxiSquad]
+            entries: [.myTeam, .taxiSquad, .teamAnalyzer]
         ),
         TraySection(
             title: "Rules",
