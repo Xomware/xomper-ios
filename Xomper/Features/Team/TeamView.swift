@@ -22,15 +22,29 @@ struct TeamView: View {
             VStack(spacing: XomperTheme.Spacing.lg) {
                 teamHeader
 
-                if !hasPlayers && playerStore.isLoading {
+                if !hasPlayers && (playerStore.isLoading || isRefreshing) {
                     LoadingView(message: "Loading players...")
                         .frame(height: 200)
                 } else if !hasPlayers {
-                    EmptyStateView(
-                        icon: "arrow.clockwise",
-                        title: "Players Not Loaded",
-                        message: "Pull to refresh to load player data."
-                    )
+                    VStack(spacing: XomperTheme.Spacing.md) {
+                        EmptyStateView(
+                            icon: "arrow.clockwise",
+                            title: "Players Not Loaded",
+                            message: "Player data hasn't loaded yet."
+                        )
+                        Button {
+                            Task { await refreshRoster() }
+                        } label: {
+                            Label("Retry", systemImage: "arrow.clockwise")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(XomperColors.bgDark)
+                                .padding(.horizontal, XomperTheme.Spacing.lg)
+                                .padding(.vertical, XomperTheme.Spacing.sm)
+                                .background(XomperColors.championGold)
+                                .clipShape(Capsule())
+                        }
+                        .accessibilityLabel("Retry loading players")
+                    }
                 } else {
                     startersSection
                     benchSection
