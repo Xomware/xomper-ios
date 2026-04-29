@@ -42,7 +42,7 @@ struct MainShell: View {
                     router: router,
                     avatarID: userStore.myUser?.avatar,
                     seasonStore: seasonStore,
-                    leagueName: leagueStore.currentLeague?.name ?? leagueStore.myLeague?.name
+                    leagueName: leagueStore.myLeague?.name
                 )
 
                 NavigationStack(path: $router.path) {
@@ -200,7 +200,7 @@ struct MainShell: View {
     /// when the league isn't loaded yet.
     @ViewBuilder
     private func rulesPage(_ page: RulesPage) -> some View {
-        if let league = leagueStore.currentLeague ?? leagueStore.myLeague {
+        if let league = leagueStore.myLeague {
             RulesView(
                 league: league,
                 rulesStore: rulesStore,
@@ -223,10 +223,8 @@ struct MainShell: View {
     @ViewBuilder
     private var myTeamRoot: some View {
         if let team = teamStore.myTeam,
-           let league = leagueStore.currentLeague ?? leagueStore.myLeague,
-           let roster = (leagueStore.currentLeagueRosters.isEmpty
-                ? leagueStore.myLeagueRosters
-                : leagueStore.currentLeagueRosters
+           let league = leagueStore.myLeague,
+           let roster = (leagueStore.myLeagueRosters
            ).first(where: { $0.rosterId == team.rosterId }) {
             TeamView(
                 team: team,
@@ -280,13 +278,13 @@ struct MainShell: View {
             )
 
         case .teamDetail(let rosterId):
-            if let league = leagueStore.currentLeague ?? leagueStore.myLeague {
+            if let league = leagueStore.myLeague {
                 let standings = StandingsBuilder.buildStandings(
-                    rosters: leagueStore.currentLeagueRosters.isEmpty ? leagueStore.myLeagueRosters : leagueStore.currentLeagueRosters,
-                    users: leagueStore.currentLeagueUsers.isEmpty ? leagueStore.myLeagueUsers : leagueStore.currentLeagueUsers,
+                    rosters: leagueStore.myLeagueRosters,
+                    users: leagueStore.myLeagueUsers,
                     league: league
                 )
-                let rosters = leagueStore.currentLeagueRosters.isEmpty ? leagueStore.myLeagueRosters : leagueStore.currentLeagueRosters
+                let rosters = leagueStore.myLeagueRosters
                 if let team = standings.first(where: { $0.rosterId == rosterId }),
                    let roster = rosters.first(where: { $0.rosterId == rosterId }) {
                     TeamView(
@@ -339,6 +337,7 @@ struct MainShell: View {
             SearchView(
                 leagueStore: leagueStore,
                 playerStore: playerStore,
+                authStore: authStore,
                 router: router,
                 navStore: navStore
             )

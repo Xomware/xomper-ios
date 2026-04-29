@@ -160,7 +160,7 @@ struct MatchupsView: View {
     // MARK: - Load
 
     private func loadMatchups() async {
-        guard let leagueId = leagueStore.currentLeague?.leagueId else { return }
+        guard let leagueId = leagueStore.myLeague?.leagueId else { return }
 
         await leagueStore.loadLeagueChain(startingFrom: leagueId)
         let chain = leagueStore.leagueChain

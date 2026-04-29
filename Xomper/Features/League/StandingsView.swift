@@ -77,7 +77,7 @@ struct StandingsView: View {
                     team: team,
                     rank: team.leagueRank,
                     isMyTeam: team.userId == authStore.sleeperUserId,
-                    playoffCutoff: leagueStore.currentLeague?.settings?.playoffTeams
+                    playoffCutoff: leagueStore.myLeague?.settings?.playoffTeams
                 ) {
                     selectTeam(team)
                 } onProfileTap: {
@@ -162,17 +162,17 @@ struct StandingsView: View {
     }
 
     private func selectTeam(_ team: StandingsTeam) {
-        let user = leagueStore.currentLeagueUsers.first { $0.userId == team.userId }
+        let user = leagueStore.myLeagueUsers.first { $0.userId == team.userId }
         teamStore.setCurrentTeam(team, user: user)
         router.navigate(to: .teamDetail(rosterId: team.rosterId))
     }
 
     private func buildStandings() {
-        guard let league = leagueStore.currentLeague else { return }
+        guard let league = leagueStore.myLeague else { return }
 
         standings = StandingsBuilder.buildStandings(
-            rosters: leagueStore.currentLeagueRosters,
-            users: leagueStore.currentLeagueUsers,
+            rosters: leagueStore.myLeagueRosters,
+            users: leagueStore.myLeagueUsers,
             league: league
         )
 
