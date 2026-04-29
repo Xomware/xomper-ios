@@ -28,6 +28,7 @@ struct HeaderBar: View {
         .matchups,
         .draftHistory,
         .matchupHistory,
+        .payouts,
     ]
 
     var body: some View {
