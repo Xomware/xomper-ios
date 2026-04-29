@@ -64,8 +64,22 @@ struct MainShell: View {
                 displayName: resolvedDisplayName,
                 email: authStore.session?.user.email
             )
+
+            // Edge-swipe-to-open hit area. Confined to a 20pt strip on
+            // the leading edge so the drag gesture doesn't race with
+            // scroll/tap gestures across the whole content area. Only
+            // active when the drawer is closed and the user is at the
+            // root of the nav stack — otherwise the system swipe-to-pop
+            // and inner scrolls take precedence.
+            if !navStore.isDrawerOpen && router.path.count == 0 {
+                Color.clear
+                    .frame(width: 20)
+                    .frame(maxHeight: .infinity)
+                    .contentShape(Rectangle())
+                    .gesture(edgeDragGesture)
+                    .accessibilityHidden(true)
+            }
         }
-        .gesture(edgeDragGesture)
         .task {
             await bootstrapPhase1()
             seasonStore.bootstrap(currentSeason: nflStateStore.currentSeason)
