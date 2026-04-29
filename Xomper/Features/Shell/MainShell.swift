@@ -186,6 +186,13 @@ struct MainShell: View {
                     valuesStore: valuesStore
                 )
 
+            case .payouts:
+                PayoutsView(
+                    leagueStore: leagueStore,
+                    historyStore: historyStore,
+                    authStore: authStore
+                )
+
             case .rulebook:
                 rulesPage(.rulebook)
 
