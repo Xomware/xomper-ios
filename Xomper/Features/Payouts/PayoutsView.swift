@@ -1,20 +1,35 @@
 import SwiftUI
 
-/// Projects the signed-in user's current payout total based on the
-/// hardcoded `LeaguePayouts.charlotteDynastyDefault` structure +
-/// derived stats (champion bracket, season-high PF, weekly-high tally).
-/// Categories that need data we don't yet aggregate (position MVPs)
-/// render as "Coming soon" rows so the structure is visible.
+/// Projects payouts for the season the user has selected via the
+/// shared `SeasonStore` chip. Defaults to the current NFL season.
+/// For the current season, every category resolves from live data
+/// (live standings, bracket, per-player starter points). For past
+/// seasons, falls back to history-derived projections — championship
+/// / runner-up / 3rd from `MatchupHistoryRecord.playoffPlacement`,
+/// weekly high + season high PF from filtered matchup history.
+/// Position MVPs degrade with an explanation since per-player history
+/// isn't kept across seasons.
 struct PayoutsView: View {
     var leagueStore: LeagueStore
     var historyStore: HistoryStore
     var playerStore: PlayerStore
     var playerPointsStore: PlayerPointsStore
     var authStore: AuthStore
+    var nflStateStore: NflStateStore
+
+    @Environment(\.selectedSeason) private var seasonStore: SeasonStore?
 
     private let payouts: LeaguePayouts = .charlotteDynastyDefault
 
     @State private var selectedDrillDown: PayoutProjection?
+
+    private var selectedSeason: String {
+        seasonStore?.selectedSeason ?? nflStateStore.currentSeason
+    }
+
+    private var isCurrentSeason: Bool {
+        selectedSeason == nflStateStore.currentSeason
+    }
 
     var body: some View {
         Group {
@@ -42,17 +57,27 @@ struct PayoutsView: View {
     // MARK: - Content
 
     private var content: some View {
-        let standings = computedStandings
-        let projections = PayoutCalculator.project(
-            payouts: payouts,
-            standings: standings,
-            matchupHistory: historyStore.matchupHistory,
-            winnersBracket: leagueStore.winnersBracket,
-            rosters: leagueStore.myLeagueRosters,
-            playerStore: playerStore,
-            playerPointsStore: playerPointsStore,
-            userId: authStore.sleeperUserId
-        )
+        let projections: [PayoutProjection] = {
+            if isCurrentSeason {
+                return PayoutCalculator.project(
+                    payouts: payouts,
+                    standings: computedStandings,
+                    matchupHistory: historyStore.matchupHistory,
+                    winnersBracket: leagueStore.winnersBracket,
+                    rosters: leagueStore.myLeagueRosters,
+                    playerStore: playerStore,
+                    playerPointsStore: playerPointsStore,
+                    userId: authStore.sleeperUserId
+                )
+            } else {
+                return PayoutCalculator.projectHistorical(
+                    season: selectedSeason,
+                    payouts: payouts,
+                    matchupHistory: historyStore.matchupHistory,
+                    userId: authStore.sleeperUserId
+                )
+            }
+        }()
         let projected = projections.map(\.projectedAmount).reduce(0, +)
         let upside = payouts.totalUpside
 
@@ -81,7 +106,7 @@ struct PayoutsView: View {
 
     private func summaryCard(projected: Double, upside: Double) -> some View {
         VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
-            Text("Projected payout")
+            Text(isCurrentSeason ? "Projected payout · \(selectedSeason)" : "\(selectedSeason) earnings")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(XomperColors.textMuted)
                 .textCase(.uppercase)
@@ -96,7 +121,11 @@ struct PayoutsView: View {
                 .font(.caption)
                 .foregroundStyle(XomperColors.textSecondary)
 
-            Text("Based on current league data + the hardcoded payout structure. Tap any settled category for the full breakdown.")
+            Text(
+                isCurrentSeason
+                    ? "Based on current league data + the hardcoded payout structure. Tap any settled category for the full breakdown."
+                    : "Settled payouts for the \(selectedSeason) season. Position MVPs aren't retained for past seasons."
+            )
                 .font(.caption2)
                 .foregroundStyle(XomperColors.textMuted)
                 .padding(.top, XomperTheme.Spacing.xs)

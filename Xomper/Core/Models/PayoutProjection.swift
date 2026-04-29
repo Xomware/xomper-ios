@@ -47,10 +47,9 @@ struct PayoutProjection: Sendable, Identifiable {
 @MainActor
 enum PayoutCalculator {
 
-    /// Builds projections for every configured category. Pure
-    /// derivation from the existing stores — no network. Categories
-    /// the data doesn't support (position MVPs without per-player
-    /// scoring) come back with `unavailableReason` set.
+    /// Current-season projections. Uses the live league snapshot
+    /// (standings, roster, bracket, per-player starter points) so
+    /// every category can be resolved.
     static func project(
         payouts: LeaguePayouts,
         standings: [StandingsTeam],
@@ -85,6 +84,115 @@ enum PayoutCalculator {
                 )
             }
         }
+    }
+
+    /// Historical-season projections. Live snapshots aren't available
+    /// for past leagues (rosters/playerPoints/bracket are anchored to
+    /// the current league only), so this branch derives everything it
+    /// can from the persisted matchup history (W-L-PF, weekly highs,
+    /// championship/runner-up/3rd from `record.playoffPlacement`
+    /// stamped at ingest by HistoryStore). Position MVPs and any
+    /// category that needs per-player starter aggregation degrade
+    /// with `unavailableReason` so the structure of the past season's
+    /// pot is still visible.
+    static func projectHistorical(
+        season: String,
+        payouts: LeaguePayouts,
+        matchupHistory: [MatchupHistoryRecord],
+        userId: String?
+    ) -> [PayoutProjection] {
+        let seasonRecords = matchupHistory.filter { $0.season == season }
+        let standings = StandingsBuilder.buildStandingsFromHistory(records: seasonRecords)
+
+        return payouts.categories.map { category in
+            switch category.kind {
+            case .champion:
+                return historicalPlacement(category: category, placement: 1, records: seasonRecords, userId: userId)
+            case .runnerUp:
+                return historicalPlacement(category: category, placement: 2, records: seasonRecords, userId: userId)
+            case .thirdPlace:
+                return historicalPlacement(category: category, placement: 3, records: seasonRecords, userId: userId)
+            case .seasonHighPF:
+                return seasonHighPF(category: category, standings: standings, userId: userId)
+            case .weeklyHighScore:
+                return weeklyHigh(category: category, matchupHistory: seasonRecords, standings: standings, userId: userId)
+            case .positionMVP:
+                return PayoutProjection(
+                    category: category,
+                    leader: nil,
+                    userPlacement: .notApplicable,
+                    projectedAmount: 0,
+                    standings: nil,
+                    unavailableReason: "Per-player history not retained for past seasons."
+                )
+            }
+        }
+    }
+
+    // MARK: - Historical placement (champion / runner-up / 3rd)
+
+    /// Resolve the team that earned a given playoff `placement` for a
+    /// past season directly from the stamped `playoffPlacement` field
+    /// on matchup history records — no live bracket needed.
+    /// Placement 1 = winning team of the championship game, 2 = the
+    /// loser, 3 = winning team of the 3rd-place game.
+    private static func historicalPlacement(
+        category: LeaguePayoutCategory,
+        placement: Int,
+        records: [MatchupHistoryRecord],
+        userId: String?
+    ) -> PayoutProjection {
+        // For placements 1 and 3, the bracket places the *winner* of
+        // that placement match. For placement 2 (runner-up), it's the
+        // loser of the championship (placement-1) match.
+        let lookupPlacement = (placement == 2) ? 1 : placement
+        guard let match = records.first(where: { $0.playoffPlacement == lookupPlacement }) else {
+            return PayoutProjection(
+                category: category,
+                leader: nil,
+                userPlacement: .notApplicable,
+                projectedAmount: 0,
+                standings: nil,
+                unavailableReason: "No \(category.label) game recorded this season."
+            )
+        }
+
+        let targetRosterId: Int? = {
+            switch placement {
+            case 1, 3:
+                return match.winnerRosterId
+            case 2:
+                guard let winner = match.winnerRosterId else { return nil }
+                return winner == match.teamARosterId ? match.teamBRosterId : match.teamARosterId
+            default:
+                return nil
+            }
+        }()
+
+        guard let rid = targetRosterId else {
+            return PayoutProjection(
+                category: category,
+                leader: nil,
+                userPlacement: .notApplicable,
+                projectedAmount: 0,
+                standings: nil,
+                unavailableReason: "Result tied or missing."
+            )
+        }
+
+        let isTeamA = rid == match.teamARosterId
+        let winnerUserId = isTeamA ? match.teamAUserId : match.teamBUserId
+        let winnerTeamName = isTeamA ? match.teamATeamName : match.teamBTeamName
+        let isMine = winnerUserId == userId
+
+        return PayoutProjection(
+            category: category,
+            leader: .init(userId: winnerUserId, teamName: winnerTeamName, displayValue: ""),
+            userPlacement: isMine ? .won(amount: category.amount) : .behind(by: ""),
+            projectedAmount: isMine ? category.amount : 0,
+            standings: nil,
+            unavailableReason: nil
+        )
     }
 
     // MARK: - Position MVP

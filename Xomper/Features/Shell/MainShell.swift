@@ -195,7 +195,8 @@ struct MainShell: View {
                     historyStore: historyStore,
                     playerStore: playerStore,
                     playerPointsStore: playerPointsStore,
-                    authStore: authStore
+                    authStore: authStore,
+                    nflStateStore: nflStateStore
                 )
 
             case .draftOrder:
