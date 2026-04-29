@@ -13,6 +13,14 @@ final class PlayerValuesStore {
     /// Sleeper player ID → dynasty value. Empty until first load.
     private(set) var valuesById: [String: Int] = [:]
     private(set) var positionsById: [String: String] = [:]
+    /// Pick name → dynasty value. Pick names come from FantasyCalc
+    /// (e.g. "2026 Mid 1st", "2027 Early 2nd"). Used by the trade
+    /// analyzer's pick selector.
+    private(set) var pickValuesByName: [String: Int] = [:]
+    /// Pick name → year (e.g. "2026"), parsed from the leading
+    /// 4-digit prefix in the pick name. Used to filter to current +
+    /// near-future years in the trade picker.
+    private(set) var pickYearsByName: [String: Int] = [:]
     private(set) var isLoading = false
     private(set) var error: Error?
     private(set) var lastLoadedAt: Date?
@@ -48,15 +56,28 @@ final class PlayerValuesStore {
 
             var byId: [String: Int] = [:]
             var posById: [String: String] = [:]
+            var picksByName: [String: Int] = [:]
+            var pickYearsByName: [String: Int] = [:]
             byId.reserveCapacity(decoded.count)
             posById.reserveCapacity(decoded.count)
             for entry in decoded {
-                guard let sid = entry.sleeperId, !sid.isEmpty else { continue }
-                byId[sid] = entry.value
-                if let pos = entry.position { posById[sid] = pos }
+                if entry.isPick {
+                    guard let name = entry.name, !name.isEmpty else { continue }
+                    picksByName[name] = entry.value
+                    // Year prefix: first 4 digits in the name string.
+                    if let year = parseYearPrefix(name) {
+                        pickYearsByName[name] = year
+                    }
+                } else {
+                    guard let sid = entry.sleeperId, !sid.isEmpty else { continue }
+                    byId[sid] = entry.value
+                    if let pos = entry.position { posById[sid] = pos }
+                }
             }
             self.valuesById = byId
             self.positionsById = posById
+            self.pickValuesByName = picksByName
+            self.pickYearsByName = pickYearsByName
             self.lastLoadedAt = Date()
         } catch {
             self.error = error
@@ -71,7 +92,38 @@ final class PlayerValuesStore {
         positionsById[playerId]
     }
 
+    /// Lookup pick value by display name (e.g. "2026 Mid 1st").
+    func pickValue(for name: String) -> Int {
+        pickValuesByName[name] ?? 0
+    }
+
+    /// All pick names currently fetchable, sorted by value desc so
+    /// the trade picker leads with the highest-value picks.
+    var allPickNames: [String] {
+        pickValuesByName.keys.sorted { (pickValuesByName[$0] ?? 0) > (pickValuesByName[$1] ?? 0) }
+    }
+
+    /// Pick names filtered to a year range (e.g. current + next 2
+    /// years). Sorted by value desc.
+    func pickNames(forYears years: Set<Int>) -> [String] {
+        pickValuesByName.keys
+            .filter { years.contains(pickYearsByName[$0] ?? -1) }
+            .sorted { (pickValuesByName[$0] ?? 0) > (pickValuesByName[$1] ?? 0) }
+    }
+
     var hasValues: Bool {
         !valuesById.isEmpty
     }
+}
+
+/// Parse the leading 4-digit year prefix from a FantasyCalc pick name
+/// like "2026 Mid 1st" or "2027 Early 2nd". Returns nil if the name
+/// doesn't start with a 4-digit token. Top-level so it stays
+/// nonisolated (the store decode path is on the main actor but the
+/// parse itself is pure).
+private func parseYearPrefix(_ name: String) -> Int? {
+    let trimmed = name.trimmingCharacters(in: .whitespaces)
+    let prefix = trimmed.prefix(4)
+    guard prefix.count == 4 else { return nil }
+    return Int(prefix)
 }
