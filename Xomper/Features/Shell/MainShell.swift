@@ -149,11 +149,8 @@ struct MainShell: View {
                 )
 
             case .matchupHistory:
-                MatchupHistoryView(
-                    user1Id: authStore.sleeperUserId ?? "",
-                    user2Id: "",
-                    user1Name: userStore.myUser?.resolvedDisplayName ?? "",
-                    user2Name: "",
+                MatchupHistoryBrowserView(
+                    leagueStore: leagueStore,
                     historyStore: historyStore
                 )
 
