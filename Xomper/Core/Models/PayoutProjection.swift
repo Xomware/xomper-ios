@@ -56,6 +56,9 @@ enum PayoutCalculator {
         standings: [StandingsTeam],
         matchupHistory: [MatchupHistoryRecord],
         winnersBracket: [PlayoffBracketMatch]?,
+        rosters: [Roster],
+        playerStore: PlayerStore,
+        playerPointsStore: PlayerPointsStore,
         userId: String?
     ) -> [PayoutProjection] {
         payouts.categories.map { category in
@@ -71,16 +74,136 @@ enum PayoutCalculator {
             case .weeklyHighScore:
                 weeklyHigh(category: category, matchupHistory: matchupHistory, standings: standings, userId: userId)
             case .positionMVP(let pos):
-                PayoutProjection(
+                positionMVP(
                     category: category,
-                    leader: nil,
-                    userPlacement: .pending,
-                    projectedAmount: 0,
-                    standings: nil,
-                    unavailableReason: "Per-player weekly scoring not yet wired (\(pos) MVP)."
+                    position: pos,
+                    rosters: rosters,
+                    standings: standings,
+                    playerStore: playerStore,
+                    playerPointsStore: playerPointsStore,
+                    userId: userId
                 )
             }
         }
+    }
+
+    // MARK: - Position MVP
+
+    /// "MVP" is the single PLAYER at the given position with the most
+    /// season starter-points. Owner of that player at the time of
+    /// computation wins the pot.
+    ///
+    /// Importantly, only points scored while STARTING count toward
+    /// the total — the owner had to play them. PlayerPointsStore
+    /// already enforces this by aggregating from `starters_points`
+    /// only (bench points are ignored).
+    private static func positionMVP(
+        category: LeaguePayoutCategory,
+        position: String,
+        rosters: [Roster],
+        standings: [StandingsTeam],
+        playerStore: PlayerStore,
+        playerPointsStore: PlayerPointsStore,
+        userId: String?
+    ) -> PayoutProjection {
+        guard playerPointsStore.hasData else {
+            return PayoutProjection(
+                category: category,
+                leader: nil,
+                userPlacement: .pending,
+                projectedAmount: 0,
+                standings: nil,
+                unavailableReason: "Per-player weekly scoring still loading…"
+            )
+        }
+
+        // Filter PlayerPointsStore to players currently rostered in
+        // this league at the target position. A player who's been
+        // dropped or is on another league's roster doesn't qualify.
+        let standingsByRosterId = Dictionary(uniqueKeysWithValues: standings.map { ($0.rosterId, $0) })
+        var rows: [PayoutProjection.StandingsRow] = []
+        var bestUserId: String?
+        var bestRosterId: Int?
+        var bestPlayerId: String?
+        var bestTotal: Double = 0
+        var bestPlayerLabel: String = ""
+
+        for roster in rosters {
+            guard let rosterTeam = standingsByRosterId[roster.rosterId] else { continue }
+            // Walk every player on this roster (starters + bench +
+            // taxi + reserve — the points cache already accounts for
+            // who actually started which week).
+            for pid in roster.players ?? [] {
+                let pts = playerPointsStore.points(for: pid)
+                guard pts > 0 else { continue }
+                let pos = playerStore.player(for: pid)?.displayPosition ?? ""
+                guard pos == position else { continue }
+
+                if pts > bestTotal {
+                    bestTotal = pts
+                    bestUserId = rosterTeam.userId
+                    bestRosterId = roster.rosterId
+                    bestPlayerId = pid
+                    let player = playerStore.player(for: pid)
+                    bestPlayerLabel = player?.fullDisplayName ?? "Player #\(pid)"
+                }
+
+                // Aggregate per-team totals at this position for the
+                // drill-down view (sum a manager's full position room,
+                // not just the MVP player).
+                if let row = rows.firstIndex(where: { $0.userId == rosterTeam.userId }) {
+                    let updated = rows[row]
+                    rows[row] = PayoutProjection.StandingsRow(
+                        userId: updated.userId,
+                        teamName: updated.teamName,
+                        value: updated.value + pts,
+                        displayValue: String(format: "%.1f", updated.value + pts)
+                    )
+                } else {
+                    rows.append(PayoutProjection.StandingsRow(
+                        userId: rosterTeam.userId,
+                        teamName: rosterTeam.teamName,
+                        value: pts,
+                        displayValue: String(format: "%.1f", pts)
+                    ))
+                }
+            }
+        }
+
+        // Sort drill-down rows by per-team total points at this
+        // position (descending) so the manager whose lineup leans on
+        // the MVP can see who's catching up.
+        rows.sort { $0.value > $1.value }
+
+        guard let bestUserId, let bestRosterId else {
+            return PayoutProjection(
+                category: category,
+                leader: nil,
+                userPlacement: .behind(by: ""),
+                projectedAmount: 0,
+                standings: rows.isEmpty ? nil : rows,
+                unavailableReason: nil
+            )
+        }
+        _ = bestRosterId  // owner roster captured for future drill-in
+        _ = bestPlayerId
+
+        let leaderTeam = standingsByRosterId.values.first { $0.userId == bestUserId }
+        let isMine = bestUserId == userId
+        let leaderDisplay = "\(bestPlayerLabel) · \(String(format: "%.1f", bestTotal)) pts"
+
+        return PayoutProjection(
+            category: category,
+            leader: PayoutProjection.LeaderRef(
+                userId: bestUserId,
+                teamName: leaderTeam?.teamName ?? "Unknown",
+                displayValue: leaderDisplay
+            ),
+            userPlacement: isMine ? .leading : .behind(by: ""),
+            projectedAmount: isMine ? category.amount : 0,
+            standings: rows,
+            unavailableReason: nil
+        )
     }
 
     // MARK: - Champion / runner-up / 3rd

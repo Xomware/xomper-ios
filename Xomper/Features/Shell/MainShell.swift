@@ -29,6 +29,7 @@ struct MainShell: View {
     @State private var router = AppRouter()
     @State private var seasonStore = SeasonStore()
     @State private var valuesStore = PlayerValuesStore()
+    @State private var playerPointsStore = PlayerPointsStore()
 
     // MARK: - Body
 
@@ -190,6 +191,8 @@ struct MainShell: View {
                 PayoutsView(
                     leagueStore: leagueStore,
                     historyStore: historyStore,
+                    playerStore: playerStore,
+                    playerPointsStore: playerPointsStore,
                     authStore: authStore
                 )
 

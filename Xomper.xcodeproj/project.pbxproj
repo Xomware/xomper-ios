@@ -13,6 +13,7 @@
 		08251EFB3181B634553CDCE1 /* TaxiSquadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57940AEB84889A20016648F2 /* TaxiSquadView.swift */; };
 		0C2B77E0A46ECE55AE8CE46F /* DivisionBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B670A3A0762D22FB3202E1E /* DivisionBadge.swift */; };
 		114998283E6705D075ED2CA7 /* League.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD88B55D96BD7C519B6B65B6 /* League.swift */; };
+		11EFE5DD5C1D6DE5056597BB /* PlayerPointsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D36829F2AD0FD089788B9CE1 /* PlayerPointsStore.swift */; };
 		133F58C70F4FA02676079E9A /* RulesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FDC8A9B02A2BFD83398D04F /* RulesStore.swift */; };
 		143F0C4F56D88430BDC07B2A /* SeasonPickerBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD5AF5657020E1DBB5CB8886 /* SeasonPickerBar.swift */; };
 		16F47DD114B2470F88D007A5 /* MatchupsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8521885A7FF4C6910DFBF549 /* MatchupsView.swift */; };
@@ -199,6 +200,7 @@
 		C9382BCB18DFEB416A50A039 /* RulesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RulesView.swift; sourceTree = "<group>"; };
 		CC3F6B5022E8151683A45F4F /* PlayerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerStore.swift; sourceTree = "<group>"; };
 		CEAEC7A4917990425085AE71 /* PushNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationManager.swift; sourceTree = "<group>"; };
+		D36829F2AD0FD089788B9CE1 /* PlayerPointsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerPointsStore.swift; sourceTree = "<group>"; };
 		D7F3F1A18F4EEC5A3F81FD28 /* SeasonStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeasonStore.swift; sourceTree = "<group>"; };
 		DB1FE16B5220928685DCF19E /* SleeperAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleeperAPIClient.swift; sourceTree = "<group>"; };
 		DBD0F6820960B354EAB3E89D /* LoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingView.swift; sourceTree = "<group>"; };
@@ -502,6 +504,7 @@
 				F013CD37874EFB0FA1CB4261 /* HistoryStore.swift */,
 				56BB91320E3D5EBE1F777838 /* LeagueStore.swift */,
 				94E125AD2AA5212D0EB4C13A /* NflStateStore.swift */,
+				D36829F2AD0FD089788B9CE1 /* PlayerPointsStore.swift */,
 				CC3F6B5022E8151683A45F4F /* PlayerStore.swift */,
 				5CE99E9B095120FB6636FC8A /* PlayerValuesStore.swift */,
 				5FDC8A9B02A2BFD83398D04F /* RulesStore.swift */,
@@ -721,6 +724,7 @@
 				31CFADD9ECC5AC0D09B24BCF /* PayoutsView.swift in Sources */,
 				C9D656F4702A3483BB8E970C /* Player.swift in Sources */,
 				4DB9374CF45A69E97C02FC94 /* PlayerDetailView.swift in Sources */,
+				11EFE5DD5C1D6DE5056597BB /* PlayerPointsStore.swift in Sources */,
 				93D8C8E352B60752D37FD0FF /* PlayerSeasonStats.swift in Sources */,
 				FCD03562C1879183A5DC02E2 /* PlayerStore.swift in Sources */,
 				BE71F196BAB7D9E78BE94A9D /* PlayerValue.swift in Sources */,
