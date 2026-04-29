@@ -99,8 +99,7 @@ struct TrophyCaseSection: View {
         // current/my league. If neither is set yet, give up — the section will
         // re-evaluate on subsequent renders once league data lands.
         if leagueStore.leagueChain.isEmpty {
-            guard let leagueId = leagueStore.currentLeague?.leagueId
-                ?? leagueStore.myLeague?.leagueId else { return }
+            guard let leagueId = leagueStore.myLeague?.leagueId else { return }
             await leagueStore.loadLeagueChain(startingFrom: leagueId)
         }
 

@@ -13,6 +13,9 @@ struct SearchResultGroup: View {
     let onUserTap: (SleeperUser) -> Void
     let onLeagueTap: (League) -> Void
     let onPlayerTap: (String) -> Void
+    /// Resolves "owned by" info for a player in the user's home league
+    /// (CLT). Returns the team name + division, or nil for free agents.
+    let ownerLookup: (String) -> PlayerOwnership?
 
     var body: some View {
         ScrollView {
@@ -30,7 +33,10 @@ struct SearchResultGroup: View {
                 if !results.players.isEmpty {
                     sectionHeader("Players")
                     ForEach(results.players) { player in
-                        PlayerResultRow(player: player) {
+                        PlayerResultRow(
+                            player: player,
+                            ownership: ownerLookup(player.playerId)
+                        ) {
                             onPlayerTap(player.playerId)
                         }
                     }
@@ -156,8 +162,18 @@ private struct LeagueResultRow: View {
 
 // MARK: - Player row
 
+/// Per-player ownership in the user's home league (CLT). Resolved at
+/// search-result render time from `LeagueStore.myLeagueRosters`.
+struct PlayerOwnership: Sendable, Hashable {
+    /// Sleeper team display name (e.g. "Nvr 4get Da CLT").
+    let teamName: String
+    /// `true` when this is the signed-in user's roster.
+    let isMine: Bool
+}
+
 private struct PlayerResultRow: View {
     let player: Player
+    let ownership: PlayerOwnership?
     let onTap: () -> Void
 
     var body: some View {
@@ -178,6 +194,8 @@ private struct PlayerResultRow: View {
                     Text("\(player.displayPosition) · \(player.displayTeam)")
                         .font(.caption)
                         .foregroundStyle(XomperColors.textSecondary)
+
+                    ownershipPill
                 }
 
                 Spacer()
@@ -189,7 +207,40 @@ private struct PlayerResultRow: View {
             .xomperCard()
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(player.fullDisplayName), \(player.displayPosition), \(player.displayTeam)")
+        .accessibilityLabel(accessibilityLabelText)
         .accessibilityHint("Double tap to view player details")
+    }
+
+    @ViewBuilder
+    private var ownershipPill: some View {
+        if let ownership {
+            HStack(spacing: XomperTheme.Spacing.xs) {
+                Image(systemName: ownership.isMine ? "person.fill.checkmark" : "person.fill")
+                    .font(.caption2)
+                Text(ownership.isMine ? "On your team" : "Owned by \(ownership.teamName)")
+                    .font(.caption2)
+                    .lineLimit(1)
+            }
+            .foregroundStyle(ownership.isMine ? XomperColors.bgDark : XomperColors.textPrimary)
+            .padding(.horizontal, XomperTheme.Spacing.sm)
+            .padding(.vertical, 3)
+            .background(
+                ownership.isMine
+                    ? AnyShapeStyle(XomperColors.championGold)
+                    : AnyShapeStyle(Color.white.opacity(0.10))
+            )
+            .clipShape(Capsule())
+        } else {
+            Text("Free agent")
+                .font(.caption2)
+                .foregroundStyle(XomperColors.textMuted)
+        }
+    }
+
+    private var accessibilityLabelText: String {
+        let base = "\(player.fullDisplayName), \(player.displayPosition), \(player.displayTeam)"
+        guard let ownership else { return "\(base), free agent" }
+        if ownership.isMine { return "\(base), on your team" }
+        return "\(base), owned by \(ownership.teamName)"
     }
 }

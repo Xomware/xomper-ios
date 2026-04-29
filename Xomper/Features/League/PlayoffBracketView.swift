@@ -159,16 +159,16 @@ struct PlayoffBracketView: View {
     }
 
     private func buildStandings() {
-        guard let league = leagueStore.currentLeague else { return }
+        guard let league = leagueStore.myLeague else { return }
         standings = StandingsBuilder.buildStandings(
-            rosters: leagueStore.currentLeagueRosters,
-            users: leagueStore.currentLeagueUsers,
+            rosters: leagueStore.myLeagueRosters,
+            users: leagueStore.myLeagueUsers,
             league: league
         )
     }
 
     private func loadBrackets() async {
-        guard let league = leagueStore.currentLeague else { return }
+        guard let league = leagueStore.myLeague else { return }
         await leagueStore.fetchBrackets(leagueId: league.leagueId)
     }
 }

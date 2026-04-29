@@ -10,6 +10,7 @@ import SwiftUI
 struct SearchView: View {
     var leagueStore: LeagueStore
     var playerStore: PlayerStore
+    var authStore: AuthStore
     var router: AppRouter
     var navStore: NavigationStore
 
@@ -19,11 +20,13 @@ struct SearchView: View {
     init(
         leagueStore: LeagueStore,
         playerStore: PlayerStore,
+        authStore: AuthStore,
         router: AppRouter,
         navStore: NavigationStore
     ) {
         self.leagueStore = leagueStore
         self.playerStore = playerStore
+        self.authStore = authStore
         self.router = router
         self.navStore = navStore
         _searchStore = State(
@@ -193,6 +196,9 @@ struct SearchView: View {
                 },
                 onPlayerTap: { playerId in
                     router.navigate(to: .playerDetail(playerId: playerId))
+                },
+                ownerLookup: { playerId in
+                    resolveOwnership(forPlayerId: playerId)
                 }
             )
         } else if searchStore.hasSearched {
@@ -259,10 +265,35 @@ struct SearchView: View {
     // MARK: - League navigation
 
     private func navigateToLeague(_ league: League) {
-        Task {
-            await leagueStore.switchToLeague(id: league.leagueId)
-            navStore.select(.standings, router: router)
+        // switchToLeague is now a no-op (see LeagueStore docs) — tray
+        // destinations always show the home league. Future iteration:
+        // push a dedicated `.leagueOverview(leagueId:)` route here.
+        navStore.select(.standings, router: router)
+    }
+
+    // MARK: - Player ownership in home league
+
+    /// Looks up which CLT roster owns a given player. Pure dictionary
+    /// lookup over `leagueStore.myLeagueRosters` + `myLeagueUsers`.
+    /// Returns `nil` for free agents.
+    private func resolveOwnership(forPlayerId playerId: String) -> PlayerOwnership? {
+        guard !playerId.isEmpty else { return nil }
+
+        let owningRoster = leagueStore.myLeagueRosters.first { roster in
+            (roster.players ?? []).contains(playerId)
+                || (roster.starters ?? []).contains(playerId)
+                || (roster.taxi ?? []).contains(playerId)
+                || (roster.reserve ?? []).contains(playerId)
         }
+        guard let roster = owningRoster, let ownerId = roster.ownerId else { return nil }
+
+        let user = leagueStore.myLeagueUsers.first { $0.userId == ownerId }
+        let teamName = user?.teamName
+            ?? user?.resolvedDisplayName
+            ?? "Unknown"
+
+        let isMine = ownerId == authStore.sleeperUserId
+        return PlayerOwnership(teamName: teamName, isMine: isMine)
     }
 }
 
@@ -271,6 +302,7 @@ struct SearchView: View {
         SearchView(
             leagueStore: LeagueStore(),
             playerStore: PlayerStore(),
+            authStore: AuthStore(),
             router: AppRouter(),
             navStore: NavigationStore()
         )

@@ -165,22 +165,19 @@ final class LeagueStore {
         currentLeagueRosters = rosters
     }
 
-    /// Loads and switches to a different league by ID.
+    /// Switching the global "current league" used to overwrite all the
+    /// tray destinations' data (Standings, Matchups, Drafts...) when a
+    /// user tapped another league in profile or search. The product call
+    /// is to keep the home league (`myLeague`) anchored as the only
+    /// source of truth for tray destinations — viewing other leagues is
+    /// a future feature that should use a pushed `.leagueOverview` route
+    /// fetching its own data, not mutate global state.
+    ///
+    /// Kept as a no-op stub so existing call sites don't need to be
+    /// torn out in this same patch. Will be removed once those sites
+    /// are migrated to a push-based browser.
     func switchToLeague(id: String) async {
-        isLoading = true
-        error = nil
-
-        do {
-            let league = try await apiClient.fetchLeague(id)
-            let context = try await fetchLeagueContext(leagueId: id)
-            currentLeague = league
-            currentLeagueUsers = context.users
-            currentLeagueRosters = context.rosters
-        } catch {
-            self.error = error
-        }
-
-        isLoading = false
+        // Intentionally no-op. See doc comment.
     }
 
     // MARK: - Fetch Brackets
