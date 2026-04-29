@@ -254,6 +254,86 @@ final class HistoryStore {
         }
     }
 
+    // MARK: - Career Stats (Profile)
+
+    /// Aggregates all-time stats for the given user from `matchupHistory`.
+    /// Pure derived computation — no network, no side effects. Returns
+    /// `.empty` if the user has no recorded games.
+    func careerStats(forUserId userId: String) -> CareerStats {
+        guard !userId.isEmpty else { return .empty }
+
+        var wins = 0
+        var losses = 0
+        var ties = 0
+        var pointsFor: Double = 0
+        var pointsAgainst: Double = 0
+        var highest: Double = -.infinity
+        var highestRef: CareerStats.WeekRef?
+        var lowest: Double = .infinity
+        var lowestRef: CareerStats.WeekRef?
+        var seasons = Set<String>()
+        var playoffSeasons = Set<String>()
+
+        for record in matchupHistory {
+            let userIsTeamA = record.teamAUserId == userId
+            let userIsTeamB = record.teamBUserId == userId
+            guard userIsTeamA || userIsTeamB else { continue }
+
+            let userPoints = userIsTeamA ? record.teamAPoints : record.teamBPoints
+            let oppPoints = userIsTeamA ? record.teamBPoints : record.teamAPoints
+            let userRosterId = userIsTeamA ? record.teamARosterId : record.teamBRosterId
+
+            // Skip records that haven't been played yet (both 0 — preseason
+            // schedule placeholders) — they'd otherwise pollute lowest-score.
+            if userPoints == 0 && oppPoints == 0 { continue }
+
+            pointsFor += userPoints
+            pointsAgainst += oppPoints
+            seasons.insert(record.season)
+
+            if record.isPlayoff {
+                playoffSeasons.insert(record.season)
+            }
+
+            if userPoints > highest {
+                highest = userPoints
+                highestRef = .init(season: record.season, week: record.week)
+            }
+            if userPoints < lowest {
+                lowest = userPoints
+                lowestRef = .init(season: record.season, week: record.week)
+            }
+
+            if let winner = record.winnerRosterId {
+                if winner == userRosterId {
+                    wins += 1
+                } else {
+                    losses += 1
+                }
+            } else {
+                ties += 1
+            }
+        }
+
+        // Normalize sentinels for users with zero games.
+        if highest == -.infinity { highest = 0 }
+        if lowest == .infinity { lowest = 0 }
+
+        return CareerStats(
+            wins: wins,
+            losses: losses,
+            ties: ties,
+            pointsFor: pointsFor,
+            pointsAgainst: pointsAgainst,
+            highestScore: highest,
+            highestScoreWeek: highestRef,
+            lowestScore: lowest,
+            lowestScoreWeek: lowestRef,
+            seasonsPlayed: seasons.count,
+            playoffAppearances: playoffSeasons.count
+        )
+    }
+
     // MARK: - Fetch Raw Matchups for Detail
 
     /// Fetches the raw matchup data for a specific week to get player-level lineups and points.
