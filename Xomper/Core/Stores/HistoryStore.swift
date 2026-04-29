@@ -511,9 +511,19 @@ final class HistoryStore {
         // Load users + rosters in parallel
         async let usersTask = apiClient.fetchLeagueUsers(league.leagueId)
         async let rostersTask = apiClient.fetchLeagueRosters(league.leagueId)
+        // Brackets — best-effort. Pre-playoff seasons return empty arrays;
+        // missing brackets just mean no placement labels for that season.
+        async let winnersTask: [PlayoffBracketMatch] = {
+            (try? await apiClient.fetchWinnersBracket(league.leagueId)) ?? []
+        }()
+        async let losersTask: [PlayoffBracketMatch] = {
+            (try? await apiClient.fetchLosersBracket(league.leagueId)) ?? []
+        }()
 
         let users = try await usersTask
         let rosters = try await rostersTask
+        let winners = await winnersTask
+        let losers = await losersTask
 
         let totalWeeks = 17
 
@@ -540,13 +550,57 @@ final class HistoryStore {
             return results.sorted { $0.0 < $1.0 }
         }
 
+        let placementMap = Self.buildPlacementMap(
+            winners: winners,
+            losers: losers,
+            playoffWeekStart: Self.playoffWeekStart(for: league)
+        )
+
         return convertMatchupResults(
             leagueId: league.leagueId,
             season: league.season,
             weekResults: weekResults,
             users: users,
-            rosters: rosters
+            rosters: rosters,
+            placementMap: placementMap
         )
+    }
+
+    /// `(week, sorted roster pair)` → placement, derived from a
+    /// league's bracket. Sorted to make the lookup direction-agnostic.
+    /// Only matches with a non-nil `placement` and both roster IDs
+    /// resolved are included — early-round games stay unlabeled.
+    private nonisolated static func buildPlacementMap(
+        winners: [PlayoffBracketMatch],
+        losers: [PlayoffBracketMatch],
+        playoffWeekStart: Int?
+    ) -> [String: Int] {
+        guard let start = playoffWeekStart else { return [:] }
+        var map: [String: Int] = [:]
+        for match in winners + losers {
+            guard let placement = match.placement,
+                  let r1 = match.team1RosterId,
+                  let r2 = match.team2RosterId else { continue }
+            // Round 1 → playoff_week_start, round 2 → +1, etc.
+            // (`playoff_round_type=1` two-week rounds aren't modeled —
+            // placement still resolves on the second/final week.)
+            let week = start + match.round - 1
+            let key = bracketKeyStatic(week: week, rosters: [r1, r2])
+            map[key] = placement
+        }
+        return map
+    }
+
+    private nonisolated static func bracketKeyStatic(week: Int, rosters: [Int]) -> String {
+        let sorted = rosters.sorted()
+        return "\(week)-\(sorted.map(String.init).joined(separator: "-"))"
+    }
+
+    private nonisolated static func playoffWeekStart(for league: League) -> Int? {
+        guard let value = league.settings?.additionalSettings?["playoff_week_start"] else { return nil }
+        if let i = value.intValue { return i }
+        if let d = value.doubleValue { return Int(d) }
+        return nil
     }
 
     // MARK: - Private: Pair Matchups
@@ -579,7 +633,8 @@ final class HistoryStore {
         season: String,
         weekResults: [(week: Int, pairs: [MatchupPair])],
         users: [SleeperUser],
-        rosters: [Roster]
+        rosters: [Roster],
+        placementMap: [String: Int] = [:]
     ) -> [MatchupHistoryRecord] {
         var records: [MatchupHistoryRecord] = []
 
@@ -602,6 +657,12 @@ final class HistoryStore {
                     winnerId = nil
                 }
 
+                let placementKey = Self.bracketKeyStatic(
+                    week: week,
+                    rosters: [pair.teamA.rosterId, pair.teamB.rosterId]
+                )
+                let placement = placementMap[placementKey]
+
                 let record = MatchupHistoryRecord(
                     leagueId: leagueId,
                     season: season,
@@ -619,9 +680,14 @@ final class HistoryStore {
                     teamBPoints: pointsB,
                     winnerRosterId: winnerId,
                     isPlayoff: week > 14,
-                    isChampionship: week == 16 || week == 17,
+                    // Authoritative championship flag: only the bracket
+                    // game with placement == 1 is the title game. Falls
+                    // back to the loose week-16/17 flag when the bracket
+                    // wasn't loaded (legacy/empty-bracket leagues).
+                    isChampionship: placement == 1 || (placementMap.isEmpty && (week == 16 || week == 17)),
                     teamADivision: rosterA?.division ?? 0,
-                    teamBDivision: rosterB?.division ?? 0
+                    teamBDivision: rosterB?.division ?? 0,
+                    playoffPlacement: placement
                 )
 
                 records.append(record)
