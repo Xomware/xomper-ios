@@ -27,6 +27,7 @@ struct HeaderBar: View {
     private static let seasonScopedDestinations: Set<TrayDestination> = [
         .matchups,
         .draftHistory,
+        .matchupHistory,
     ]
 
     var body: some View {
