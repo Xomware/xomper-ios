@@ -12,6 +12,17 @@ struct PlayoffBracketView: View {
         Dictionary(uniqueKeysWithValues: standings.map { ($0.rosterId, $0.leagueRank) })
     }
 
+    /// First NFL week of the playoffs, parsed from `league.settings.additional_settings.playoff_week_start`.
+    /// Used by the match detail sheet to fetch real per-team scores.
+    private var playoffWeekStart: Int? {
+        guard let value = leagueStore.myLeague?.settings?.additionalSettings?["playoff_week_start"] else {
+            return nil
+        }
+        if let i = value.intValue { return i }
+        if let d = value.doubleValue { return Int(d) }
+        return nil
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: XomperTheme.Spacing.lg) {
@@ -48,10 +59,12 @@ struct PlayoffBracketView: View {
             NavigationStack {
                 BracketMatchDetailSheet(
                     match: match,
-                    standings: standings
+                    standings: standings,
+                    leagueId: leagueStore.myLeague?.leagueId,
+                    playoffWeekStart: playoffWeekStart
                 )
             }
-            .presentationDetents([.medium])
+            .presentationDetents([.medium, .large])
         }
     }
 
@@ -505,8 +518,26 @@ private struct CardFramePreferenceKey: PreferenceKey {
 private struct BracketMatchDetailSheet: View {
     let match: PlayoffBracketMatch
     let standings: [StandingsTeam]
+    let leagueId: String?
+    let playoffWeekStart: Int?
 
     @Environment(\.dismiss) private var dismiss
+
+    @State private var team1Points: Double?
+    @State private var team2Points: Double?
+    @State private var isLoadingScores = false
+
+    private let apiClient: SleeperAPIClientProtocol = SleeperAPIClient()
+
+    /// NFL week this bracket round maps to. Sleeper's default is 1 round
+    /// = 1 week, so round 1 → playoff_week_start, round 2 → +1, etc.
+    /// Multi-week rounds (`playoff_round_type=1` two-week rounds) aren't
+    /// modeled here — points display still works for the second week
+    /// since most leagues only score the final week.
+    private var matchWeek: Int? {
+        guard let start = playoffWeekStart else { return nil }
+        return start + match.round - 1
+    }
 
     private var team1: StandingsTeam? {
         guard let id = match.team1RosterId else { return nil }
@@ -535,9 +566,19 @@ private struct BracketMatchDetailSheet: View {
             }
 
             HStack(alignment: .top, spacing: XomperTheme.Spacing.md) {
-                teamColumn(team: team1, rosterId: match.team1RosterId, isWinner: match.winnerRosterId == match.team1RosterId)
+                teamColumn(
+                    team: team1,
+                    rosterId: match.team1RosterId,
+                    isWinner: match.winnerRosterId == match.team1RosterId,
+                    points: team1Points
+                )
                 vsColumn
-                teamColumn(team: team2, rosterId: match.team2RosterId, isWinner: match.winnerRosterId == match.team2RosterId)
+                teamColumn(
+                    team: team2,
+                    rosterId: match.team2RosterId,
+                    isWinner: match.winnerRosterId == match.team2RosterId,
+                    points: team2Points
+                )
             }
             .padding(XomperTheme.Spacing.md)
             .background(XomperColors.bgCard)
@@ -550,13 +591,25 @@ private struct BracketMatchDetailSheet: View {
                     )
             )
 
-            if match.winnerRosterId == nil {
+            if isLoadingScores {
+                ProgressView()
+                    .tint(XomperColors.championGold)
+            } else if match.winnerRosterId == nil && team1Points == nil && team2Points == nil {
                 Text("Match not yet played")
                     .font(.subheadline)
                     .foregroundStyle(XomperColors.textMuted)
             }
 
+            if let week = matchWeek {
+                Text("Week \(week)")
+                    .font(.caption)
+                    .foregroundStyle(XomperColors.textMuted)
+            }
+
             Spacer()
+        }
+        .task(id: match.id) {
+            await loadScores()
         }
         .padding(XomperTheme.Spacing.md)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -572,7 +625,7 @@ private struct BracketMatchDetailSheet: View {
         }
     }
 
-    private func teamColumn(team: StandingsTeam?, rosterId: Int?, isWinner: Bool) -> some View {
+    private func teamColumn(team: StandingsTeam?, rosterId: Int?, isWinner: Bool, points: Double?) -> some View {
         let hasWinner = match.winnerRosterId != nil
         let isLoser = hasWinner && !isWinner
 
@@ -595,6 +648,14 @@ private struct BracketMatchDetailSheet: View {
                     .foregroundStyle(isWinner ? XomperColors.successGreen : isLoser ? XomperColors.textMuted : XomperColors.textPrimary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
+
+                if let points {
+                    Text(String(format: "%.1f pts", points))
+                        .font(.title3)
+                        .fontWeight(.bold)
+                        .foregroundStyle(isWinner ? XomperColors.championGold : XomperColors.textPrimary)
+                        .monospacedDigit()
+                }
 
                 Text(team.record)
                     .font(.caption)
@@ -634,6 +695,37 @@ private struct BracketMatchDetailSheet: View {
         }
         .frame(maxWidth: .infinity)
         .opacity(isLoser ? 0.6 : 1.0)
+    }
+
+    private func loadScores() async {
+        guard let leagueId, let week = matchWeek,
+              let r1 = match.team1RosterId, let r2 = match.team2RosterId else { return }
+        isLoadingScores = true
+        defer { isLoadingScores = false }
+
+        do {
+            let raw = try await apiClient.fetchLeagueMatchups(leagueId, week: week)
+            // Find the matchup_id that contains both r1 and r2
+            var grouped: [Int: [Matchup]] = [:]
+            for m in raw {
+                guard let mid = m.matchupId else { continue }
+                grouped[mid, default: []].append(m)
+            }
+            for (_, pair) in grouped where pair.count >= 2 {
+                let rids = pair.map(\.rosterId)
+                if rids.contains(r1) && rids.contains(r2) {
+                    if let t1 = pair.first(where: { $0.rosterId == r1 }) {
+                        team1Points = t1.resolvedPoints
+                    }
+                    if let t2 = pair.first(where: { $0.rosterId == r2 }) {
+                        team2Points = t2.resolvedPoints
+                    }
+                    return
+                }
+            }
+        } catch {
+            // Non-fatal — sheet still shows the bracket info, just no scores.
+        }
     }
 
     private var vsColumn: some View {
