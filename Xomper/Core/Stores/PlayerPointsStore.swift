@@ -20,6 +20,12 @@ final class PlayerPointsStore {
     /// player_id → season starter-points total (regular season only).
     private(set) var seasonStarterPoints: [String: Double] = [:]
 
+    /// "(week)-(rosterId)" → [player_id: points scored that week].
+    /// Captures the FULL roster (starters + bench) so the
+    /// HighestPossibleCalculator can re-pick an optimal lineup
+    /// independent of what was actually started.
+    private(set) var weeklyRosterPoints: [String: [String: Double]] = [:]
+
     /// (leagueId, week) we've already aggregated. Resets when
     /// `reset()` is called (e.g. league switch).
     private(set) var fetched: Set<String> = []
@@ -53,17 +59,29 @@ final class PlayerPointsStore {
             do {
                 let matchups = try await apiClient.fetchLeagueMatchups(leagueId, week: week)
                 for matchup in matchups {
-                    guard let starters = matchup.starters,
-                          let starterPoints = matchup.startersPoints else { continue }
-                    let count = min(starters.count, starterPoints.count)
-                    for i in 0..<count {
-                        let pid = starters[i]
-                        let pts = starterPoints[i]
-                        // Skip empty slots ("0" is Sleeper's null marker)
-                        // and zero-point starts that fall on a bye week
-                        // — they didn't actually contribute.
-                        guard !pid.isEmpty, pid != "0" else { continue }
-                        totals[pid, default: 0] += pts
+                    // Starter aggregation (drives Position MVPs)
+                    if let starters = matchup.starters,
+                       let starterPoints = matchup.startersPoints {
+                        let count = min(starters.count, starterPoints.count)
+                        for i in 0..<count {
+                            let pid = starters[i]
+                            let pts = starterPoints[i]
+                            guard !pid.isEmpty, pid != "0" else { continue }
+                            totals[pid, default: 0] += pts
+                        }
+                    }
+
+                    // Per-week per-roster full-roster points (drives
+                    // Highest Possible Points calc for #57 draft order)
+                    if let players = matchup.players,
+                       let pp = matchup.playersPoints {
+                        var rosterScores: [String: Double] = [:]
+                        for pid in players {
+                            guard !pid.isEmpty, pid != "0" else { continue }
+                            if let pts = pp[pid] { rosterScores[pid] = pts }
+                        }
+                        let rosterKey = "\(week)-\(matchup.rosterId)"
+                        weeklyRosterPoints[rosterKey] = rosterScores
                     }
                 }
                 fetched.insert(key)

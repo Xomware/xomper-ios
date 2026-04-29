@@ -24,6 +24,7 @@ enum TrayDestination: Hashable {
     case leagueSettings
     case ruleProposals
     case payouts
+    case draftOrder
     case profile
     case settings
 
@@ -45,6 +46,7 @@ enum TrayDestination: Hashable {
         case .leagueSettings: "League Settings"
         case .ruleProposals:  "Rule Proposals"
         case .payouts:        "Payouts"
+        case .draftOrder:     "Draft Order"
         case .profile:        "Profile"
         case .settings:       "Settings"
         }
@@ -67,6 +69,7 @@ enum TrayDestination: Hashable {
         case .leagueSettings: "slider.horizontal.3"
         case .ruleProposals:  "checkmark.bubble.fill"
         case .payouts:        "dollarsign.circle.fill"
+        case .draftOrder:     "list.bullet.rectangle"
         case .profile:        "person.crop.circle.fill"
         case .settings:       "gearshape.fill"
         }

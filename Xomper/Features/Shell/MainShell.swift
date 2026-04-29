@@ -196,6 +196,13 @@ struct MainShell: View {
                     authStore: authStore
                 )
 
+            case .draftOrder:
+                DraftOrderView(
+                    leagueStore: leagueStore,
+                    playerStore: playerStore,
+                    playerPointsStore: playerPointsStore
+                )
+
             case .rulebook:
                 rulesPage(.rulebook)
 
