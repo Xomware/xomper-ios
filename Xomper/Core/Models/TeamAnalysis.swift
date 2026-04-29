@@ -144,4 +144,32 @@ enum TeamAnalysisBuilder {
         }
         return max
     }
+
+    /// League-wide average per axis. Drives the "league average"
+    /// overlay polygon on the hex chart and the per-position bars in
+    /// the League tab — gives the user a baseline to read relative
+    /// strength against without doing mental math from raw maxes.
+    /// Returned in the canonical hex-axis order so it can be rendered
+    /// alongside any team's `hexAxes`.
+    static func leagueAverageAxes(_ teams: [TeamAnalysis]) -> [TeamAnalysis.HexAxis] {
+        guard !teams.isEmpty else {
+            return ["QB", "RB", "WR", "TE", "Bench", "Taxi"]
+                .map { TeamAnalysis.HexAxis(label: $0, value: 0) }
+        }
+        let count = Double(teams.count)
+        var sums: [String: Int] = [
+            "QB": 0, "RB": 0, "WR": 0, "TE": 0, "Bench": 0, "Taxi": 0
+        ]
+        for team in teams {
+            for axis in team.hexAxes {
+                sums[axis.label, default: 0] += axis.value
+            }
+        }
+        return ["QB", "RB", "WR", "TE", "Bench", "Taxi"].map { label in
+            TeamAnalysis.HexAxis(
+                label: label,
+                value: Int(Double(sums[label] ?? 0) / count)
+            )
+        }
+    }
 }
