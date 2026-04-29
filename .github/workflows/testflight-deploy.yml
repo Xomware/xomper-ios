@@ -14,6 +14,8 @@ jobs:
   deploy:
     name: Build & Upload to TestFlight
     runs-on: macos-26
+    permissions:
+      contents: write  # needed to push the bumped semver tag back to the repo
     timeout-minutes: 45
 
     steps:
@@ -61,21 +63,85 @@ jobs:
       - name: Compute version and build number
         id: version
         run: |
-          # Derive major.minor from the latest tag (e.g. v2.1.0 → 2.1).
-          # Fallback to 2.0 when no tags exist. Patch auto-increments on
-          # every workflow run via github.run_number, so the version
-          # bumps from 2.0.0 to 2.0.N on each deploy without manual
-          # tagging. Tag a new minor (e.g. v2.1.0) when you want to
-          # bump from 2.0.X → 2.1.X.
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
-          BASE_VERSION=${LATEST_TAG:-2.0.0}
-          MAJOR_MINOR=$(echo "$BASE_VERSION" | cut -d. -f1,2)
-          MARKETING_VERSION="${MAJOR_MINOR}.${{ github.run_number }}"
+          # Conventional-commits-aware semver bump.
+          #
+          # 1. Find the latest v-prefixed tag. If none, base is v2.0.0
+          #    so the first run produces 2.0.1 / 2.1.0 / 3.0.0 depending
+          #    on the commits below.
+          # 2. Inspect every commit subject since that tag (or all
+          #    history if no tag).
+          # 3. Determine the bump:
+          #      - any "BREAKING CHANGE:" in body or "feat!:" / "fix!:"
+          #        in subject → MAJOR
+          #      - any "feat:" / "feat(...):" → MINOR
+          #      - otherwise (only fix:/chore:/refactor:/docs: etc.) → PATCH
+          # 4. Increment the corresponding semver component, reset the
+          #    lower components.
+          # 5. Tag the new version on HEAD and push it back so the next
+          #    run sees this as the new baseline.
+          #
+          # Build number stays as a UTC timestamp — must be monotonically
+          # increasing per Apple's rules and stays decoupled from the
+          # marketing version.
+
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          BASE_VERSION="${LATEST_TAG#v}"
+          BASE_VERSION="${BASE_VERSION:-2.0.0}"
+
+          if [ -n "$LATEST_TAG" ]; then
+            COMMIT_RANGE="${LATEST_TAG}..HEAD"
+            COMMIT_SUBJECTS=$(git log "$COMMIT_RANGE" --pretty=%s)
+            COMMIT_BODIES=$(git log "$COMMIT_RANGE" --pretty=%B)
+          else
+            COMMIT_SUBJECTS=$(git log --pretty=%s)
+            COMMIT_BODIES=$(git log --pretty=%B)
+          fi
+
+          BUMP="patch"
+          if echo "$COMMIT_BODIES" | grep -qE "^BREAKING CHANGE:"; then
+            BUMP="major"
+          elif echo "$COMMIT_SUBJECTS" | grep -qE "^(feat|fix|refactor|perf|chore)(\([^)]+\))?!:"; then
+            BUMP="major"
+          elif echo "$COMMIT_SUBJECTS" | grep -qE "^feat(\([^)]+\))?:"; then
+            BUMP="minor"
+          fi
+
+          MAJOR=$(echo "$BASE_VERSION" | cut -d. -f1)
+          MINOR=$(echo "$BASE_VERSION" | cut -d. -f2)
+          PATCH=$(echo "$BASE_VERSION" | cut -d. -f3)
+          case "$BUMP" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+
+          MARKETING_VERSION="${MAJOR}.${MINOR}.${PATCH}"
           BUILD_NUMBER=$(date +%Y%m%d%H%M)
+
           echo "marketing=$MARKETING_VERSION" >> "$GITHUB_OUTPUT"
           echo "build=$BUILD_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "bump=$BUMP" >> "$GITHUB_OUTPUT"
+          echo "previous_tag=${LATEST_TAG:-none}" >> "$GITHUB_OUTPUT"
+          echo "Bump type:        $BUMP"
+          echo "Previous version: $BASE_VERSION (tag: ${LATEST_TAG:-none})"
           echo "Marketing version: $MARKETING_VERSION"
-          echo "Build number: $BUILD_NUMBER"
+          echo "Build number:      $BUILD_NUMBER"
+
+      - name: Tag and push new version
+        env:
+          NEW_VERSION: ${{ steps.version.outputs.marketing }}
+        run: |
+          # Avoid duplicate-tag errors if a manual run with the same
+          # commit fires twice (rare, but cheap to defend against).
+          TAG="v${NEW_VERSION}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists — skipping push."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG (auto-bumped: ${{ steps.version.outputs.bump }})"
+          git push origin "$TAG"
 
       - name: Install Python deps for ASC API
         run: pip3 install --quiet --break-system-packages PyJWT cryptography requests
