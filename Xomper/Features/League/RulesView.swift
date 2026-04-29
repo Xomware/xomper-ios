@@ -83,14 +83,32 @@ private extension RulesView {
     func buildScoringCategories() -> [ScoringCategory] {
         guard let scoring = league.scoringSettings else { return [] }
 
-        let categoryDefs: [(name: String, prefixes: [String])] = [
+        // Position-conditional categories: hide a category when the league
+        // doesn't roster that position. Sleeper returns scoring_settings for
+        // every stat regardless of league config (e.g., default fg_/xp_
+        // values for leagues without kickers), so we filter by roster
+        // composition.
+        let rosterPositions = Set(league.rosterPositions ?? [])
+        let hasKickers = rosterPositions.contains("K")
+        let hasDefense = rosterPositions.contains("DEF") || rosterPositions.contains("DST")
+        let hasIDP = !rosterPositions.intersection(["DL", "LB", "DB", "IDP_FLEX", "DT", "DE", "CB", "S"]).isEmpty
+
+        var categoryDefs: [(name: String, prefixes: [String])] = [
             ("Passing", ["pass_"]),
             ("Rushing", ["rush_"]),
             ("Receiving", ["rec", "bonus_rec"]),
             ("Return TDs", ["pr_", "kr_"]),
             ("Fumbles", ["fum"]),
-            ("Kicking", ["fg_", "xp"]),
         ]
+        if hasKickers {
+            categoryDefs.append(("Kicking", ["fg_", "xp"]))
+        }
+        if hasDefense {
+            categoryDefs.append(("Team Defense", ["def_", "pts_allow", "yds_allow", "sack", "int", "blk_kick", "safe", "fum_force", "ff"]))
+        }
+        if hasIDP {
+            categoryDefs.append(("IDP", ["idp_", "tkl"]))
+        }
 
         var usedKeys = Set<String>()
         var result: [ScoringCategory] = []
