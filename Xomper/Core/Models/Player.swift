@@ -21,7 +21,15 @@ struct Player: Codable, Identifiable, Sendable {
     let searchFullName: String?
     let searchFirstName: String?
     let searchLastName: String?
-    let depthChartPosition: Int?
+    /// Sleeper returns this as a slot label string ("QB1", "RCB", "OL"…),
+    /// NOT a numeric position. iOS prior to this fix declared it `Int?`,
+    /// which made the strict JSONDecoder throw on every player with a
+    /// non-null value — and since `[String: Player]` decodes
+    /// transactionally, the whole 11k-player load failed silently. That
+    /// is the entire reason "no players are loading" was happening in
+    /// production while web (TypeScript types are erased at runtime)
+    /// shrugged it off.
+    let depthChartPosition: String?
     let depthChartOrder: Int?
     let searchRank: Int?
 
@@ -51,6 +59,91 @@ struct Player: Codable, Identifiable, Sendable {
         case depthChartPosition = "depth_chart_position"
         case depthChartOrder = "depth_chart_order"
         case searchRank = "search_rank"
+    }
+
+    /// Lenient decoder: every optional field uses `try?` so a single
+    /// type mismatch in Sleeper's response (e.g., a future field that
+    /// drifts from int → string) degrades the affected field to `nil`
+    /// instead of taking down the entire `[String: Player]` decode.
+    /// `playerId` is the only required field and is the dictionary key
+    /// in the parent decode anyway.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.playerId = try c.decode(String.self, forKey: .playerId)
+        self.firstName = try? c.decodeIfPresent(String.self, forKey: .firstName)
+        self.lastName = try? c.decodeIfPresent(String.self, forKey: .lastName)
+        self.fullName = try? c.decodeIfPresent(String.self, forKey: .fullName)
+        self.position = try? c.decodeIfPresent(String.self, forKey: .position)
+        self.team = try? c.decodeIfPresent(String.self, forKey: .team)
+        self.age = try? c.decodeIfPresent(Int.self, forKey: .age)
+        self.college = try? c.decodeIfPresent(String.self, forKey: .college)
+        self.yearsExp = try? c.decodeIfPresent(Int.self, forKey: .yearsExp)
+        self.status = try? c.decodeIfPresent(String.self, forKey: .status)
+        self.injuryStatus = try? c.decodeIfPresent(String.self, forKey: .injuryStatus)
+        self.number = try? c.decodeIfPresent(Int.self, forKey: .number)
+        self.height = try? c.decodeIfPresent(String.self, forKey: .height)
+        self.weight = try? c.decodeIfPresent(String.self, forKey: .weight)
+        self.sport = try? c.decodeIfPresent(String.self, forKey: .sport)
+        self.active = try? c.decodeIfPresent(Bool.self, forKey: .active)
+        self.fantasyPositions = try? c.decodeIfPresent([String].self, forKey: .fantasyPositions)
+        self.searchFullName = try? c.decodeIfPresent(String.self, forKey: .searchFullName)
+        self.searchFirstName = try? c.decodeIfPresent(String.self, forKey: .searchFirstName)
+        self.searchLastName = try? c.decodeIfPresent(String.self, forKey: .searchLastName)
+        self.depthChartPosition = try? c.decodeIfPresent(String.self, forKey: .depthChartPosition)
+        self.depthChartOrder = try? c.decodeIfPresent(Int.self, forKey: .depthChartOrder)
+        self.searchRank = try? c.decodeIfPresent(Int.self, forKey: .searchRank)
+    }
+
+    /// Memberwise initializer preserved for in-app construction
+    /// (preview fixtures, search results, taxi-squad players).
+    init(
+        playerId: String,
+        firstName: String? = nil,
+        lastName: String? = nil,
+        fullName: String? = nil,
+        position: String? = nil,
+        team: String? = nil,
+        age: Int? = nil,
+        college: String? = nil,
+        yearsExp: Int? = nil,
+        status: String? = nil,
+        injuryStatus: String? = nil,
+        number: Int? = nil,
+        height: String? = nil,
+        weight: String? = nil,
+        sport: String? = nil,
+        active: Bool? = nil,
+        fantasyPositions: [String]? = nil,
+        searchFullName: String? = nil,
+        searchFirstName: String? = nil,
+        searchLastName: String? = nil,
+        depthChartPosition: String? = nil,
+        depthChartOrder: Int? = nil,
+        searchRank: Int? = nil
+    ) {
+        self.playerId = playerId
+        self.firstName = firstName
+        self.lastName = lastName
+        self.fullName = fullName
+        self.position = position
+        self.team = team
+        self.age = age
+        self.college = college
+        self.yearsExp = yearsExp
+        self.status = status
+        self.injuryStatus = injuryStatus
+        self.number = number
+        self.height = height
+        self.weight = weight
+        self.sport = sport
+        self.active = active
+        self.fantasyPositions = fantasyPositions
+        self.searchFullName = searchFullName
+        self.searchFirstName = searchFirstName
+        self.searchLastName = searchLastName
+        self.depthChartPosition = depthChartPosition
+        self.depthChartOrder = depthChartOrder
+        self.searchRank = searchRank
     }
 
     // MARK: - Computed
