@@ -33,8 +33,8 @@ struct DrawerView: View {
             entries: [.myTeam, .taxiSquad, .teamAnalyzer]
         ),
         TraySection(
-            title: "Rules",
-            entries: [.rulebook, .scoring, .leagueSettings, .ruleProposals]
+            title: "League",
+            entries: [.payouts, .rulebook, .scoring, .leagueSettings, .ruleProposals]
         ),
     ]
 
