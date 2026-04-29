@@ -18,13 +18,15 @@ struct HeaderBar: View {
     let router: AppRouter
     let avatarID: String?
     let seasonStore: SeasonStore
+    let leagueName: String?
 
     /// Destinations that opt into the season picker sub-row. Other
     /// destinations render only the 44pt wordmark row.
+    /// World Cup is intentionally excluded — it's a cumulative 3-year
+    /// tournament, season filtering does not apply.
     private static let seasonScopedDestinations: Set<TrayDestination> = [
         .matchups,
         .draftHistory,
-        .worldCup,
     ]
 
     var body: some View {
@@ -45,13 +47,22 @@ struct HeaderBar: View {
 
     private var wordmarkRow: some View {
         ZStack {
-            // Center wordmark — independent of leading/trailing buttons so it
-            // stays optically centered.
-            Text("Xomper")
-                .font(.title3)
-                .fontWeight(.bold)
-                .foregroundStyle(XomperColors.textPrimary)
-                .accessibilityAddTraits(.isHeader)
+            // Center wordmark + league name stacked.
+            VStack(spacing: 2) {
+                Text("Xomper")
+                    .font(.title3)
+                    .fontWeight(.bold)
+                    .foregroundStyle(XomperColors.textPrimary)
+                    .accessibilityAddTraits(.isHeader)
+
+                if let leagueName, !leagueName.isEmpty {
+                    Text(leagueName)
+                        .font(.caption2)
+                        .foregroundStyle(XomperColors.textMuted)
+                        .lineLimit(1)
+                        .accessibilityLabel("Active league: \(leagueName)")
+                }
+            }
 
             HStack(spacing: 0) {
                 // Avatar (opens drawer).

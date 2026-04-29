@@ -31,7 +31,16 @@ struct TrophyCaseSection: View {
 
     @ViewBuilder
     private var content: some View {
-        let titles = historyStore.championships(forUserId: userId)
+        let leagueNames: [String: String] = Dictionary(
+            uniqueKeysWithValues: leagueStore.leagueChain.compactMap { league in
+                guard let name = league.name else { return nil }
+                return (league.leagueId, name)
+            }
+        )
+        let titles = historyStore.championships(
+            forUserId: userId,
+            leagueNamesById: leagueNames
+        )
 
         if historyStore.isLoadingMatchups && historyStore.matchupHistory.isEmpty {
             loadingCard

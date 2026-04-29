@@ -41,7 +41,8 @@ struct MainShell: View {
                     navStore: navStore,
                     router: router,
                     avatarID: userStore.myUser?.avatar,
-                    seasonStore: seasonStore
+                    seasonStore: seasonStore,
+                    leagueName: leagueStore.currentLeague?.name ?? leagueStore.myLeague?.name
                 )
 
                 NavigationStack(path: $router.path) {

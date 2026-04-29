@@ -37,8 +37,8 @@ struct TaxiSquadView: View {
             TaxiStealConfirmView(
                 player: player,
                 taxiSquadStore: taxiSquadStore,
-                leagueId: leagueStore.currentLeague?.leagueId ?? "",
-                leagueName: leagueStore.currentLeague?.name ?? "",
+                leagueId: leagueStore.myLeague?.leagueId ?? "",
+                leagueName: leagueStore.myLeague?.name ?? "",
                 stealerName: resolvedStealerName,
                 alreadyStolen: taxiSquadStore.stolenPlayerIds.contains(player.playerId),
                 isOwnPlayer: player.ownerUserId == authStore.sleeperUserId
@@ -191,11 +191,11 @@ struct TaxiSquadView: View {
     }
 
     private func loadTaxiSquad() async {
-        guard let leagueId = leagueStore.currentLeague?.leagueId else { return }
+        guard let leagueId = leagueStore.myLeague?.leagueId else { return }
 
         async let playersLoad: () = taxiSquadStore.loadTaxiSquadPlayers(
-            rosters: leagueStore.currentLeagueRosters,
-            users: leagueStore.currentLeagueUsers,
+            rosters: leagueStore.myLeagueRosters,
+            users: leagueStore.myLeagueUsers,
             playerStore: playerStore,
             leagueId: leagueId
         )
