@@ -12,27 +12,48 @@ struct StandingsView: View {
     @State private var hasDivisions = false
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: XomperTheme.Spacing.md) {
-                if hasDivisions {
-                    viewModeToggle
-                }
+        Group {
+            if standings.isEmpty && (leagueStore.isLoading || leagueStore.myLeagueRosters.isEmpty) {
+                LoadingView(message: "Loading standings...")
+            } else if standings.isEmpty {
+                EmptyStateView(
+                    icon: "list.number",
+                    title: "Standings Not Loaded",
+                    message: "Pull to refresh to load the latest standings."
+                )
+            } else {
+                ScrollView {
+                    VStack(spacing: XomperTheme.Spacing.md) {
+                        if hasDivisions {
+                            viewModeToggle
+                        }
 
-                switch viewMode {
-                case .league:
-                    leagueStandingsView
-                case .division:
-                    divisionStandingsView
+                        switch viewMode {
+                        case .league:
+                            leagueStandingsView
+                        case .division:
+                            divisionStandingsView
+                        }
+                    }
+                    .padding(.horizontal, XomperTheme.Spacing.md)
+                    .padding(.vertical, XomperTheme.Spacing.sm)
                 }
             }
-            .padding(.horizontal, XomperTheme.Spacing.md)
-            .padding(.vertical, XomperTheme.Spacing.sm)
         }
         .background(XomperColors.bgDark)
         .refreshable {
             await refreshStandings()
         }
-        .onAppear {
+        // Rebuild whenever the home league or its rosters/users land —
+        // covers the bootstrap-vs-mount race where StandingsView is the
+        // landing destination and Phase 2 hasn't resolved yet.
+        .task(id: leagueStore.myLeague?.leagueId) {
+            buildStandings()
+        }
+        .onChange(of: leagueStore.myLeagueRosters.count) { _, _ in
+            buildStandings()
+        }
+        .onChange(of: leagueStore.myLeagueUsers.count) { _, _ in
             buildStandings()
         }
     }
