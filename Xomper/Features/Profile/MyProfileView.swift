@@ -17,6 +17,7 @@ struct MyProfileView: View {
             VStack(spacing: XomperTheme.Spacing.lg) {
                 profileHeader
                 sleeperLinkStatus
+                careerStatsSection
                 trophyCaseSection
                 leagueSection
                 signOutSection
@@ -108,6 +109,20 @@ struct MyProfileView: View {
         .xomperCard()
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Sleeper account \(authStore.isFullySetUp ? "linked" : "not linked")")
+    }
+
+    // MARK: - Career Stats
+
+    @ViewBuilder
+    private var careerStatsSection: some View {
+        if authStore.isFullySetUp,
+           let userId = authStore.sleeperUserId,
+           !userId.isEmpty {
+            CareerStatsSection(
+                historyStore: historyStore,
+                userId: userId
+            )
+        }
     }
 
     // MARK: - Trophy Case
