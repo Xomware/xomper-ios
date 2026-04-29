@@ -64,7 +64,8 @@ struct MainShell: View {
                 router: router,
                 avatarID: userStore.myUser?.avatar,
                 displayName: resolvedDisplayName,
-                email: authStore.session?.user.email
+                email: authStore.session?.user.email,
+                isAdmin: authStore.whitelistedUser?.isAdmin == true
             )
 
             // Edge-swipe-to-open hit area. Confined to a 20pt strip on
@@ -204,6 +205,12 @@ struct MainShell: View {
                     leagueStore: leagueStore,
                     playerStore: playerStore,
                     playerPointsStore: playerPointsStore
+                )
+
+            case .admin:
+                AdminView(
+                    authStore: authStore,
+                    leagueStore: leagueStore
                 )
 
             case .rulebook:
