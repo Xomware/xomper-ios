@@ -85,6 +85,53 @@ final class LeagueStore {
         isLoading = false
     }
 
+    // MARK: - Resolve current-season home league by name
+
+    /// Re-anchors `myLeague` (and `currentLeague` if it currently equals
+    /// the old `myLeague`) to the current-season incarnation of the home
+    /// dynasty league. Looks for a league in `userLeagues` whose `name`
+    /// matches `Config.whitelistedLeagueName`. No-op when the name isn't
+    /// configured, when no match is found, or when the match is already
+    /// the active `myLeague`.
+    ///
+    /// Solves the dynasty-rollover problem: each new Sleeper season
+    /// produces a *new* leagueId, so the hardcoded `whitelistedLeagueId`
+    /// goes stale every year. By matching on the stable league name we
+    /// follow the league forward automatically.
+    func resolveAndAnchorMyLeagueByName() async {
+        let targetName = Config.whitelistedLeagueName.trimmingCharacters(in: .whitespaces)
+        guard !targetName.isEmpty else { return }
+
+        let resolvedLeague = userLeagues.first { league in
+            (league.name ?? "").caseInsensitiveCompare(targetName) == .orderedSame
+        }
+
+        guard let resolved = resolvedLeague else { return }
+        guard resolved.leagueId != myLeague?.leagueId else { return }
+
+        do {
+            let context = try await fetchLeagueContext(leagueId: resolved.leagueId)
+            let wasCurrentMatchingMy = currentLeague?.leagueId == myLeague?.leagueId
+
+            myLeague = resolved
+            myLeagueUsers = context.users
+            myLeagueRosters = context.rosters
+
+            if wasCurrentMatchingMy {
+                currentLeague = resolved
+                currentLeagueUsers = context.users
+                currentLeagueRosters = context.rosters
+            }
+
+            // Invalidate the chain cache so subsequent loadLeagueChain
+            // calls walk back from the new (current-season) league.
+            leagueChainCache = nil
+            leagueChain = []
+        } catch {
+            // Non-fatal — keep the previously-loaded myLeague.
+        }
+    }
+
     // MARK: - Load League Chain (Dynasty History)
 
     func loadLeagueChain(startingFrom leagueId: String) async {

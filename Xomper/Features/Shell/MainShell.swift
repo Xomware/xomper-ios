@@ -413,6 +413,18 @@ struct MainShell: View {
 
         await userStore.loadMyUser(userId: sleeperUserId)
 
+        // Load user's leagues for the current season *before* resolving
+        // myTeam, so the name-based home-league anchor (Phase 1 used the
+        // potentially-stale hardcoded ID) can re-anchor to this season's
+        // league before we build standings against it.
+        let season = nflStateStore.nflState?.season ?? leagueStore.myLeague?.season ?? "2024"
+        await leagueStore.loadUserLeagues(userId: sleeperUserId, season: season)
+
+        // Re-anchor myLeague to the current-season league matching
+        // Config.whitelistedLeagueName. No-op when the name isn't set or
+        // no match is found — the Phase 1 ID-based load remains.
+        await leagueStore.resolveAndAnchorMyLeagueByName()
+
         if let league = leagueStore.myLeague {
             let standings = StandingsBuilder.buildStandings(
                 rosters: leagueStore.myLeagueRosters,
@@ -421,9 +433,5 @@ struct MainShell: View {
             )
             teamStore.loadMyTeam(from: standings, userId: sleeperUserId)
         }
-
-        // Load all user's leagues for the home screen
-        let season = nflStateStore.nflState?.season ?? leagueStore.myLeague?.season ?? "2024"
-        await leagueStore.loadUserLeagues(userId: sleeperUserId, season: season)
     }
 }
