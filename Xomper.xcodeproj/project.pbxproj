@@ -110,6 +110,7 @@
 		F5AD059EF52A068C469AFB6E /* URL+Sleeper.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2452A5AEC270BE14CC085E1 /* URL+Sleeper.swift */; };
 		F66FCFE7466291137B314370 /* HighestPossibleLineup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 765C03E7E4268373F28754DC /* HighestPossibleLineup.swift */; };
 		F7E0A8B9AECD0291527E0D0E /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42F46A0AAE61A4E963BB15B0 /* SearchView.swift */; };
+		F9A37723FE37F4C30D46D6E1 /* PressableCardButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71FB63BCA4BDD437FFE6D3A8 /* PressableCardButtonStyle.swift */; };
 		FAE7847413A293EF8CE9090C /* NFLTeamColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09DF8F2FE857C55AFB1C1205 /* NFLTeamColors.swift */; };
 		FCD03562C1879183A5DC02E2 /* PlayerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC3F6B5022E8151683A45F4F /* PlayerStore.swift */; };
 /* End PBXBuildFile section */
@@ -165,6 +166,7 @@
 		6B160A8ED14F5BE08B79C7FA /* PlayoffBracket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayoffBracket.swift; sourceTree = "<group>"; };
 		6F2C7D74B3584D53CE601054 /* MatchupDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchupDetailView.swift; sourceTree = "<group>"; };
 		6F2D6E80C100927C4C20FAD7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		71FB63BCA4BDD437FFE6D3A8 /* PressableCardButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PressableCardButtonStyle.swift; sourceTree = "<group>"; };
 		72CFD764A2BA7FF93B318A7F /* CareerStatsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareerStatsSection.swift; sourceTree = "<group>"; };
 		765C03E7E4268373F28754DC /* HighestPossibleLineup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HighestPossibleLineup.swift; sourceTree = "<group>"; };
 		7EECC0AA469B6BEE9D1AEFFE /* Draft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Draft.swift; sourceTree = "<group>"; };
@@ -545,6 +547,7 @@
 			isa = PBXGroup;
 			children = (
 				09DF8F2FE857C55AFB1C1205 /* NFLTeamColors.swift */,
+				71FB63BCA4BDD437FFE6D3A8 /* PressableCardButtonStyle.swift */,
 				C82B0FEAAB9BC80BA0801E98 /* XomperColors.swift */,
 				1FBB5433786555EDDBC896C7 /* XomperTheme.swift */,
 			);
@@ -747,6 +750,7 @@
 				B309CAE3F00F954918C09554 /* PlayerValuesStore.swift in Sources */,
 				F201A3A40D624F6AAA0C0CC1 /* PlayoffBracket.swift in Sources */,
 				CB47F51AA46AEBC59183C449 /* PlayoffBracketView.swift in Sources */,
+				F9A37723FE37F4C30D46D6E1 /* PressableCardButtonStyle.swift in Sources */,
 				6C89029D05AEE66FB2315616 /* Profile.swift in Sources */,
 				77A0EFCEE4340D3A7853BF08 /* ProfileView.swift in Sources */,
 				7D94ADAC136455C3056D5867 /* PushNotificationManager.swift in Sources */,

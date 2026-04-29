@@ -145,7 +145,7 @@ struct ProfileView: View {
             }
             .xomperCard()
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
         .accessibilityLabel("View \(league.displayName)")
         .accessibilityHint("Double tap to open league")
     }

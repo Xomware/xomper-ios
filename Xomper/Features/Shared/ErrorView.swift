@@ -4,8 +4,6 @@ struct ErrorView: View {
     let message: String
     var retryAction: (() -> Void)?
 
-    @State private var isPressed = false
-
     var body: some View {
         VStack(spacing: XomperTheme.Spacing.lg) {
             Image(systemName: "exclamationmark.triangle.fill")
@@ -39,13 +37,7 @@ struct ErrorView: View {
                         .background(XomperColors.championGold)
                         .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
                 }
-                .scaleEffect(isPressed ? 0.95 : 1.0)
-                .animation(XomperTheme.defaultAnimation, value: isPressed)
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { _ in isPressed = true }
-                        .onEnded { _ in isPressed = false }
-                )
+                .buttonStyle(PressableCardButtonStyle(pressedScale: 0.95))
             }
         }
         .padding(XomperTheme.Spacing.xl)

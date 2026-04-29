@@ -80,7 +80,7 @@ struct StandingsView: View {
                         .background(viewMode == mode ? XomperColors.championGold : XomperColors.surfaceLight)
                         .clipShape(Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.pressableCard)
                 .accessibilityLabel("\(mode.title) view")
                 .accessibilityAddTraits(viewMode == mode ? .isSelected : [])
             }
@@ -226,8 +226,6 @@ private struct StandingsRowView: View {
     let onTap: () -> Void
     var onProfileTap: (() -> Void)?
 
-    @State private var isPressed = false
-
     var body: some View {
         Button {
             let generator = UIImpactFeedbackGenerator(style: .light)
@@ -253,14 +251,7 @@ private struct StandingsRowView: View {
             )
             .xomperShadow(.sm)
         }
-        .buttonStyle(.plain)
-        .scaleEffect(isPressed ? 0.98 : 1.0)
-        .animation(XomperTheme.defaultAnimation, value: isPressed)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
+        .buttonStyle(.pressableCard)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityDescription)
         .accessibilityHint("Double tap to view team details")

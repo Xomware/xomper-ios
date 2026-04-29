@@ -335,7 +335,7 @@ private extension RulesView {
                 .background(XomperColors.championGold)
                 .clipShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
         .accessibilityLabel("Propose a new rule")
     }
 
@@ -368,7 +368,7 @@ private extension RulesView {
                             )
                             .clipShape(Capsule())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.pressableCard)
                     .accessibilityLabel("\(filter.rawValue) proposals")
                     .accessibilityAddTraits(rulesStore.proposalFilter == filter ? .isSelected : [])
                 }
@@ -739,7 +739,7 @@ private struct ProposalCardView: View {
                         .foregroundStyle(XomperColors.textMuted)
                         .frame(minWidth: XomperTheme.minTouchTarget, minHeight: XomperTheme.minTouchTarget)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.pressableCard)
                 .accessibilityLabel("Delete proposal")
             }
         }
@@ -868,7 +868,7 @@ private struct ProposalCardView: View {
                 .background(isVoted ? color : color.opacity(0.15))
                 .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
         .accessibilityLabel(label)
     }
 
@@ -928,7 +928,7 @@ private struct RulebookChapterView: View {
                 .frame(minHeight: XomperTheme.minTouchTarget)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressableCard)
             .accessibilityLabel("\(title), \(isExpanded ? "expanded" : "collapsed")")
             .accessibilityHint("Double tap to \(isExpanded ? "collapse" : "expand")")
 

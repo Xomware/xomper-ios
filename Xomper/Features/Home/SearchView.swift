@@ -15,7 +15,6 @@ struct SearchView: View {
     var navStore: NavigationStore
 
     @State private var searchStore: SearchStore
-    @State private var searchButtonPressed = false
 
     init(
         leagueStore: LeagueStore,
@@ -93,7 +92,7 @@ struct SearchView: View {
                 )
                 .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
         .accessibilityLabel("\(mode.title) search")
         .accessibilityAddTraits(searchStore.mode == mode ? .isSelected : [])
     }
@@ -148,14 +147,7 @@ struct SearchView: View {
                     .background(XomperColors.championGold)
                     .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
             }
-            .buttonStyle(.plain)
-            .scaleEffect(searchButtonPressed ? 0.95 : 1.0)
-            .animation(XomperTheme.defaultAnimation, value: searchButtonPressed)
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { _ in searchButtonPressed = true }
-                    .onEnded { _ in searchButtonPressed = false }
-            )
+            .buttonStyle(PressableCardButtonStyle(pressedScale: 0.95))
             .disabled(searchStore.query.trimmingCharacters(in: .whitespaces).isEmpty || searchStore.isSearching)
             .opacity(searchStore.query.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1.0)
             .accessibilityLabel("Search")

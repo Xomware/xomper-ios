@@ -107,7 +107,7 @@ struct MatchupHistoryBrowserView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .xomperCard()
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressableCard)
 
             if isExpanded {
                 ForEach(bundle.matchups, id: \.id) { record in
@@ -164,7 +164,7 @@ struct MatchupHistoryBrowserView: View {
             .background(XomperColors.bgCard.opacity(0.5))
             .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
     }
 
     /// Surface a placement tag ("CHAMPIONSHIP" / "3RD PLACE" / etc.)

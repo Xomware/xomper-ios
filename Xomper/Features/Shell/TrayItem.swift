@@ -38,7 +38,7 @@ struct TrayItem: View {
             .background(rowBackground)
             .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
         .accessibilityLabel(destination.title)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }

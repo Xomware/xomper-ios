@@ -342,8 +342,6 @@ private struct StealActionButton: View {
     var isDisabled: Bool = false
     let action: () -> Void
 
-    @State private var isPressed = false
-
     private var backgroundColor: Color {
         switch style {
         case .primary: XomperColors.championGold
@@ -374,16 +372,9 @@ private struct StealActionButton: View {
                 .background(backgroundColor)
                 .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableCardButtonStyle(pressedScale: 0.96))
         .disabled(isDisabled)
         .opacity(isDisabled ? 0.5 : 1.0)
-        .scaleEffect(isPressed ? 0.96 : 1.0)
-        .animation(XomperTheme.defaultAnimation, value: isPressed)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
         .accessibilityLabel(label)
     }
 }

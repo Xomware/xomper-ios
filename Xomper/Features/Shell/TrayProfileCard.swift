@@ -54,7 +54,7 @@ struct TrayProfileCard: View {
                     .stroke(Color.white.opacity(0.12), lineWidth: 1)
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
         .accessibilityLabel("Open profile for \(displayName ?? email ?? "you")")
     }
 }
