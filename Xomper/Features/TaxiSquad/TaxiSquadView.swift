@@ -7,6 +7,8 @@ struct TaxiSquadView: View {
     var taxiSquadStore: TaxiSquadStore
 
     @State private var groupMode: TaxiGroupMode = .owner
+    @State private var sortDescending: Bool = false
+    @State private var positionFilter: PositionFilter = .all
     @State private var selectedPlayer: TaxiSquadPlayer?
     @State private var hasLoaded = false
 
@@ -52,6 +54,7 @@ struct TaxiSquadView: View {
         ScrollView {
             VStack(spacing: XomperTheme.Spacing.md) {
                 groupModePicker
+                filterToolbar
                 groupedPlayerList
             }
             .padding(.horizontal, XomperTheme.Spacing.md)
@@ -81,6 +84,55 @@ struct TaxiSquadView: View {
                 }
             }
             Spacer()
+        }
+    }
+
+    // MARK: - Filter Toolbar
+
+    /// Position chips + sort-direction toggle. Position chips filter the
+    /// underlying player list; the sort toggle flips ordering of group
+    /// headers (e.g. round 1 → 5 vs round 5 → 1, owner A → Z vs Z → A).
+    private var filterToolbar: some View {
+        VStack(spacing: XomperTheme.Spacing.xs) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: XomperTheme.Spacing.xs) {
+                    ForEach(PositionFilter.allCases) { filter in
+                        FilterChip(
+                            label: filter.label,
+                            isSelected: positionFilter == filter
+                        ) {
+                            withAnimation(XomperTheme.defaultAnimation) {
+                                positionFilter = filter
+                            }
+                        }
+                    }
+                }
+            }
+
+            HStack {
+                Spacer()
+                Button {
+                    let g = UIImpactFeedbackGenerator(style: .light)
+                    g.impactOccurred()
+                    withAnimation(XomperTheme.defaultAnimation) {
+                        sortDescending.toggle()
+                    }
+                } label: {
+                    HStack(spacing: XomperTheme.Spacing.xs) {
+                        Image(systemName: sortDescending ? "arrow.down" : "arrow.up")
+                            .font(.caption.weight(.bold))
+                        Text(sortDescending ? "Desc" : "Asc")
+                            .font(.caption)
+                    }
+                    .foregroundStyle(XomperColors.textSecondary)
+                    .padding(.horizontal, XomperTheme.Spacing.sm)
+                    .padding(.vertical, XomperTheme.Spacing.xs)
+                    .background(XomperColors.surfaceLight.opacity(0.4))
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(sortDescending ? "Sort descending" : "Sort ascending")
+            }
         }
     }
 
@@ -152,31 +204,48 @@ struct TaxiSquadView: View {
 
     // MARK: - Grouping Logic
 
+    /// Player list with the active position filter applied. All grouping
+    /// helpers below operate on this view, so toggling the filter
+    /// shrinks every group at once.
+    private var filteredPlayers: [TaxiSquadPlayer] {
+        switch positionFilter {
+        case .all: return taxiSquadStore.players
+        case .position(let p):
+            return taxiSquadStore.players.filter { $0.player.displayPosition == p }
+        }
+    }
+
     private var groupedByOwner: [(owner: String, teamName: String, players: [TaxiSquadPlayer])] {
-        let owners = Set(taxiSquadStore.players.map(\.ownerDisplayName))
-        return owners.sorted().map { owner in
-            let ownerPlayers = taxiSquadStore.players.filter { $0.ownerDisplayName == owner }
+        let players = filteredPlayers
+        let owners = Set(players.map(\.ownerDisplayName))
+        let sortedOwners = owners.sorted { sortDescending ? $0 > $1 : $0 < $1 }
+        return sortedOwners.map { owner in
+            let ownerPlayers = players.filter { $0.ownerDisplayName == owner }
             let teamName = ownerPlayers.first?.ownerTeamName ?? ""
             return (owner: owner, teamName: teamName, players: ownerPlayers)
-        }
+        }.filter { !$0.players.isEmpty }
     }
 
     private var groupedByRound: [(round: Int, players: [TaxiSquadPlayer])] {
-        let rounds = Set(taxiSquadStore.players.map { $0.draftRound ?? -1 })
-        return rounds.sorted { a, b in
+        let players = filteredPlayers
+        let rounds = Set(players.map { $0.draftRound ?? -1 })
+        let sortedRounds = rounds.sorted { a, b in
+            // Undrafted (-1) always sinks to the bottom regardless of direction.
             if a == -1 { return false }
             if b == -1 { return true }
-            return a < b
-        }.map { round in
-            let roundPlayers = taxiSquadStore.players.filter { ($0.draftRound ?? -1) == round }
-            return (round: round, players: roundPlayers)
+            return sortDescending ? a > b : a < b
         }
+        return sortedRounds.map { round in
+            let roundPlayers = players.filter { ($0.draftRound ?? -1) == round }
+            return (round: round, players: roundPlayers)
+        }.filter { !$0.players.isEmpty }
     }
 
     private var groupedByPosition: [(position: String, players: [TaxiSquadPlayer])] {
-        let order = ["QB", "RB", "WR", "TE"]
+        let players = filteredPlayers
+        let order = sortDescending ? ["TE", "WR", "RB", "QB"] : ["QB", "RB", "WR", "TE"]
         return order.compactMap { pos in
-            let posPlayers = taxiSquadStore.players.filter { $0.player.displayPosition == pos }
+            let posPlayers = players.filter { $0.player.displayPosition == pos }
             guard !posPlayers.isEmpty else { return nil }
             return (position: pos, players: posPlayers)
         }
@@ -432,6 +501,53 @@ private struct TaxiPlayerCard: View {
             parts.insert("Your player", at: 0)
         }
         return parts.joined(separator: ", ")
+    }
+}
+
+// MARK: - Position Filter
+
+enum PositionFilter: Hashable, Identifiable, CaseIterable {
+    case all
+    case position(String)
+
+    static var allCases: [PositionFilter] {
+        [.all, .position("QB"), .position("RB"), .position("WR"), .position("TE")]
+    }
+
+    var id: String {
+        switch self {
+        case .all: "all"
+        case .position(let p): p
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .all: "All"
+        case .position(let p): p
+        }
+    }
+}
+
+// MARK: - Filter Chip
+
+private struct FilterChip: View {
+    let label: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(isSelected ? XomperColors.bgDark : XomperColors.textSecondary)
+                .padding(.horizontal, XomperTheme.Spacing.md)
+                .padding(.vertical, XomperTheme.Spacing.xs)
+                .background(isSelected ? XomperColors.championGold : XomperColors.surfaceLight.opacity(0.4))
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
