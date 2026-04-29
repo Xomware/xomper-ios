@@ -65,7 +65,7 @@ struct TeamView: View {
         }
         .background(XomperColors.bgDark)
         .sheet(item: $selectedPlayer) { player in
-            PlayerDetailView(player: player)
+            PlayerDetailView(player: player, playerStore: playerStore)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }

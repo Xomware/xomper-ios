@@ -2,11 +2,24 @@ import SwiftUI
 
 struct PlayerDetailView: View {
     let player: Player
+    var playerStore: PlayerStore? = nil
+    var currentSeason: String? = nil
 
     @Environment(\.dismiss) private var dismiss
 
     private var teamColor: NFLTeamColor {
         NFLTeamColors.color(for: player.displayTeam)
+    }
+
+    /// Seasons to fetch + render in the Fantasy Production section.
+    /// Falls back to the two most recent calendar years when no
+    /// `currentSeason` was provided.
+    private var seasonsForStats: [String] {
+        if let s = currentSeason, let yr = Int(s) {
+            return ["\(yr)", "\(yr - 1)"]
+        }
+        let year = Calendar.current.component(.year, from: Date())
+        return ["\(year)", "\(year - 1)"]
     }
 
     var body: some View {
@@ -22,6 +35,12 @@ struct PlayerDetailView: View {
             dismissButton
         }
         .accessibilityElement(children: .contain)
+        .task(id: player.playerId) {
+            guard let store = playerStore else { return }
+            for season in seasonsForStats {
+                await store.loadSeasonStats(season)
+            }
+        }
     }
 }
 
@@ -104,6 +123,8 @@ private extension PlayerDetailView {
 private extension PlayerDetailView {
     var infoGrid: some View {
         VStack(spacing: XomperTheme.Spacing.md) {
+            fantasySection
+
             if hasPhysicalInfo {
                 sectionHeader("Physical")
                 LazyVGrid(columns: gridColumns, spacing: XomperTheme.Spacing.sm) {
@@ -149,6 +170,51 @@ private extension PlayerDetailView {
 
     var gridColumns: [GridItem] {
         [GridItem(.flexible()), GridItem(.flexible())]
+    }
+
+    /// "Fantasy Production" section. Renders avg PPR points per game
+    /// for this season + last season when stats are available. Hidden
+    /// entirely when no `playerStore` was provided OR when neither
+    /// season has any data for this player.
+    @ViewBuilder
+    var fantasySection: some View {
+        if let store = playerStore {
+            let seasons = seasonsForStats
+            let entries: [(season: String, stats: PlayerSeasonStats)] = seasons.compactMap { s in
+                if let stats = store.stats(for: player.playerId, season: s) {
+                    return (season: s, stats: stats)
+                }
+                return nil
+            }
+
+            if !entries.isEmpty {
+                sectionHeader("Fantasy Production")
+                LazyVGrid(columns: gridColumns, spacing: XomperTheme.Spacing.sm) {
+                    ForEach(entries, id: \.season) { entry in
+                        statCell(
+                            label: "\(entry.season) PPR avg",
+                            value: averageString(entry.stats.avgPointsPPR),
+                            valueColor: XomperColors.championGold
+                        )
+                        statCell(
+                            label: "\(entry.season) games",
+                            value: entry.stats.gamesPlayed.map { "\($0)" } ?? "—"
+                        )
+                    }
+                }
+            } else if seasons.contains(where: { store.loadingSeasons.contains($0) }) {
+                sectionHeader("Fantasy Production")
+                ProgressView()
+                    .tint(XomperColors.championGold)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, XomperTheme.Spacing.md)
+            }
+        }
+    }
+
+    private func averageString(_ value: Double?) -> String {
+        guard let value else { return "—" }
+        return String(format: "%.1f", value)
     }
 
     var hasPhysicalInfo: Bool {

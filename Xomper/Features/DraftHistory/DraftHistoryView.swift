@@ -37,7 +37,7 @@ struct DraftHistoryView: View {
             await loadDraftHistory()
         }
         .sheet(item: $selectedPlayer) { player in
-            PlayerDetailView(player: player)
+            PlayerDetailView(player: player, playerStore: playerStore)
         }
     }
 

@@ -67,6 +67,7 @@
 		8E8B3EC17A43676ACA176FC3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6F2D6E80C100927C4C20FAD7 /* Assets.xcassets */; };
 		901F54CB41785D269CC63160 /* WorldCupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43E1C6D5A18697DE79586C1B /* WorldCupStore.swift */; };
 		9134D2C8A8737083C9FB8F7F /* ClinchCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3728C5F6BEF61FE509A3EA32 /* ClinchCalculator.swift */; };
+		93D8C8E352B60752D37FD0FF /* PlayerSeasonStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67C24A12080AD428D5A40A7E /* PlayerSeasonStats.swift */; };
 		95DE1C46E20BF6910D4E5447 /* TrayItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E4EC7FDB93C47A9EE601BA3 /* TrayItem.swift */; };
 		98F895FBCECB23325658339C /* StandingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6A47FD1CF3BE7AE0B940DEC /* StandingsView.swift */; };
 		9D9E8D2C4A8A0C623AC1EF0D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E767CD5492176E84C2092B0F /* AppDelegate.swift */; };
@@ -146,6 +147,7 @@
 		6387E34B6FA70159F3F9D80A /* TaxiSquadStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaxiSquadStore.swift; sourceTree = "<group>"; };
 		6504EE31A645398C41BC2ED1 /* EnvironmentValues+Season.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EnvironmentValues+Season.swift"; sourceTree = "<group>"; };
 		669A80C2A9F46A0C4612388C /* Double+Formatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Double+Formatting.swift"; sourceTree = "<group>"; };
+		67C24A12080AD428D5A40A7E /* PlayerSeasonStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSeasonStats.swift; sourceTree = "<group>"; };
 		6B160A8ED14F5BE08B79C7FA /* PlayoffBracket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayoffBracket.swift; sourceTree = "<group>"; };
 		6F2C7D74B3584D53CE601054 /* MatchupDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchupDetailView.swift; sourceTree = "<group>"; };
 		6F2D6E80C100927C4C20FAD7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -388,6 +390,7 @@
 				45B52D5FD69B62417928B713 /* MatchupHistory.swift */,
 				E1E5A60EE78F668F02CF63C0 /* NflState.swift */,
 				22A99CAA9B57C1A0144DCA22 /* Player.swift */,
+				67C24A12080AD428D5A40A7E /* PlayerSeasonStats.swift */,
 				6B160A8ED14F5BE08B79C7FA /* PlayoffBracket.swift */,
 				42C8A3FA617E9FEB48852C45 /* Profile.swift */,
 				AE543CB2E49335ADD02E8000 /* Roster.swift */,
@@ -674,6 +677,7 @@
 				CF4CEF4E2FE7A891950A2E17 /* NflStateStore.swift in Sources */,
 				C9D656F4702A3483BB8E970C /* Player.swift in Sources */,
 				4DB9374CF45A69E97C02FC94 /* PlayerDetailView.swift in Sources */,
+				93D8C8E352B60752D37FD0FF /* PlayerSeasonStats.swift in Sources */,
 				FCD03562C1879183A5DC02E2 /* PlayerStore.swift in Sources */,
 				F201A3A40D624F6AAA0C0CC1 /* PlayoffBracket.swift in Sources */,
 				CB47F51AA46AEBC59183C449 /* PlayoffBracketView.swift in Sources */,

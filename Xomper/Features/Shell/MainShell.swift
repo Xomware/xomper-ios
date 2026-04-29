@@ -358,7 +358,11 @@ struct MainShell: View {
 
         case .playerDetail(let playerId):
             if let player = playerStore.player(for: playerId) {
-                PlayerDetailView(player: player)
+                PlayerDetailView(
+                    player: player,
+                    playerStore: playerStore,
+                    currentSeason: nflStateStore.nflState?.season
+                )
             } else {
                 EmptyStateView(
                     icon: "person.fill",
