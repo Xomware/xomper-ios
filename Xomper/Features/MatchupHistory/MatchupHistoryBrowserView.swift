@@ -39,6 +39,7 @@ struct MatchupHistoryBrowserView: View {
         .background(XomperColors.bgDark.ignoresSafeArea())
         .task(id: leagueStore.myLeague?.leagueId) {
             await ensureLoaded()
+            await ensureBracketLoaded()
         }
         .refreshable {
             await reload()
@@ -166,15 +167,75 @@ struct MatchupHistoryBrowserView: View {
         .buttonStyle(.plain)
     }
 
-    /// Surface a "CHAMPIONSHIP" / "3RD PLACE" / "PLAYOFFS" tag on
-    /// matchup rows so users can see at a glance which games were for
-    /// placement. The week-16/17 split + isChampionship/isPlayoff are
-    /// inherited from how `HistoryStore.convertMatchupResults` flags
-    /// records.
+    /// Surface a placement tag ("CHAMPIONSHIP" / "3RD PLACE" / etc.)
+    /// on matchup rows. Cross-references the playoff bracket for an
+    /// authoritative answer — `MatchupHistoryRecord.isChampionship`
+    /// is set for ALL week-16/17 records by HistoryStore (loose flag),
+    /// which made every playoff matchup in the same week show
+    /// "CHAMPIONSHIP" before. Only matches whose roster pair appears
+    /// in the bracket at a placement-bearing slot get tagged here;
+    /// other playoff games show "PLAYOFFS · WEEK N".
     private func placementLabel(for record: MatchupHistoryRecord) -> String? {
-        if record.isChampionship { return "CHAMPIONSHIP" }
-        if record.isPlayoff { return "PLAYOFFS · WEEK \(record.week)" }
+        let key = bracketKey(week: record.week, rosters: [record.teamARosterId, record.teamBRosterId])
+        if let placement = placementByKey[key] {
+            return placementCopy(for: placement)
+        }
+        if record.isPlayoff {
+            return "PLAYOFFS · WEEK \(record.week)"
+        }
         return nil
+    }
+
+    private func placementCopy(for placement: Int) -> String {
+        switch placement {
+        case 1: return "CHAMPIONSHIP"
+        case 2: return "RUNNER-UP"
+        case 3: return "3RD PLACE"
+        case 5: return "5TH PLACE"
+        case 7: return "7TH PLACE"
+        case 9: return "9TH PLACE"
+        case 11: return "11TH PLACE"
+        default: return "\(placement) PLACE"
+        }
+    }
+
+    /// (week, sorted roster pair) → placement, derived from the
+    /// playoff brackets. Sorted to make the lookup direction-agnostic.
+    private var placementByKey: [String: Int] {
+        var map: [String: Int] = [:]
+        let allMatches = (leagueStore.winnersBracket ?? []) + (leagueStore.losersBracket ?? [])
+        guard let weekStart = playoffWeekStart else { return map }
+        for match in allMatches {
+            guard let placement = match.placement,
+                  let r1 = match.team1RosterId,
+                  let r2 = match.team2RosterId else { continue }
+            // Round → NFL week mapping mirrors PlayoffBracketView's
+            // resolution. `playoff_round_type=1` two-week rounds aren't
+            // modeled; the placement still applies on the second week.
+            let week = weekStart + match.round - 1
+            map[bracketKey(week: week, rosters: [r1, r2])] = placement
+        }
+        return map
+    }
+
+    private var playoffWeekStart: Int? {
+        guard let value = leagueStore.myLeague?.settings?.additionalSettings?["playoff_week_start"] else {
+            return nil
+        }
+        if let i = value.intValue { return i }
+        if let d = value.doubleValue { return Int(d) }
+        return nil
+    }
+
+    private func bracketKey(week: Int, rosters: [Int]) -> String {
+        let sorted = rosters.sorted()
+        return "\(week)-\(sorted.map(String.init).joined(separator: "-"))"
+    }
+
+    private func ensureBracketLoaded() async {
+        guard leagueStore.winnersBracket == nil || leagueStore.losersBracket == nil,
+              let leagueId = leagueStore.myLeague?.leagueId else { return }
+        await leagueStore.fetchBrackets(leagueId: leagueId)
     }
 
     private func teamColumn(name: String, points: Double, isWinner: Bool, showOutcome: Bool) -> some View {
