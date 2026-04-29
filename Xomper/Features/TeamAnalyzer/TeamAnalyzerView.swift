@@ -96,18 +96,14 @@ struct TeamAnalyzerView: View {
     // MARK: - Header
 
     private func headerCard(my: TeamAnalysis, opp: TeamAnalysis?) -> some View {
-        VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
-            Text("Team Analyzer")
-                .font(.title2.weight(.bold))
-                .foregroundStyle(XomperColors.textPrimary)
-
-            Text(opp == nil
-                ? "Your roster, valued by position group."
-                : "Comparing your team vs \(opp!.teamName)."
-            )
-            .font(.subheadline)
-            .foregroundStyle(XomperColors.textSecondary)
-        }
+        // Page title is rendered by `MainShell.navigationTitle` —
+        // don't repeat it here. Just surface the comparison subtitle.
+        Text(opp == nil
+            ? "Your roster, valued by position group."
+            : "Comparing your team vs \(opp!.teamName)."
+        )
+        .font(.subheadline)
+        .foregroundStyle(XomperColors.textSecondary)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, XomperTheme.Spacing.md)
     }
