@@ -162,7 +162,7 @@ final class AuthStore {
         }
     }
 
-    private var whitelistedUser: WhitelistedUser?
+    private(set) var whitelistedUser: WhitelistedUser?
 
     func checkWhitelist() async {
         guard let email = session?.user.email else {

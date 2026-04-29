@@ -26,17 +26,33 @@ struct WhitelistedUser: Codable, Sendable {
     let id: String
     let email: String
     let sleeperUsername: String?
+    let sleeperUserId: String?
     let displayName: String?
     let role: String?
     let isActive: Bool
+    let isAdmin: Bool
 
     enum CodingKeys: String, CodingKey {
         case id
         case email
         case sleeperUsername = "sleeper_username"
+        case sleeperUserId = "sleeper_user_id"
         case displayName = "display_name"
         case role
         case isActive = "is_active"
+        case isAdmin = "is_admin"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        email = try c.decode(String.self, forKey: .email)
+        sleeperUsername = try c.decodeIfPresent(String.self, forKey: .sleeperUsername)
+        sleeperUserId = try c.decodeIfPresent(String.self, forKey: .sleeperUserId)
+        displayName = try c.decodeIfPresent(String.self, forKey: .displayName)
+        role = try c.decodeIfPresent(String.self, forKey: .role)
+        isActive = (try? c.decodeIfPresent(Bool.self, forKey: .isActive)) ?? false
+        isAdmin = (try? c.decodeIfPresent(Bool.self, forKey: .isAdmin)) ?? false
     }
 }
 

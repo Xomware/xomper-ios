@@ -14,29 +14,40 @@ struct DrawerView: View {
     let avatarID: String?
     let displayName: String?
     let email: String?
+    /// True when the signed-in whitelisted user has `is_admin == true`.
+    /// When true, an extra "Admin" section appears below the standard
+    /// drawer entries. Backend gates the underlying API regardless.
+    let isAdmin: Bool
 
     // MARK: - Section model
 
     /// Drawer sections (top-to-bottom). `Settings` is pinned separately to the
-    /// bottom of the panel and is not in this list.
-    private let sections: [TraySection] = [
-        TraySection(
-            title: "Compete",
-            entries: [.standings, .matchups, .playoffs]
-        ),
-        TraySection(
-            title: "History",
-            entries: [.draftHistory, .matchupHistory, .worldCup]
-        ),
-        TraySection(
-            title: "Roster",
-            entries: [.myTeam, .taxiSquad, .teamAnalyzer]
-        ),
-        TraySection(
-            title: "League",
-            entries: [.payouts, .draftOrder, .rulebook, .scoring, .leagueSettings, .ruleProposals]
-        ),
-    ]
+    /// bottom of the panel and is not in this list. `Admin` is appended at
+    /// runtime when `isAdmin == true`.
+    private var sections: [TraySection] {
+        var out: [TraySection] = [
+            TraySection(
+                title: "Compete",
+                entries: [.standings, .matchups, .playoffs]
+            ),
+            TraySection(
+                title: "History",
+                entries: [.draftHistory, .matchupHistory, .worldCup]
+            ),
+            TraySection(
+                title: "Roster",
+                entries: [.myTeam, .taxiSquad, .teamAnalyzer]
+            ),
+            TraySection(
+                title: "League",
+                entries: [.payouts, .draftOrder, .rulebook, .scoring, .leagueSettings, .ruleProposals]
+            ),
+        ]
+        if isAdmin {
+            out.append(TraySection(title: "Admin", entries: [.admin]))
+        }
+        return out
+    }
 
     // MARK: - Layout
 
