@@ -2,6 +2,8 @@ import SwiftUI
 
 struct PlayoffBracketView: View {
     var leagueStore: LeagueStore
+    var historyStore: HistoryStore
+    var playerStore: PlayerStore
 
     @State private var standings: [StandingsTeam] = []
     @State private var bracketType: BracketType = .winners
@@ -61,7 +63,10 @@ struct PlayoffBracketView: View {
                     match: match,
                     standings: standings,
                     leagueId: leagueStore.myLeague?.leagueId,
-                    playoffWeekStart: playoffWeekStart
+                    playoffWeekStart: playoffWeekStart,
+                    season: leagueStore.myLeague?.season,
+                    historyStore: historyStore,
+                    playerStore: playerStore
                 )
             }
             .presentationDetents([.medium, .large])
@@ -520,12 +525,16 @@ private struct BracketMatchDetailSheet: View {
     let standings: [StandingsTeam]
     let leagueId: String?
     let playoffWeekStart: Int?
+    let season: String?
+    var historyStore: HistoryStore
+    var playerStore: PlayerStore
 
     @Environment(\.dismiss) private var dismiss
 
     @State private var team1Points: Double?
     @State private var team2Points: Double?
     @State private var isLoadingScores = false
+    @State private var matchupId: Int?
 
     private let apiClient: SleeperAPIClientProtocol = SleeperAPIClient()
 
@@ -604,6 +613,25 @@ private struct BracketMatchDetailSheet: View {
                 Text("Week \(week)")
                     .font(.caption)
                     .foregroundStyle(XomperColors.textMuted)
+            }
+
+            if let lineupRecord = derivedLineupRecord() {
+                NavigationLink {
+                    MatchupDetailView(
+                        record: lineupRecord,
+                        historyStore: historyStore,
+                        playerStore: playerStore
+                    )
+                } label: {
+                    Label("View Player Lineups", systemImage: "list.bullet.rectangle")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(XomperColors.bgDark)
+                        .padding(.horizontal, XomperTheme.Spacing.lg)
+                        .padding(.vertical, XomperTheme.Spacing.sm)
+                        .background(XomperColors.championGold)
+                        .clipShape(Capsule())
+                }
+                .accessibilityHint("Opens player lineups and per-player points for this matchup")
             }
 
             Spacer()
@@ -697,6 +725,47 @@ private struct BracketMatchDetailSheet: View {
         .opacity(isLoser ? 0.6 : 1.0)
     }
 
+    /// Synthesize a `MatchupHistoryRecord` for this bracket match so
+    /// `MatchupDetailView` can render player-level lineups + points.
+    /// Returns nil until both teams' roster data and the matchup_id are
+    /// resolved via the loadScores fetch. The record is ad-hoc — not
+    /// stored anywhere — and is purely a vehicle for the detail view's
+    /// existing fetch flow (it calls historyStore.fetchRawMatchups(
+    /// leagueId:week:) using these fields).
+    private func derivedLineupRecord() -> MatchupHistoryRecord? {
+        guard let leagueId,
+              let week = matchWeek,
+              let mid = matchupId,
+              let r1 = match.team1RosterId,
+              let r2 = match.team2RosterId,
+              let team1 = standings.first(where: { $0.rosterId == r1 }),
+              let team2 = standings.first(where: { $0.rosterId == r2 }) else {
+            return nil
+        }
+
+        return MatchupHistoryRecord(
+            leagueId: leagueId,
+            season: season ?? "",
+            week: week,
+            matchupId: mid,
+            teamARosterId: r1,
+            teamAUserId: team1.userId,
+            teamAUsername: team1.username,
+            teamATeamName: team1.teamName,
+            teamAPoints: team1Points ?? 0,
+            teamBRosterId: r2,
+            teamBUserId: team2.userId,
+            teamBUsername: team2.username,
+            teamBTeamName: team2.teamName,
+            teamBPoints: team2Points ?? 0,
+            winnerRosterId: match.winnerRosterId,
+            isPlayoff: true,
+            isChampionship: match.placement == 1,
+            teamADivision: 0,
+            teamBDivision: 0
+        )
+    }
+
     private func loadScores() async {
         guard let leagueId, let week = matchWeek,
               let r1 = match.team1RosterId, let r2 = match.team2RosterId else { return }
@@ -711,7 +780,7 @@ private struct BracketMatchDetailSheet: View {
                 guard let mid = m.matchupId else { continue }
                 grouped[mid, default: []].append(m)
             }
-            for (_, pair) in grouped where pair.count >= 2 {
+            for (mid, pair) in grouped where pair.count >= 2 {
                 let rids = pair.map(\.rosterId)
                 if rids.contains(r1) && rids.contains(r2) {
                     if let t1 = pair.first(where: { $0.rosterId == r1 }) {
@@ -720,6 +789,7 @@ private struct BracketMatchDetailSheet: View {
                     if let t2 = pair.first(where: { $0.rosterId == r2 }) {
                         team2Points = t2.resolvedPoints
                     }
+                    matchupId = mid
                     return
                 }
             }
@@ -780,7 +850,11 @@ private struct BracketRound {
 
 #Preview {
     NavigationStack {
-        PlayoffBracketView(leagueStore: LeagueStore())
+        PlayoffBracketView(
+            leagueStore: LeagueStore(),
+            historyStore: HistoryStore(),
+            playerStore: PlayerStore()
+        )
     }
     .preferredColorScheme(.dark)
 }

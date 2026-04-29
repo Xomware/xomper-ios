@@ -138,7 +138,11 @@ struct MainShell: View {
                 )
 
             case .playoffs:
-                PlayoffBracketView(leagueStore: leagueStore)
+                PlayoffBracketView(
+                    leagueStore: leagueStore,
+                    historyStore: historyStore,
+                    playerStore: playerStore
+                )
 
             case .draftHistory:
                 DraftHistoryView(
