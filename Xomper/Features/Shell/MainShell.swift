@@ -28,6 +28,7 @@ struct MainShell: View {
     @State private var navStore = NavigationStore()
     @State private var router = AppRouter()
     @State private var seasonStore = SeasonStore()
+    @State private var valuesStore = PlayerValuesStore()
 
     // MARK: - Body
 
@@ -175,6 +176,14 @@ struct MainShell: View {
                     playerStore: playerStore,
                     authStore: authStore,
                     taxiSquadStore: taxiSquadStore
+                )
+
+            case .teamAnalyzer:
+                TeamAnalyzerView(
+                    leagueStore: leagueStore,
+                    playerStore: playerStore,
+                    authStore: authStore,
+                    valuesStore: valuesStore
                 )
 
             case .rulebook:
