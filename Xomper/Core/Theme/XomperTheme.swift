@@ -72,9 +72,12 @@ enum XomperTheme {
 // MARK: - Card Style Modifier
 
 struct XomperCardModifier: ViewModifier {
+    let compact: Bool
+
     func body(content: Content) -> some View {
         content
-            .padding(20)
+            .padding(.horizontal, compact ? 12 : 14)
+            .padding(.vertical, compact ? 8 : 12)
             .background(XomperColors.bgCard)
             .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
             .xomperShadow(.sm)
@@ -82,7 +85,16 @@ struct XomperCardModifier: ViewModifier {
 }
 
 extension View {
+    /// Default card style — tighter than the legacy 20pt padding so a
+    /// scrollable list of cards is denser and more like a content
+    /// browser than a stack of full-screen tiles.
     func xomperCard() -> some View {
-        modifier(XomperCardModifier())
+        modifier(XomperCardModifier(compact: false))
+    }
+
+    /// Even tighter card for high-density rows (search results,
+    /// inline lists). Use when a row is more "list item" than "card".
+    func xomperCompactCard() -> some View {
+        modifier(XomperCardModifier(compact: true))
     }
 }
