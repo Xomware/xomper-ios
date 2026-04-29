@@ -8,6 +8,8 @@ import SwiftUI
 struct PayoutsView: View {
     var leagueStore: LeagueStore
     var historyStore: HistoryStore
+    var playerStore: PlayerStore
+    var playerPointsStore: PlayerPointsStore
     var authStore: AuthStore
 
     private let payouts: LeaguePayouts = .charlotteDynastyDefault
@@ -46,6 +48,9 @@ struct PayoutsView: View {
             standings: standings,
             matchupHistory: historyStore.matchupHistory,
             winnersBracket: leagueStore.winnersBracket,
+            rosters: leagueStore.myLeagueRosters,
+            playerStore: playerStore,
+            playerPointsStore: playerPointsStore,
             userId: authStore.sleeperUserId
         )
         let projected = projections.map(\.projectedAmount).reduce(0, +)
@@ -210,6 +215,29 @@ struct PayoutsView: View {
            let leagueId = leagueStore.myLeague?.leagueId {
             await leagueStore.fetchBrackets(leagueId: leagueId)
         }
+        // Per-player starter-points aggregation for position MVPs.
+        // 14 weeks × ~12 matchups each — fits comfortably in a single
+        // background pass; cached on the store so re-entering the view
+        // doesn't re-fetch.
+        if !playerPointsStore.hasData,
+           let leagueId = leagueStore.myLeague?.leagueId {
+            await playerPointsStore.loadRegularSeason(
+                leagueId: leagueId,
+                regularSeasonLastWeek: regularSeasonLastWeek
+            )
+        }
+    }
+
+    /// Final regular-season week. Derived from `playoff_week_start - 1`
+    /// when available; falls back to 14 (the typical NFL fantasy
+    /// regular season).
+    private var regularSeasonLastWeek: Int {
+        guard let value = leagueStore.myLeague?.settings?.additionalSettings?["playoff_week_start"] else {
+            return 14
+        }
+        if let i = value.intValue { return max(i - 1, 1) }
+        if let d = value.doubleValue { return max(Int(d) - 1, 1) }
+        return 14
     }
 
     private func reload() async {
