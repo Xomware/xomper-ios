@@ -12,6 +12,10 @@ struct HexagonChartView: View {
     /// Optional comparison team. When nil, only the primary polygon
     /// renders.
     let comparison: [TeamAnalysis.HexAxis]?
+    /// Optional league-average polygon. Renders behind the primary +
+    /// comparison polygons in a muted neutral color so users can read
+    /// relative strength at each axis without mental math.
+    var leagueAverage: [TeamAnalysis.HexAxis]? = nil
     /// League-wide max per axis label, used to normalize each polygon
     /// vertex against. Falls back to local max when an axis isn't in
     /// the dictionary.
@@ -20,6 +24,7 @@ struct HexagonChartView: View {
     /// Axis label color treatment.
     private let primaryColor = XomperColors.championGold
     private let comparisonColor = Color.cyan
+    private let averageColor = Color.gray
 
     var body: some View {
         GeometryReader { geo in
@@ -30,6 +35,19 @@ struct HexagonChartView: View {
             ZStack {
                 gridPolygons(center: center, radius: radius)
                 axisLines(center: center, radius: radius)
+
+                // League average underlays everything else — it's a
+                // baseline, not a competitor.
+                if let leagueAverage {
+                    polygon(
+                        for: leagueAverage,
+                        center: center,
+                        radius: radius,
+                        color: averageColor,
+                        fillOpacity: 0.12,
+                        strokeStyle: .dashed
+                    )
+                }
 
                 if let comparison {
                     polygon(
@@ -86,11 +104,18 @@ struct HexagonChartView: View {
 
     // MARK: - Team polygon
 
+    enum PolygonStrokeStyle {
+        case solid
+        case dashed
+    }
+
     private func polygon(
         for axes: [TeamAnalysis.HexAxis],
         center: CGPoint,
         radius: CGFloat,
-        color: Color
+        color: Color,
+        fillOpacity: Double = 0.28,
+        strokeStyle: PolygonStrokeStyle = .solid
     ) -> some View {
         let points: [CGPoint] = axes.enumerated().map { idx, axis in
             let max = axisMaxes[axis.label] ?? axis.value
@@ -104,12 +129,23 @@ struct HexagonChartView: View {
                 if i == 0 { path.move(to: p) } else { path.addLine(to: p) }
             }
             path.closeSubpath()
-            ctx.fill(path, with: .color(color.opacity(0.28)))
-            ctx.stroke(path, with: .color(color), lineWidth: 2)
+            ctx.fill(path, with: .color(color.opacity(fillOpacity)))
 
-            for p in points {
-                let dot = Path(ellipseIn: CGRect(x: p.x - 3, y: p.y - 3, width: 6, height: 6))
-                ctx.fill(dot, with: .color(color))
+            switch strokeStyle {
+            case .solid:
+                ctx.stroke(path, with: .color(color), lineWidth: 2)
+            case .dashed:
+                let stroke = StrokeStyle(lineWidth: 1.5, dash: [4, 3])
+                ctx.stroke(path, with: .color(color.opacity(0.7)), style: stroke)
+            }
+
+            // Dots only on solid (foreground) polygons — keeps the
+            // dashed average baseline from cluttering the chart.
+            if strokeStyle == .solid {
+                for p in points {
+                    let dot = Path(ellipseIn: CGRect(x: p.x - 3, y: p.y - 3, width: 6, height: 6))
+                    ctx.fill(dot, with: .color(color))
+                }
             }
         }
     }
