@@ -30,6 +30,7 @@ struct MainShell: View {
     @State private var seasonStore = SeasonStore()
     @State private var valuesStore = PlayerValuesStore()
     @State private var playerPointsStore = PlayerPointsStore()
+    @State private var aiReviewStore = AIReviewStore()
 
     // MARK: - Body
 
@@ -208,6 +209,12 @@ struct MainShell: View {
                     playerPointsStore: playerPointsStore,
                     userStore: userStore,
                     nflStateStore: nflStateStore
+                )
+
+            case .aiReview:
+                AIReviewView(
+                    store: aiReviewStore,
+                    router: router
                 )
 
             case .admin:
@@ -396,7 +403,8 @@ struct MainShell: View {
                 playerStore: playerStore,
                 authStore: authStore,
                 router: router,
-                navStore: navStore
+                navStore: navStore,
+                aiReviewStore: aiReviewStore
             )
 
         case .settings:
@@ -419,7 +427,29 @@ struct MainShell: View {
 
         case .leagueOverview(let leagueId):
             LeagueOverviewView(leagueId: leagueId, router: router)
+
+        case .aiReportDetail(let reportId):
+            if let report = resolveAIReport(id: reportId) {
+                AIReviewDetailView(report: report)
+            } else {
+                EmptyStateView(
+                    icon: "sparkles",
+                    title: "Report Not Found",
+                    message: "We couldn't load this report — pull to refresh the archive."
+                )
+            }
         }
+    }
+
+    /// Look up an `AIReport` from the store by its composite id. The
+    /// archive is the canonical source; if not present, fall back to
+    /// the latest-by-type cache. Returns nil if neither contains a
+    /// match.
+    private func resolveAIReport(id: String) -> AIReport? {
+        if let hit = aiReviewStore.archive.first(where: { $0.id == id }) {
+            return hit
+        }
+        return aiReviewStore.latestByType.values.first(where: { $0.id == id })
     }
 
     // MARK: - Edge swipe → drawer

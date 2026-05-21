@@ -13,6 +13,10 @@ protocol XomperAPIClientProtocol: Sendable {
     // Admin portal
     func adminListNotifications(sleeperUserId: String, daysBack: Int, kind: String?, status: String?, limit: Int) async throws -> AdminNotificationsResponse
     func adminTestSend(sleeperUserId: String, email: String?, kind: String, channels: [String]) async throws -> AdminTestSendResponse
+
+    // AI Review
+    func fetchLatestAIReport(type: AIReportType) async throws -> AIReport?
+    func fetchAIReportsList(type: AIReportType?, limit: Int, cursor: String?) async throws -> AIReportsListResponse
 }
 
 // MARK: - Request Payloads
@@ -144,6 +148,28 @@ struct AdminNotificationLogEntry: Decodable, Identifiable, Sendable, Hashable {
 struct AdminNotificationsResponse: Decodable, Sendable {
     let rows: [AdminNotificationLogEntry]
     let count: Int
+}
+
+// MARK: - AI Review
+
+/// Wraps `/ai-reports/latest`. Backend returns
+/// `{ "report": {...} | null }` and the client unwraps `report` to a
+/// nilable `AIReport`.
+struct AIReportLatestResponse: Decodable, Sendable {
+    let report: AIReport?
+}
+
+/// Wraps `/ai-reports/list`. `rows` is newest-first via the
+/// `created-at-index` GSI; `nextCursor` is the opaque pagination
+/// token returned by Dynamo.
+struct AIReportsListResponse: Decodable, Sendable {
+    let rows: [AIReport]
+    let nextCursor: String?
+
+    enum CodingKeys: String, CodingKey {
+        case rows
+        case nextCursor = "next_cursor"
+    }
 }
 
 struct AdminTestSendResponse: Decodable, Sendable {
@@ -348,6 +374,41 @@ final class XomperAPIClient: XomperAPIClientProtocol {
             body["email"] = email
         }
         return try await postDecoding("/admin/test-send", body: body)
+    }
+
+    // MARK: - AI Review
+
+    /// Latest report of a given type for the active whitelisted
+    /// league. Backend resolves the league via Supabase, so the
+    /// caller doesn't pass a leagueId. Returns `nil` when no report
+    /// of that type exists yet (empty state on a fresh table).
+    func fetchLatestAIReport(type: AIReportType) async throws -> AIReport? {
+        let items: [URLQueryItem] = [
+            URLQueryItem(name: "type", value: type.rawValue),
+        ]
+        let response: AIReportLatestResponse = try await get("/ai-reports/latest", queryItems: items)
+        return response.report
+    }
+
+    /// Paginated archive across all report types (or filtered to one
+    /// type when `type` is non-nil). `limit` caps the per-page row
+    /// count; `cursor` is the opaque token returned by a previous
+    /// call's `nextCursor`.
+    func fetchAIReportsList(
+        type: AIReportType? = nil,
+        limit: Int = 20,
+        cursor: String? = nil
+    ) async throws -> AIReportsListResponse {
+        var items: [URLQueryItem] = [
+            URLQueryItem(name: "limit", value: String(limit)),
+        ]
+        if let type {
+            items.append(URLQueryItem(name: "type", value: type.rawValue))
+        }
+        if let cursor, !cursor.isEmpty {
+            items.append(URLQueryItem(name: "cursor", value: cursor))
+        }
+        return try await get("/ai-reports/list", queryItems: items)
     }
 
     // MARK: - Private
