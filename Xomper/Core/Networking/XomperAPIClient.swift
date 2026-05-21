@@ -17,6 +17,7 @@ protocol XomperAPIClientProtocol: Sendable {
     // AI Review
     func fetchLatestAIReport(type: AIReportType) async throws -> AIReport?
     func fetchAIReportsList(type: AIReportType?, limit: Int, cursor: String?) async throws -> AIReportsListResponse
+    func triggerPostDraftAIReview(dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse
 }
 
 // MARK: - Request Payloads
@@ -409,6 +410,27 @@ final class XomperAPIClient: XomperAPIClientProtocol {
             items.append(URLQueryItem(name: "cursor", value: cursor))
         }
         return try await get("/ai-reports/list", queryItems: items)
+    }
+
+    /// Admin-only: fires the backend `notif_ai_review_postdraft`
+    /// lambda. With `dryRun = true` (default) the report is written
+    /// to Dynamo and delivered only to the admin user (single-user
+    /// SES + SNS) so tone can be reviewed before broadcast. With
+    /// `dryRun = false` + `force = true` the same row is overwritten
+    /// and broadcast to all 12 managers.
+    ///
+    /// Backend path was flattened to `/admin/ai-review-postdraft-trigger`
+    /// in infra PR #104 (API GW path-builder doesn't handle 3-segment
+    /// parents cleanly; flattening was the smallest change).
+    func triggerPostDraftAIReview(
+        dryRun: Bool,
+        force: Bool
+    ) async throws -> AIReviewTriggerResponse {
+        let body: [String: Any] = [
+            "dry_run": dryRun,
+            "force": force,
+        ]
+        return try await postDecoding("/admin/ai-review-postdraft-trigger", body: body)
     }
 
     // MARK: - Private

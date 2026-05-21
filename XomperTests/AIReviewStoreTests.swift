@@ -199,6 +199,7 @@ final class MockXomperAPIClient: XomperAPIClientProtocol, @unchecked Sendable {
     func unregisterDevice(userId: String, deviceToken: String) async throws { throw Unsupported.method }
     func adminListNotifications(sleeperUserId: String, daysBack: Int, kind: String?, status: String?, limit: Int) async throws -> AdminNotificationsResponse { throw Unsupported.method }
     func adminTestSend(sleeperUserId: String, email: String?, kind: String, channels: [String]) async throws -> AdminTestSendResponse { throw Unsupported.method }
+    func triggerPostDraftAIReview(dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse { throw Unsupported.method }
 
     enum Unsupported: Error { case method }
 }
