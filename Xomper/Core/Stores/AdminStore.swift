@@ -37,6 +37,25 @@ final class AdminStore {
     /// the first run is always dry-run for tone calibration.
     var postDraftDryRun: Bool = true
 
+    // MARK: - Preseason AI Review state
+
+    /// Latest preseason AI Review row from `/ai-reports/latest`.
+    /// Drives the trigger card's status line + button label.
+    /// `nil` until `loadPreseasonLatest()` runs (or if it errors).
+    private(set) var preseasonLatest: AIReport?
+    /// True while a trigger request is in flight. Disables the
+    /// button and shows a spinner.
+    private(set) var isTriggeringPreseason = false
+    /// Last error from the trigger flow. Cleared on next trigger.
+    private(set) var preseasonError: Error?
+    /// Last successful trigger response. Surfaces delivery count +
+    /// model in the result line.
+    private(set) var preseasonResult: AIReviewTriggerResponse?
+
+    /// Two-way bound by the AdminView toggle. Defaults to true so
+    /// the first run is always dry-run for tone calibration.
+    var preseasonDryRun: Bool = true
+
     var filterKind: KindFilter = .all
     var filterStatus: StatusFilter = .all
 
@@ -148,6 +167,50 @@ final class AdminStore {
             return response
         } catch {
             postDraftError = error
+            throw error
+        }
+    }
+
+    // MARK: - Preseason AI Review
+
+    /// Reads the latest preseason report so the trigger card can
+    /// reflect whether a dry-run / broadcast already happened. Silent
+    /// on failure — the card just defaults to "no report yet" copy.
+    func loadPreseasonLatest() async {
+        do {
+            preseasonLatest = try await apiClient.fetchLatestAIReport(type: .preseason)
+        } catch {
+            preseasonLatest = nil
+        }
+    }
+
+    /// Fires the admin preseason trigger endpoint. Surfaces the
+    /// response in `preseasonResult` on success or `preseasonError`
+    /// on failure, and re-reads `preseasonLatest` afterwards so the
+    /// card label reflects the new state.
+    ///
+    /// Throws so callers can decide whether to surface the error
+    /// further (e.g. for confirmation dialogs). Internal state is
+    /// updated regardless.
+    @discardableResult
+    func triggerPreseason(dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse {
+        isTriggeringPreseason = true
+        preseasonError = nil
+        preseasonResult = nil
+        defer { isTriggeringPreseason = false }
+
+        do {
+            let response = try await apiClient.triggerPreseasonAIReview(
+                dryRun: dryRun,
+                force: force
+            )
+            preseasonResult = response
+            // Refresh latest so the card label updates from "Generate"
+            // to "Regenerate (force)" on next render.
+            await loadPreseasonLatest()
+            return response
+        } catch {
+            preseasonError = error
             throw error
         }
     }

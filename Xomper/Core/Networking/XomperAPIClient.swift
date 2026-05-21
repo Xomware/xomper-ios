@@ -18,6 +18,7 @@ protocol XomperAPIClientProtocol: Sendable {
     func fetchLatestAIReport(type: AIReportType) async throws -> AIReport?
     func fetchAIReportsList(type: AIReportType?, limit: Int, cursor: String?) async throws -> AIReportsListResponse
     func triggerPostDraftAIReview(dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse
+    func triggerPreseasonAIReview(dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse
 }
 
 // MARK: - Request Payloads
@@ -431,6 +432,26 @@ final class XomperAPIClient: XomperAPIClientProtocol {
             "force": force,
         ]
         return try await postDecoding("/admin/ai-review-postdraft-trigger", body: body)
+    }
+
+    /// Admin-only: fires the backend `notif_ai_review_preseason` lambda.
+    /// Same shape as `triggerPostDraftAIReview` — with `dryRun = true`
+    /// (default) the report is written to Dynamo and delivered only to
+    /// the admin user for tone calibration. With `dryRun = false` +
+    /// `force = true` the same row is overwritten and broadcast to all
+    /// 12 managers.
+    ///
+    /// Backend route is `/admin/ai-review-preseason-trigger`, registered
+    /// alongside the post-draft trigger in F2's infra PR.
+    func triggerPreseasonAIReview(
+        dryRun: Bool,
+        force: Bool
+    ) async throws -> AIReviewTriggerResponse {
+        let body: [String: Any] = [
+            "dry_run": dryRun,
+            "force": force,
+        ]
+        return try await postDecoding("/admin/ai-review-preseason-trigger", body: body)
     }
 
     // MARK: - Private

@@ -89,6 +89,7 @@
 		A0F4E9BCA7E5D757DE8BE5B3 /* AIReviewStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08BD215787E2BFC1C57E7E7E /* AIReviewStoreTests.swift */; };
 		A28A24923C27CF0929ED97E1 /* Double+Formatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669A80C2A9F46A0C4612388C /* Double+Formatting.swift */; };
 		A379F9D71FE84EC4F3A2499C /* SearchStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0C5F37100E6EBB467EBFE1C /* SearchStore.swift */; };
+		A45E9B6A2A65059251FB3D76 /* AdminStorePreseasonTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AD03A165767A043D34A9499 /* AdminStorePreseasonTests.swift */; };
 		A4D93DF4C02A8DE6C695CE4D /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E94170F987E8EFE5C566B9B /* LoginView.swift */; };
 		B24D5DBDDF4C163FCAB52689 /* TeamAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC09DFF48D9AAFEF0A286BAD /* TeamAnalysis.swift */; };
 		B309CAE3F00F954918C09554 /* PlayerValuesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CE99E9B095120FB6636FC8A /* PlayerValuesStore.swift */; };
@@ -196,6 +197,7 @@
 		94E125AD2AA5212D0EB4C13A /* NflStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NflStateStore.swift; sourceTree = "<group>"; };
 		957EE31D25CFE325633622D4 /* StandingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingsStore.swift; sourceTree = "<group>"; };
 		967DCE922FE090CE4F067587 /* AIReviewDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIReviewDetailView.swift; sourceTree = "<group>"; };
+		9AD03A165767A043D34A9499 /* AdminStorePreseasonTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminStorePreseasonTests.swift; sourceTree = "<group>"; };
 		9B7C85CB880ABD7D373E49A6 /* RuleProposal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuleProposal.swift; sourceTree = "<group>"; };
 		9E94170F987E8EFE5C566B9B /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		9F49969EE42BDE6462664021 /* TradedPick.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TradedPick.swift; sourceTree = "<group>"; };
@@ -361,6 +363,7 @@
 		391A14F36D43146CBE38D666 /* XomperTests */ = {
 			isa = PBXGroup;
 			children = (
+				9AD03A165767A043D34A9499 /* AdminStorePreseasonTests.swift */,
 				58ED7387DCA3E1DC5CDD7AFF /* AdminStoreTests.swift */,
 				08BD215787E2BFC1C57E7E7E /* AIReviewStoreTests.swift */,
 				B3893B13276074EF6033CEA2 /* ClinchCalculatorTests.swift */,
@@ -734,6 +737,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A0F4E9BCA7E5D757DE8BE5B3 /* AIReviewStoreTests.swift in Sources */,
+				A45E9B6A2A65059251FB3D76 /* AdminStorePreseasonTests.swift in Sources */,
 				37E600A31B5AA5DA5A766692 /* AdminStoreTests.swift in Sources */,
 				02AC6FBAE68011749AA17644 /* ClinchCalculatorTests.swift in Sources */,
 			);
