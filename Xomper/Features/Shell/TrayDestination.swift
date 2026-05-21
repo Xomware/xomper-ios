@@ -4,12 +4,14 @@ import Foundation
 /// `currentDestination` on `NavigationStore` is always one of these.
 ///
 /// Cases are grouped logically by the drawer sections:
+/// - Home:     landing
 /// - Compete:  standings, matchups, playoffs
 /// - History:  draftHistory, matchupHistory, worldCup
 /// - Roster:   myTeam, taxiSquad
 /// - Rules:    rulebook, scoring, leagueSettings, ruleProposals
 /// - Profile/Settings are surfaced via the profile card and pinned footer.
 enum TrayDestination: Hashable {
+    case landing
     case standings
     case matchups
     case playoffs
@@ -34,6 +36,7 @@ enum TrayDestination: Hashable {
     /// title when the destination is rendered.
     var title: String {
         switch self {
+        case .landing:        "Home"
         case .standings:      "Standings"
         case .matchups:       "Matchups"
         case .playoffs:       "Playoffs"
@@ -59,6 +62,7 @@ enum TrayDestination: Hashable {
     /// SF Symbol used both for the drawer row icon and any external pickers.
     var systemImage: String {
         switch self {
+        case .landing:        "house.fill"
         case .standings:      "list.number"
         case .matchups:       "sportscourt.fill"
         case .playoffs:       "trophy.fill"

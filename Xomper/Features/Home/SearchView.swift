@@ -13,6 +13,7 @@ struct SearchView: View {
     var authStore: AuthStore
     var router: AppRouter
     var navStore: NavigationStore
+    // retained for future search-AI integration — Landing now owns the AI hero.
     var aiReviewStore: AIReviewStore
 
     @State private var searchStore: SearchStore
@@ -38,11 +39,6 @@ struct SearchView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            AIReviewHomeCard(
-                store: aiReviewStore,
-                navStore: navStore,
-                router: router
-            )
             searchControls
             resultArea
         }
@@ -50,15 +46,6 @@ struct SearchView: View {
         .navigationTitle("Search")
         .navigationBarTitleDisplayMode(.large)
         .toolbarColorScheme(.dark, for: .navigationBar)
-        .task {
-            // Prime the latest-by-type lookup for the home banner.
-            // All three loads run in parallel; the card picks the
-            // newest. Each respects the store's 12-hour freshness.
-            async let post: () = aiReviewStore.loadLatest(type: .postDraft)
-            async let pre:  () = aiReviewStore.loadLatest(type: .preseason)
-            async let week: () = aiReviewStore.loadLatest(type: .weekly)
-            _ = await (post, pre, week)
-        }
     }
 
     // MARK: - Search Controls
