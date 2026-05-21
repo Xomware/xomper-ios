@@ -32,10 +32,12 @@ struct AdminView: View {
         .task(id: callerSleeperId) {
             await store.refresh(sleeperUserId: callerSleeperId)
             await store.loadPostDraftLatest()
+            await store.loadPreseasonLatest()
         }
         .refreshable {
             await store.refresh(sleeperUserId: callerSleeperId)
             await store.loadPostDraftLatest()
+            await store.loadPreseasonLatest()
         }
     }
 
@@ -57,6 +59,8 @@ struct AdminView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: XomperTheme.Spacing.md) {
                 postDraftTriggerCard
+
+                preseasonTriggerCard
 
                 testSenderCard
 
@@ -233,6 +237,141 @@ struct AdminView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM d, h:mm a"
         return formatter.string(from: date)
+    }
+
+    // MARK: - Preseason AI Review trigger
+
+    private var preseasonTriggerCard: some View {
+        VStack(alignment: .leading, spacing: XomperTheme.Spacing.sm) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Preseason AI Review")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(XomperColors.championGold)
+                Text(preseasonStatusLine)
+                    .font(.caption)
+                    .foregroundStyle(XomperColors.textSecondary)
+            }
+
+            Toggle(isOn: $store.preseasonDryRun) {
+                Text("Dry run (admin-only delivery)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(XomperColors.textPrimary)
+            }
+            .toggleStyle(.switch)
+            .tint(XomperColors.championGold)
+            .disabled(store.isTriggeringPreseason)
+
+            HStack(spacing: XomperTheme.Spacing.sm) {
+                Button {
+                    Task { await triggerPreseason(force: false) }
+                } label: {
+                    HStack(spacing: XomperTheme.Spacing.xs) {
+                        if store.isTriggeringPreseason {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                                .tint(XomperColors.bgDark)
+                        } else {
+                            Image(systemName: "sparkles")
+                                .font(.caption2)
+                        }
+                        Text(preseasonPrimaryButtonLabel)
+                            .font(.caption.weight(.semibold))
+                    }
+                    .foregroundStyle(XomperColors.bgDark)
+                    .padding(.horizontal, XomperTheme.Spacing.sm)
+                    .padding(.vertical, XomperTheme.Spacing.xs)
+                    .frame(minHeight: 32)
+                    .background(XomperColors.championGold)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.pressableCard)
+                .disabled(store.isTriggeringPreseason)
+
+                if store.preseasonLatest != nil {
+                    Button {
+                        Task { await triggerPreseason(force: true) }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.caption2)
+                            Text("Regenerate (force)")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .foregroundStyle(XomperColors.championGold)
+                        .padding(.horizontal, XomperTheme.Spacing.sm)
+                        .padding(.vertical, XomperTheme.Spacing.xs)
+                        .frame(minHeight: 32)
+                        .overlay(
+                            Capsule()
+                                .strokeBorder(XomperColors.championGold.opacity(0.6), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.pressableCard)
+                    .disabled(store.isTriggeringPreseason)
+                }
+
+                Spacer(minLength: 0)
+            }
+
+            if let result = store.preseasonResult {
+                Text(preseasonResultLine(result))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(XomperColors.successGreen)
+            } else if let error = store.preseasonError {
+                Text("✗ \(error.localizedDescription)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(XomperColors.errorRed)
+            }
+        }
+        .padding(XomperTheme.Spacing.md)
+        .background(XomperColors.bgCard)
+        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
+        .overlay(
+            RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg)
+                .strokeBorder(XomperColors.championGold.opacity(0.3), lineWidth: 1)
+        )
+        .padding(.horizontal, XomperTheme.Spacing.md)
+    }
+
+    private var preseasonStatusLine: String {
+        guard let latest = store.preseasonLatest else {
+            return "No report yet — first run will be dry-run."
+        }
+        let isDryRun = latest.metadata["dry_run"] == "true"
+        let dateStr = formattedShortDate(latest.createdAt)
+        if isDryRun {
+            return "Last dry-run completed at \(dateStr)."
+        } else {
+            return "Broadcast on \(dateStr)."
+        }
+    }
+
+    private var preseasonPrimaryButtonLabel: String {
+        if store.preseasonLatest == nil {
+            // No prior report — first run is always dry-run.
+            return "Generate Dry Run"
+        }
+        return store.preseasonDryRun ? "Generate Dry Run" : "Generate & Broadcast"
+    }
+
+    private func preseasonResultLine(_ result: AIReviewTriggerResponse) -> String {
+        if result.dryRun {
+            let count = result.deliveryCount
+            return "✓ Generated! \(count) dry-run \(count == 1 ? "delivery" : "deliveries") sent."
+        } else {
+            return "✓ Broadcast complete — \(result.deliveryCount) \(result.deliveryCount == 1 ? "email" : "emails") sent."
+        }
+    }
+
+    private func triggerPreseason(force: Bool) async {
+        do {
+            _ = try await store.triggerPreseason(
+                dryRun: store.preseasonDryRun,
+                force: force
+            )
+        } catch {
+            // Error already surfaced via store.preseasonError.
+        }
     }
 
     // MARK: - Test sender

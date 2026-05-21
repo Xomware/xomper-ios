@@ -159,27 +159,53 @@ final class MockAdminAPIClient: XomperAPIClientProtocol, @unchecked Sendable {
     var triggerResponse: AIReviewTriggerResponse?
     var triggerError: Error?
 
+    // Optional per-type overrides so a single mock can drive both
+    // post-draft and preseason flows. When nil, falls back to the
+    // shared `latest` / `triggerResponse` / `*Error` fields above so
+    // existing post-draft tests keep working without modification.
+    var preseasonLatest: AIReport?
+    var preseasonFetchError: Error?
+    var preseasonTriggerResponse: AIReviewTriggerResponse?
+    var preseasonTriggerError: Error?
+
     private(set) var fetchLatestCalls: [AIReportType] = []
     private(set) var triggerCalls: [(dryRun: Bool, force: Bool)] = []
+    private(set) var preseasonTriggerCalls: [(dryRun: Bool, force: Bool)] = []
 
     init(
         latest: AIReport? = nil,
         fetchLatestError: Error? = nil,
         triggerResponse: AIReviewTriggerResponse? = nil,
-        triggerError: Error? = nil
+        triggerError: Error? = nil,
+        preseasonLatest: AIReport? = nil,
+        preseasonFetchError: Error? = nil,
+        preseasonTriggerResponse: AIReviewTriggerResponse? = nil,
+        preseasonTriggerError: Error? = nil
     ) {
         self.latest = latest
         self.fetchLatestError = fetchLatestError
         self.triggerResponse = triggerResponse
         self.triggerError = triggerError
+        self.preseasonLatest = preseasonLatest
+        self.preseasonFetchError = preseasonFetchError
+        self.preseasonTriggerResponse = preseasonTriggerResponse
+        self.preseasonTriggerError = preseasonTriggerError
     }
 
     // MARK: AI Review
 
     func fetchLatestAIReport(type: AIReportType) async throws -> AIReport? {
         fetchLatestCalls.append(type)
-        if let err = fetchLatestError { throw err }
-        return latest
+        switch type {
+        case .preseason:
+            if let err = preseasonFetchError { throw err }
+            // Fall back to `latest` if no preseason-specific row was
+            // staged — keeps single-type fixtures simple.
+            return preseasonLatest ?? latest
+        default:
+            if let err = fetchLatestError { throw err }
+            return latest
+        }
     }
 
     func fetchAIReportsList(type: AIReportType?, limit: Int, cursor: String?) async throws -> AIReportsListResponse {
@@ -190,6 +216,13 @@ final class MockAdminAPIClient: XomperAPIClientProtocol, @unchecked Sendable {
         triggerCalls.append((dryRun, force))
         if let err = triggerError { throw err }
         guard let response = triggerResponse else { throw MockError.notConfigured }
+        return response
+    }
+
+    func triggerPreseasonAIReview(dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse {
+        preseasonTriggerCalls.append((dryRun, force))
+        if let err = preseasonTriggerError { throw err }
+        guard let response = preseasonTriggerResponse else { throw MockError.notConfigured }
         return response
     }
 
