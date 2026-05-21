@@ -19,6 +19,7 @@ protocol XomperAPIClientProtocol: Sendable {
     func fetchAIReportsList(type: AIReportType?, limit: Int, cursor: String?) async throws -> AIReportsListResponse
     func triggerPostDraftAIReview(dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse
     func triggerPreseasonAIReview(dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse
+    func triggerWeeklyAIReview(week: Int?, dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse
 }
 
 // MARK: - Request Payloads
@@ -72,6 +73,31 @@ struct TaxiOwnerPayload: Encodable, Sendable {
     enum CodingKeys: String, CodingKey {
         case displayName = "display_name"
         case email
+    }
+}
+
+/// Wire shape for `POST /admin/ai-review-weekly-trigger`.
+///
+/// `week` uses `encodeIfPresent` so when `nil` is passed the JSON key
+/// is omitted entirely — the backend then defaults to its
+/// `nfl_state.week - 1` resolution. Sending `"week": null` would be
+/// interpreted by some Pydantic configs as an explicit override.
+struct WeeklyTriggerRequest: Encodable, Sendable {
+    let week: Int?
+    let dryRun: Bool
+    let force: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case week
+        case dryRun = "dry_run"
+        case force
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(week, forKey: .week)
+        try container.encode(dryRun, forKey: .dryRun)
+        try container.encode(force, forKey: .force)
     }
 }
 
@@ -454,6 +480,26 @@ final class XomperAPIClient: XomperAPIClientProtocol {
         return try await postDecoding("/admin/ai-review-preseason-trigger", body: body)
     }
 
+    /// Admin-only: fires the backend `notif_ai_review_weekly` lambda.
+    /// When `week` is nil the backend resolves the just-completed week
+    /// from Sleeper's `nfl_state.week - 1`; the JSON key is omitted from
+    /// the wire payload (not sent as `null`) so the backend's default
+    /// kicks in cleanly.
+    ///
+    /// Backend route is `/admin/ai-review-weekly-trigger`, registered in
+    /// F3's infra PR.
+    func triggerWeeklyAIReview(
+        week: Int?,
+        dryRun: Bool,
+        force: Bool
+    ) async throws -> AIReviewTriggerResponse {
+        let payload = WeeklyTriggerRequest(week: week, dryRun: dryRun, force: force)
+        return try await postEncodableDecoding(
+            "/admin/ai-review-weekly-trigger",
+            body: payload
+        )
+    }
+
     // MARK: - Private
 
     private func get<T: Decodable>(_ path: String, queryItems: [URLQueryItem]) async throws -> T {
@@ -466,6 +512,50 @@ final class XomperAPIClient: XomperAPIClientProtocol {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if !authToken.isEmpty {
             request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+        }
+
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw XomperAPIError.networkError(error)
+        }
+
+        guard let http = response as? HTTPURLResponse,
+              (200...299).contains(http.statusCode) else {
+            let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+            throw XomperAPIError.httpError(statusCode: code)
+        }
+
+        do {
+            return try JSONDecoder().decode(T.self, from: data)
+        } catch {
+            throw XomperAPIError.encodingError(error)
+        }
+    }
+
+    /// POST a typed `Encodable` body and decode the JSON response.
+    /// Used for payloads where optional keys must be omitted entirely
+    /// (via `encodeIfPresent`) rather than emitted as `null` — which
+    /// `JSONSerialization` from `[String: Any]` cannot express.
+    private func postEncodableDecoding<B: Encodable, T: Decodable>(
+        _ path: String,
+        body: B
+    ) async throws -> T {
+        guard let url = URL(string: "\(baseURL)\(path)") else { throw XomperAPIError.invalidURL }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if !authToken.isEmpty {
+            request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+        }
+
+        do {
+            request.httpBody = try encoder.encode(body)
+        } catch {
+            throw XomperAPIError.encodingError(error)
         }
 
         let (data, response): (Data, URLResponse)

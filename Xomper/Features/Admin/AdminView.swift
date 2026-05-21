@@ -33,11 +33,13 @@ struct AdminView: View {
             await store.refresh(sleeperUserId: callerSleeperId)
             await store.loadPostDraftLatest()
             await store.loadPreseasonLatest()
+            await store.loadWeeklyLatest()
         }
         .refreshable {
             await store.refresh(sleeperUserId: callerSleeperId)
             await store.loadPostDraftLatest()
             await store.loadPreseasonLatest()
+            await store.loadWeeklyLatest()
         }
     }
 
@@ -61,6 +63,8 @@ struct AdminView: View {
                 postDraftTriggerCard
 
                 preseasonTriggerCard
+
+                weeklyTriggerCard
 
                 testSenderCard
 
@@ -371,6 +375,196 @@ struct AdminView: View {
             )
         } catch {
             // Error already surfaced via store.preseasonError.
+        }
+    }
+
+    // MARK: - Weekly AI Review trigger
+
+    /// Binding for the "Override week" toggle. Backed by
+    /// `store.weeklyWeekOverride` — `nil` means "let the backend
+    /// resolve current week", non-nil means "send this week
+    /// explicitly". Flipping ON seeds a sensible default (1) so the
+    /// stepper has somewhere to start.
+    private var weeklyOverrideEnabled: Binding<Bool> {
+        Binding(
+            get: { store.weeklyWeekOverride != nil },
+            set: { newValue in
+                if newValue {
+                    if store.weeklyWeekOverride == nil {
+                        store.weeklyWeekOverride = 1
+                    }
+                } else {
+                    store.weeklyWeekOverride = nil
+                }
+            }
+        )
+    }
+
+    /// Binding wrapping the optional `weeklyWeekOverride` for the
+    /// Stepper. Stepper only renders when the override toggle is ON,
+    /// so a nil read here is treated as 1 defensively.
+    private var weeklyWeekBinding: Binding<Int> {
+        Binding(
+            get: { store.weeklyWeekOverride ?? 1 },
+            set: { store.weeklyWeekOverride = $0 }
+        )
+    }
+
+    private var weeklyTriggerCard: some View {
+        VStack(alignment: .leading, spacing: XomperTheme.Spacing.sm) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Weekly AI Review")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(XomperColors.championGold)
+                Text(weeklyStatusLine)
+                    .font(.caption)
+                    .foregroundStyle(XomperColors.textSecondary)
+            }
+
+            Toggle(isOn: $store.weeklyDryRun) {
+                Text("Dry run (admin-only delivery)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(XomperColors.textPrimary)
+            }
+            .toggleStyle(.switch)
+            .tint(XomperColors.championGold)
+            .disabled(store.isTriggeringWeekly)
+
+            Toggle(isOn: weeklyOverrideEnabled) {
+                Text("Override week (default = current)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(XomperColors.textPrimary)
+            }
+            .toggleStyle(.switch)
+            .tint(XomperColors.championGold)
+            .disabled(store.isTriggeringWeekly)
+
+            if store.weeklyWeekOverride != nil {
+                Stepper(value: weeklyWeekBinding, in: 1...18) {
+                    HStack(spacing: XomperTheme.Spacing.xs) {
+                        Text("Week")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(XomperColors.textPrimary)
+                        Text("\(store.weeklyWeekOverride ?? 1)")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(XomperColors.championGold)
+                            .monospacedDigit()
+                    }
+                }
+                .disabled(store.isTriggeringWeekly)
+            }
+
+            HStack(spacing: XomperTheme.Spacing.sm) {
+                Button {
+                    Task { await triggerWeekly(force: false) }
+                } label: {
+                    HStack(spacing: XomperTheme.Spacing.xs) {
+                        if store.isTriggeringWeekly {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                                .tint(XomperColors.bgDark)
+                        } else {
+                            Image(systemName: "sparkles")
+                                .font(.caption2)
+                        }
+                        Text(weeklyPrimaryButtonLabel)
+                            .font(.caption.weight(.semibold))
+                    }
+                    .foregroundStyle(XomperColors.bgDark)
+                    .padding(.horizontal, XomperTheme.Spacing.sm)
+                    .padding(.vertical, XomperTheme.Spacing.xs)
+                    .frame(minHeight: 32)
+                    .background(XomperColors.championGold)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.pressableCard)
+                .disabled(store.isTriggeringWeekly)
+
+                if store.weeklyLatest != nil {
+                    Button {
+                        Task { await triggerWeekly(force: true) }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.caption2)
+                            Text("Regenerate (force)")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .foregroundStyle(XomperColors.championGold)
+                        .padding(.horizontal, XomperTheme.Spacing.sm)
+                        .padding(.vertical, XomperTheme.Spacing.xs)
+                        .frame(minHeight: 32)
+                        .overlay(
+                            Capsule()
+                                .strokeBorder(XomperColors.championGold.opacity(0.6), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.pressableCard)
+                    .disabled(store.isTriggeringWeekly)
+                }
+
+                Spacer(minLength: 0)
+            }
+
+            if let result = store.weeklyResult {
+                Text(weeklyResultLine(result))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(XomperColors.successGreen)
+            } else if let error = store.weeklyError {
+                Text("✗ \(error.localizedDescription)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(XomperColors.errorRed)
+            }
+        }
+        .padding(XomperTheme.Spacing.md)
+        .background(XomperColors.bgCard)
+        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
+        .overlay(
+            RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg)
+                .strokeBorder(XomperColors.championGold.opacity(0.3), lineWidth: 1)
+        )
+        .padding(.horizontal, XomperTheme.Spacing.md)
+    }
+
+    private var weeklyStatusLine: String {
+        guard let latest = store.weeklyLatest else {
+            return "No report yet — first run will be dry-run."
+        }
+        let isDryRun = latest.metadata["dry_run"] == "true"
+        let dateStr = formattedShortDate(latest.createdAt)
+        if isDryRun {
+            return "Last dry-run (\(latest.period)) completed at \(dateStr)."
+        } else {
+            return "Broadcast (\(latest.period)) on \(dateStr)."
+        }
+    }
+
+    private var weeklyPrimaryButtonLabel: String {
+        if store.weeklyLatest == nil {
+            // No prior report — first run is always dry-run.
+            return "Generate Dry Run"
+        }
+        return store.weeklyDryRun ? "Generate Dry Run" : "Generate & Broadcast"
+    }
+
+    private func weeklyResultLine(_ result: AIReviewTriggerResponse) -> String {
+        if result.dryRun {
+            let count = result.deliveryCount
+            return "✓ Generated! \(count) dry-run \(count == 1 ? "delivery" : "deliveries") sent."
+        } else {
+            return "✓ Broadcast complete — \(result.deliveryCount) \(result.deliveryCount == 1 ? "email" : "emails") sent."
+        }
+    }
+
+    private func triggerWeekly(force: Bool) async {
+        do {
+            _ = try await store.triggerWeekly(
+                week: store.weeklyWeekOverride,
+                dryRun: store.weeklyDryRun,
+                force: force
+            )
+        } catch {
+            // Error already surfaced via store.weeklyError.
         }
     }
 
