@@ -18,8 +18,10 @@ final class NavigationStore {
     var isDrawerOpen: Bool = false
 
     /// Top-level destination rendered inside `MainShell`'s NavigationStack root.
-    /// Default landing destination on cold open is `.standings`.
-    var currentDestination: TrayDestination = .standings
+    /// Default landing destination on cold open is `.landing` — the new Home
+    /// surface composing the AI hero + announcements + standings bar +
+    /// this-week matchups. Standings remains accessible via the drawer.
+    var currentDestination: TrayDestination = .landing
 
     // MARK: - Drawer toggling
 

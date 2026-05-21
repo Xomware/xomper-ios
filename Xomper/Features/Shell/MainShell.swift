@@ -125,6 +125,16 @@ struct MainShell: View {
     private var destinationRoot: some View {
         Group {
             switch navStore.currentDestination {
+            case .landing:
+                LandingView(
+                    leagueStore: leagueStore,
+                    authStore: authStore,
+                    nflStateStore: nflStateStore,
+                    aiReviewStore: aiReviewStore,
+                    navStore: navStore,
+                    router: router
+                )
+
             case .standings:
                 StandingsView(
                     leagueStore: leagueStore,

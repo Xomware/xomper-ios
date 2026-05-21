@@ -27,6 +27,10 @@ struct DrawerView: View {
     private var sections: [TraySection] {
         var out: [TraySection] = [
             TraySection(
+                title: "Home",
+                entries: [.landing]
+            ),
+            TraySection(
                 title: "Compete",
                 entries: [.standings, .matchups, .playoffs]
             ),
