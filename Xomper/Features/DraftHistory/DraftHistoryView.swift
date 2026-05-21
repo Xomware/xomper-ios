@@ -44,7 +44,7 @@ struct DraftHistoryView: View {
             } else {
                 EmptyStateView(
                     icon: "list.clipboard",
-                    title: "No Draft History",
+                    title: "No Draft Picks Yet",
                     message: "Draft picks will appear here once a draft is complete."
                 )
             }
