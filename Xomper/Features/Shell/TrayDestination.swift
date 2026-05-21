@@ -37,7 +37,7 @@ enum TrayDestination: Hashable {
         case .standings:      "Standings"
         case .matchups:       "Matchups"
         case .playoffs:       "Playoffs"
-        case .draftHistory:   "Draft History"
+        case .draftHistory:   "Draft"
         case .matchupHistory: "Matchup History"
         case .worldCup:       "World Cup"
         case .myTeam:         "My Team"
