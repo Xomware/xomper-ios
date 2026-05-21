@@ -29,7 +29,7 @@ final class AIReviewStoreTests: XCTestCase {
 
     func testLoadLatest_populatesLatestByType_forPostDraft() async {
         let report = makeReport(
-            id: "L1|REPORT#post-draft#2026-POSTDRAFT",
+            id: "L1|REPORT#postDraft#2026-POSTDRAFT",
             type: .postDraft,
             period: "2026-POSTDRAFT"
         )

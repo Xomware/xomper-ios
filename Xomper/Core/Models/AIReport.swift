@@ -137,10 +137,16 @@ struct AIReport: Decodable, Identifiable, Sendable, Hashable {
 
 /// One of the three AI report flavors the backend produces. The raw
 /// values mirror what `report_type` carries in DynamoDB / the API.
+///
+/// Backend enforces camelCase via `REPORT_TYPES = ("postDraft",
+/// "preseason", "weekly")` in `lambdas/common/ai_reports_store.py`.
+/// `preseason` and `weekly` already default to their case names, but
+/// `postDraft` must be pinned to the camelCase wire value (was
+/// `"post-draft"` in F0, which would fail to decode).
 enum AIReportType: String, Codable, Sendable, CaseIterable, Hashable {
-    case postDraft = "post-draft"
-    case preseason
-    case weekly
+    case postDraft = "postDraft"
+    case preseason = "preseason"
+    case weekly = "weekly"
 
     /// Display name used in chips and titles.
     var displayName: String {
