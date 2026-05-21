@@ -18,6 +18,25 @@ final class AdminStore {
     private(set) var lastError: String?
     private(set) var lastTestResult: String?
 
+    // MARK: - Post-Draft AI Review state
+
+    /// Latest post-draft AI Review row from `/ai-reports/latest`.
+    /// Drives the trigger card's status line + button label.
+    /// `nil` until `loadPostDraftLatest()` runs (or if it errors).
+    private(set) var postDraftLatest: AIReport?
+    /// True while a trigger request is in flight. Disables the
+    /// button and shows a spinner.
+    private(set) var isTriggeringPostDraft = false
+    /// Last error from the trigger flow. Cleared on next trigger.
+    private(set) var postDraftError: Error?
+    /// Last successful trigger response. Surfaces delivery count +
+    /// model in the result line.
+    private(set) var postDraftResult: AIReviewTriggerResponse?
+
+    /// Two-way bound by the AdminView toggle. Defaults to true so
+    /// the first run is always dry-run for tone calibration.
+    var postDraftDryRun: Bool = true
+
     var filterKind: KindFilter = .all
     var filterStatus: StatusFilter = .all
 
@@ -86,6 +105,50 @@ final class AdminStore {
             entries = response.rows
         } catch {
             lastError = error.localizedDescription
+        }
+    }
+
+    // MARK: - Post-Draft AI Review
+
+    /// Reads the latest post-draft report so the trigger card can
+    /// reflect whether a dry-run / broadcast already happened. Silent
+    /// on failure — the card just defaults to "no report yet" copy.
+    func loadPostDraftLatest() async {
+        do {
+            postDraftLatest = try await apiClient.fetchLatestAIReport(type: .postDraft)
+        } catch {
+            postDraftLatest = nil
+        }
+    }
+
+    /// Fires the admin trigger endpoint. Surfaces the response in
+    /// `postDraftResult` on success or `postDraftError` on failure,
+    /// and re-reads `postDraftLatest` afterwards so the card label
+    /// reflects the new state.
+    ///
+    /// Throws so callers can decide whether to surface the error
+    /// further (e.g. for confirmation dialogs). Internal state is
+    /// updated regardless.
+    @discardableResult
+    func triggerPostDraft(dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse {
+        isTriggeringPostDraft = true
+        postDraftError = nil
+        postDraftResult = nil
+        defer { isTriggeringPostDraft = false }
+
+        do {
+            let response = try await apiClient.triggerPostDraftAIReview(
+                dryRun: dryRun,
+                force: force
+            )
+            postDraftResult = response
+            // Refresh latest so the card label updates from "Generate"
+            // to "Regenerate (force)" on next render.
+            await loadPostDraftLatest()
+            return response
+        } catch {
+            postDraftError = error
+            throw error
         }
     }
 

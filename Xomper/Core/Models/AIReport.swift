@@ -137,10 +137,16 @@ struct AIReport: Decodable, Identifiable, Sendable, Hashable {
 
 /// One of the three AI report flavors the backend produces. The raw
 /// values mirror what `report_type` carries in DynamoDB / the API.
+///
+/// Backend enforces camelCase via `REPORT_TYPES = ("postDraft",
+/// "preseason", "weekly")` in `lambdas/common/ai_reports_store.py`.
+/// `preseason` and `weekly` already default to their case names, but
+/// `postDraft` must be pinned to the camelCase wire value (was
+/// `"post-draft"` in F0, which would fail to decode).
 enum AIReportType: String, Codable, Sendable, CaseIterable, Hashable {
-    case postDraft = "post-draft"
-    case preseason
-    case weekly
+    case postDraft = "postDraft"
+    case preseason = "preseason"
+    case weekly = "weekly"
 
     /// Display name used in chips and titles.
     var displayName: String {
@@ -169,6 +175,60 @@ enum AIReportType: String, Codable, Sendable, CaseIterable, Hashable {
         case .preseason: XomperColors.successGreen
         case .weekly:    XomperColors.championGold
         }
+    }
+}
+
+// MARK: - Trigger Response
+
+/// Response from `POST /admin/ai-review-postdraft-trigger`.
+///
+/// Backend returns the freshly-written `AIReport` row (so the iOS
+/// admin card can immediately reflect the new state without a second
+/// fetch) plus delivery counts and Anthropic token usage for the run.
+///
+/// Wire shape (snake_case):
+/// ```json
+/// {
+///   "report_id": "LEAGUE#...|REPORT#postDraft#2026",
+///   "dry_run": true,
+///   "delivery_count": 1,
+///   "model": "claude-haiku-4-5",
+///   "token_usage": { "input_tokens": 1234, "output_tokens": 567 },
+///   "report": { ...AIReport... }
+/// }
+/// ```
+struct AIReviewTriggerResponse: Decodable, Sendable {
+    let reportId: String
+    let dryRun: Bool
+    let deliveryCount: Int
+    let model: String
+    let tokenUsage: TokenUsage?
+    let report: AIReport?
+
+    enum CodingKeys: String, CodingKey {
+        case reportId = "report_id"
+        case dryRun = "dry_run"
+        case deliveryCount = "delivery_count"
+        case model
+        case tokenUsage = "token_usage"
+        case report
+    }
+}
+
+/// Anthropic token usage for a single Claude call. All fields land
+/// in the trigger response's `token_usage` blob; cache fields are
+/// optional because non-cached calls won't include them.
+struct TokenUsage: Decodable, Sendable {
+    let inputTokens: Int
+    let outputTokens: Int
+    let cacheReadInputTokens: Int?
+    let cacheCreationInputTokens: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case inputTokens = "input_tokens"
+        case outputTokens = "output_tokens"
+        case cacheReadInputTokens = "cache_read_input_tokens"
+        case cacheCreationInputTokens = "cache_creation_input_tokens"
     }
 }
 

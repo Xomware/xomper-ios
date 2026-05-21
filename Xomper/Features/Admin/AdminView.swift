@@ -31,9 +31,11 @@ struct AdminView: View {
         .background(XomperColors.bgDark.ignoresSafeArea())
         .task(id: callerSleeperId) {
             await store.refresh(sleeperUserId: callerSleeperId)
+            await store.loadPostDraftLatest()
         }
         .refreshable {
             await store.refresh(sleeperUserId: callerSleeperId)
+            await store.loadPostDraftLatest()
         }
     }
 
@@ -54,6 +56,8 @@ struct AdminView: View {
     private var content: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: XomperTheme.Spacing.md) {
+                postDraftTriggerCard
+
                 testSenderCard
 
                 if let result = store.lastTestResult {
@@ -88,6 +92,147 @@ struct AdminView: View {
             .padding(.vertical, XomperTheme.Spacing.sm)
             .padding(.bottom, XomperTheme.Spacing.xl)
         }
+    }
+
+    // MARK: - Post-Draft AI Review trigger
+
+    private var postDraftTriggerCard: some View {
+        VStack(alignment: .leading, spacing: XomperTheme.Spacing.sm) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Post-Draft AI Review")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(XomperColors.championGold)
+                Text(postDraftStatusLine)
+                    .font(.caption)
+                    .foregroundStyle(XomperColors.textSecondary)
+            }
+
+            Toggle(isOn: $store.postDraftDryRun) {
+                Text("Dry run (admin-only delivery)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(XomperColors.textPrimary)
+            }
+            .toggleStyle(.switch)
+            .tint(XomperColors.championGold)
+            .disabled(store.isTriggeringPostDraft)
+
+            HStack(spacing: XomperTheme.Spacing.sm) {
+                Button {
+                    Task { await triggerPostDraft(force: false) }
+                } label: {
+                    HStack(spacing: XomperTheme.Spacing.xs) {
+                        if store.isTriggeringPostDraft {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                                .tint(XomperColors.bgDark)
+                        } else {
+                            Image(systemName: "sparkles")
+                                .font(.caption2)
+                        }
+                        Text(primaryButtonLabel)
+                            .font(.caption.weight(.semibold))
+                    }
+                    .foregroundStyle(XomperColors.bgDark)
+                    .padding(.horizontal, XomperTheme.Spacing.sm)
+                    .padding(.vertical, XomperTheme.Spacing.xs)
+                    .frame(minHeight: 32)
+                    .background(XomperColors.championGold)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.pressableCard)
+                .disabled(store.isTriggeringPostDraft)
+
+                if store.postDraftLatest != nil {
+                    Button {
+                        Task { await triggerPostDraft(force: true) }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.caption2)
+                            Text("Regenerate (force)")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .foregroundStyle(XomperColors.championGold)
+                        .padding(.horizontal, XomperTheme.Spacing.sm)
+                        .padding(.vertical, XomperTheme.Spacing.xs)
+                        .frame(minHeight: 32)
+                        .overlay(
+                            Capsule()
+                                .strokeBorder(XomperColors.championGold.opacity(0.6), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.pressableCard)
+                    .disabled(store.isTriggeringPostDraft)
+                }
+
+                Spacer(minLength: 0)
+            }
+
+            if let result = store.postDraftResult {
+                Text(postDraftResultLine(result))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(XomperColors.successGreen)
+            } else if let error = store.postDraftError {
+                Text("✗ \(error.localizedDescription)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(XomperColors.errorRed)
+            }
+        }
+        .padding(XomperTheme.Spacing.md)
+        .background(XomperColors.bgCard)
+        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
+        .overlay(
+            RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg)
+                .strokeBorder(XomperColors.championGold.opacity(0.3), lineWidth: 1)
+        )
+        .padding(.horizontal, XomperTheme.Spacing.md)
+    }
+
+    private var postDraftStatusLine: String {
+        guard let latest = store.postDraftLatest else {
+            return "No report yet — first run will be dry-run."
+        }
+        let isDryRun = latest.metadata["dry_run"] == "true"
+        let dateStr = formattedShortDate(latest.createdAt)
+        if isDryRun {
+            return "Last dry-run completed at \(dateStr)."
+        } else {
+            return "Broadcast on \(dateStr)."
+        }
+    }
+
+    private var primaryButtonLabel: String {
+        if store.postDraftLatest == nil {
+            // No prior report — first run is always dry-run.
+            return "Generate Dry Run"
+        }
+        return store.postDraftDryRun ? "Generate Dry Run" : "Generate & Broadcast"
+    }
+
+    private func postDraftResultLine(_ result: AIReviewTriggerResponse) -> String {
+        if result.dryRun {
+            let count = result.deliveryCount
+            return "✓ Generated! \(count) dry-run \(count == 1 ? "delivery" : "deliveries") sent."
+        } else {
+            return "✓ Broadcast complete — \(result.deliveryCount) \(result.deliveryCount == 1 ? "email" : "emails") sent."
+        }
+    }
+
+    private func triggerPostDraft(force: Bool) async {
+        do {
+            _ = try await store.triggerPostDraft(
+                dryRun: store.postDraftDryRun,
+                force: force
+            )
+        } catch {
+            // Error already surfaced via store.postDraftError.
+        }
+    }
+
+    private func formattedShortDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d, h:mm a"
+        return formatter.string(from: date)
     }
 
     // MARK: - Test sender

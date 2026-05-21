@@ -33,6 +33,7 @@
 		31CFADD9ECC5AC0D09B24BCF /* PayoutsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3443191E5EED3E2888F8757 /* PayoutsView.swift */; };
 		366C0075FA9F4ABA1C88C1A9 /* Championship.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18383A0375F5728A9E3FE065 /* Championship.swift */; };
 		368D96609CAF02430F340657 /* MatchupHistoryBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01A3969B9E9E60F0C59D83C9 /* MatchupHistoryBrowserView.swift */; };
+		37E600A31B5AA5DA5A766692 /* AdminStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58ED7387DCA3E1DC5CDD7AFF /* AdminStoreTests.swift */; };
 		3B1DDBCA7B19B8703FAF717E /* DrawerScrim.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D921732971689E8096F9549 /* DrawerScrim.swift */; };
 		3B67875F822BE9AA9BD052EF /* DraftHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6060C3A4F2B355757F1E3A2 /* DraftHistoryView.swift */; };
 		3E5A98150356BEB75FD87145 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 72178EB48829A7D249085476 /* Supabase */; };
@@ -167,6 +168,7 @@
 		56BB91320E3D5EBE1F777838 /* LeagueStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeagueStore.swift; sourceTree = "<group>"; };
 		57940AEB84889A20016648F2 /* TaxiSquadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaxiSquadView.swift; sourceTree = "<group>"; };
 		581D4F6F3EB8FC0547F49927 /* PlayoffBracketView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayoffBracketView.swift; sourceTree = "<group>"; };
+		58ED7387DCA3E1DC5CDD7AFF /* AdminStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminStoreTests.swift; sourceTree = "<group>"; };
 		5CE99E9B095120FB6636FC8A /* PlayerValuesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerValuesStore.swift; sourceTree = "<group>"; };
 		5EABD25CAB8BF973C4709720 /* AppRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRouter.swift; sourceTree = "<group>"; };
 		5FDC8A9B02A2BFD83398D04F /* RulesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RulesStore.swift; sourceTree = "<group>"; };
@@ -359,6 +361,7 @@
 		391A14F36D43146CBE38D666 /* XomperTests */ = {
 			isa = PBXGroup;
 			children = (
+				58ED7387DCA3E1DC5CDD7AFF /* AdminStoreTests.swift */,
 				08BD215787E2BFC1C57E7E7E /* AIReviewStoreTests.swift */,
 				B3893B13276074EF6033CEA2 /* ClinchCalculatorTests.swift */,
 			);
@@ -731,6 +734,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A0F4E9BCA7E5D757DE8BE5B3 /* AIReviewStoreTests.swift in Sources */,
+				37E600A31B5AA5DA5A766692 /* AdminStoreTests.swift in Sources */,
 				02AC6FBAE68011749AA17644 /* ClinchCalculatorTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
