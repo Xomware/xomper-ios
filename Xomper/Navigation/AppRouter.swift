@@ -19,6 +19,10 @@ enum AppRoute: Hashable {
     /// when the user taps a non-home league in profile or search. The
     /// view fetches its own data — does NOT mutate `LeagueStore.myLeague`.
     case leagueOverview(leagueId: String)
+    /// Detail view for one AI-generated league report. `reportId`
+    /// matches `AIReport.id` (computed from `pk|sk`) and the detail
+    /// view resolves the struct from `AIReviewStore`.
+    case aiReportDetail(reportId: String)
 }
 
 /// Owns the inner `NavigationStack` path inside `MainShell`. The drawer

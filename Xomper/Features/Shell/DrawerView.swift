@@ -40,7 +40,7 @@ struct DrawerView: View {
             ),
             TraySection(
                 title: "League",
-                entries: [.payouts, .draftOrder, .rulebook, .scoring, .leagueSettings, .ruleProposals]
+                entries: [.payouts, .draftOrder, .aiReview, .rulebook, .scoring, .leagueSettings, .ruleProposals]
             ),
         ]
         if isAdmin {
