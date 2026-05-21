@@ -56,6 +56,31 @@ final class AdminStore {
     /// the first run is always dry-run for tone calibration.
     var preseasonDryRun: Bool = true
 
+    // MARK: - Weekly AI Review state
+
+    /// Latest weekly AI Review row from `/ai-reports/latest`.
+    /// Drives the trigger card's status line + button label.
+    /// `nil` until `loadWeeklyLatest()` runs (or if it errors).
+    private(set) var weeklyLatest: AIReport?
+    /// True while a trigger request is in flight. Disables the
+    /// button and shows a spinner.
+    private(set) var isTriggeringWeekly = false
+    /// Last error from the trigger flow. Cleared on next trigger.
+    private(set) var weeklyError: Error?
+    /// Last successful trigger response. Surfaces delivery count +
+    /// model in the result line.
+    private(set) var weeklyResult: AIReviewTriggerResponse?
+
+    /// Two-way bound by the AdminView toggle. Defaults to true so
+    /// the first run is always dry-run for tone calibration.
+    var weeklyDryRun: Bool = true
+
+    /// Optional admin override. When non-nil the trigger request
+    /// includes an explicit `week` field; when nil the backend
+    /// resolves the just-completed week from `nfl_state.week - 1`.
+    /// Driven by the override toggle + stepper on the weekly card.
+    var weeklyWeekOverride: Int?
+
     var filterKind: KindFilter = .all
     var filterStatus: StatusFilter = .all
 
@@ -211,6 +236,59 @@ final class AdminStore {
             return response
         } catch {
             preseasonError = error
+            throw error
+        }
+    }
+
+    // MARK: - Weekly AI Review
+
+    /// Reads the latest weekly report so the trigger card can reflect
+    /// whether a dry-run / broadcast already happened for the most
+    /// recent week. Silent on failure — the card just defaults to
+    /// "no report yet" copy.
+    func loadWeeklyLatest() async {
+        do {
+            weeklyLatest = try await apiClient.fetchLatestAIReport(type: .weekly)
+        } catch {
+            weeklyLatest = nil
+        }
+    }
+
+    /// Fires the admin weekly trigger endpoint. Surfaces the response
+    /// in `weeklyResult` on success or `weeklyError` on failure, and
+    /// re-reads `weeklyLatest` afterwards so the card label reflects
+    /// the new state.
+    ///
+    /// `week == nil` lets the backend resolve the just-completed week
+    /// from Sleeper's `nfl_state`; the JSON key is omitted from the
+    /// wire payload in that case (see `WeeklyTriggerRequest`).
+    ///
+    /// Throws so callers can decide whether to surface the error
+    /// further. Internal state is updated regardless.
+    @discardableResult
+    func triggerWeekly(
+        week: Int?,
+        dryRun: Bool,
+        force: Bool
+    ) async throws -> AIReviewTriggerResponse {
+        isTriggeringWeekly = true
+        weeklyError = nil
+        weeklyResult = nil
+        defer { isTriggeringWeekly = false }
+
+        do {
+            let response = try await apiClient.triggerWeeklyAIReview(
+                week: week,
+                dryRun: dryRun,
+                force: force
+            )
+            weeklyResult = response
+            // Refresh latest so the card label updates from "Generate"
+            // to "Regenerate (force)" on next render.
+            await loadWeeklyLatest()
+            return response
+        } catch {
+            weeklyError = error
             throw error
         }
     }

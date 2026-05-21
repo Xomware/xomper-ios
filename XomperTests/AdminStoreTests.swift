@@ -168,9 +168,19 @@ final class MockAdminAPIClient: XomperAPIClientProtocol, @unchecked Sendable {
     var preseasonTriggerResponse: AIReviewTriggerResponse?
     var preseasonTriggerError: Error?
 
+    // Weekly overrides (F3). Same pattern — when nil, falls back to
+    // shared fields so single-type fixtures stay simple.
+    var weeklyLatest: AIReport?
+    var weeklyFetchError: Error?
+    var weeklyTriggerResponse: AIReviewTriggerResponse?
+    var weeklyTriggerError: Error?
+
     private(set) var fetchLatestCalls: [AIReportType] = []
     private(set) var triggerCalls: [(dryRun: Bool, force: Bool)] = []
     private(set) var preseasonTriggerCalls: [(dryRun: Bool, force: Bool)] = []
+    /// Captures each weekly trigger invocation. `week` is recorded
+    /// verbatim so tests can assert both the override + omitted paths.
+    private(set) var weeklyTriggerCalls: [(week: Int?, dryRun: Bool, force: Bool)] = []
 
     init(
         latest: AIReport? = nil,
@@ -180,7 +190,11 @@ final class MockAdminAPIClient: XomperAPIClientProtocol, @unchecked Sendable {
         preseasonLatest: AIReport? = nil,
         preseasonFetchError: Error? = nil,
         preseasonTriggerResponse: AIReviewTriggerResponse? = nil,
-        preseasonTriggerError: Error? = nil
+        preseasonTriggerError: Error? = nil,
+        weeklyLatest: AIReport? = nil,
+        weeklyFetchError: Error? = nil,
+        weeklyTriggerResponse: AIReviewTriggerResponse? = nil,
+        weeklyTriggerError: Error? = nil
     ) {
         self.latest = latest
         self.fetchLatestError = fetchLatestError
@@ -190,6 +204,10 @@ final class MockAdminAPIClient: XomperAPIClientProtocol, @unchecked Sendable {
         self.preseasonFetchError = preseasonFetchError
         self.preseasonTriggerResponse = preseasonTriggerResponse
         self.preseasonTriggerError = preseasonTriggerError
+        self.weeklyLatest = weeklyLatest
+        self.weeklyFetchError = weeklyFetchError
+        self.weeklyTriggerResponse = weeklyTriggerResponse
+        self.weeklyTriggerError = weeklyTriggerError
     }
 
     // MARK: AI Review
@@ -202,6 +220,9 @@ final class MockAdminAPIClient: XomperAPIClientProtocol, @unchecked Sendable {
             // Fall back to `latest` if no preseason-specific row was
             // staged — keeps single-type fixtures simple.
             return preseasonLatest ?? latest
+        case .weekly:
+            if let err = weeklyFetchError { throw err }
+            return weeklyLatest ?? latest
         default:
             if let err = fetchLatestError { throw err }
             return latest
@@ -223,6 +244,13 @@ final class MockAdminAPIClient: XomperAPIClientProtocol, @unchecked Sendable {
         preseasonTriggerCalls.append((dryRun, force))
         if let err = preseasonTriggerError { throw err }
         guard let response = preseasonTriggerResponse else { throw MockError.notConfigured }
+        return response
+    }
+
+    func triggerWeeklyAIReview(week: Int?, dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse {
+        weeklyTriggerCalls.append((week, dryRun, force))
+        if let err = weeklyTriggerError { throw err }
+        guard let response = weeklyTriggerResponse else { throw MockError.notConfigured }
         return response
     }
 
