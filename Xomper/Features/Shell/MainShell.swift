@@ -203,8 +203,11 @@ struct MainShell: View {
             case .draftOrder:
                 DraftOrderView(
                     leagueStore: leagueStore,
+                    historyStore: historyStore,
                     playerStore: playerStore,
-                    playerPointsStore: playerPointsStore
+                    playerPointsStore: playerPointsStore,
+                    userStore: userStore,
+                    nflStateStore: nflStateStore
                 )
 
             case .admin:
