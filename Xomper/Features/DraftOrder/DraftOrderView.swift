@@ -1,288 +1,32 @@
 import SwiftUI
 
-/// Draft Order screen. Three modes:
-/// - `.live`: the actual commissioner-set order pulled from Sleeper
-///   (`historyStore.upcomingDraft`). Default — answers "who's picking
-///   when in this year's draft?" with the start time + 1-day-per-pick
-///   pace.
-/// - `.proposal`: the reverse-HPP rule proposal (non-playoff teams in
-///   ascending season HPP, playoff teams at the back ordered by actual
-///   playoff finish). What we'd switch to under the league rule
-///   discussion from #57.
-/// - `.mocks`: simulated rookie drafts driven by different personality
-///   weightings (BPA, team-fit, wildcard…). Placeholder for now —
-///   wired up once the mock engine lands.
+/// Draft Order Proposal screen. Renders the Reverse-HPP rule
+/// proposal (non-playoff teams in ascending season HPP, playoff
+/// teams at the back ordered by actual playoff finish). Proposal,
+/// not yet in effect — the live commissioner-set order lives on the
+/// Draft tab's Live sub-tab (post-F3 restructure; see
+/// `docs/features/season-refocus/f3-draft-tab/PLAN.md`).
+///
+/// Before F3 this view also hosted Live + Mocks under an internal
+/// segmented control. Those were extracted out into the new Draft
+/// tab; this view is now single-purpose — no internal tabs, no
+/// `viewMode` state.
 struct DraftOrderView: View {
     var leagueStore: LeagueStore
     var historyStore: HistoryStore
     var playerStore: PlayerStore
     var playerPointsStore: PlayerPointsStore
     var userStore: UserStore
-    var nflStateStore: NflStateStore
-
-    @State private var viewMode: DraftOrderViewMode = .live
 
     var body: some View {
-        VStack(spacing: 0) {
-            viewModeBar
-
-            Group {
-                switch viewMode {
-                case .live:    liveContent
-                case .proposal: proposalContent
-                case .mocks:   mocksPlaceholder
-                }
+        proposalContent
+            .background(XomperColors.bgDark.ignoresSafeArea())
+            .task(id: leagueStore.myLeague?.leagueId) {
+                await ensureProposalLoaded()
             }
-        }
-        .background(XomperColors.bgDark.ignoresSafeArea())
-        .task(id: leagueStore.myLeague?.leagueId) {
-            await ensureProposalLoaded()
-        }
-        .task(id: viewMode) {
-            if viewMode == .live { await ensureLiveLoaded() }
-            if viewMode == .proposal { await ensureProposalLoaded() }
-        }
-        .refreshable {
-            switch viewMode {
-            case .live:    await ensureLiveLoaded()
-            case .proposal: await ensureProposalLoaded()
-            case .mocks:   break
+            .refreshable {
+                await ensureProposalLoaded()
             }
-        }
-    }
-
-    // MARK: - View mode picker
-
-    private var viewModeBar: some View {
-        HStack(spacing: XomperTheme.Spacing.xs) {
-            ForEach(DraftOrderViewMode.allCases) { mode in
-                viewModeButton(mode)
-            }
-        }
-        .padding(2)
-        .background(XomperColors.surfaceLight.opacity(0.4))
-        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md + 2))
-        .padding(.horizontal, XomperTheme.Spacing.md)
-        .padding(.vertical, XomperTheme.Spacing.sm)
-    }
-
-    private func viewModeButton(_ mode: DraftOrderViewMode) -> some View {
-        let isSelected = viewMode == mode
-        return Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            withAnimation(XomperTheme.defaultAnimation) { viewMode = mode }
-        } label: {
-            Text(mode.label)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(isSelected ? XomperColors.bgDark : XomperColors.textSecondary)
-                .padding(.horizontal, XomperTheme.Spacing.sm)
-                .padding(.vertical, 6)
-                .frame(maxWidth: .infinity)
-                .background(isSelected ? XomperColors.championGold : Color.clear)
-                .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
-        }
-        .buttonStyle(.pressableCard)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
-
-    // MARK: - Live content
-
-    private var liveContent: some View {
-        Group {
-            if historyStore.isLoadingUpcoming && historyStore.upcomingDraft == nil {
-                LoadingView(message: "Loading \(nextDraftSeason) draft…")
-            } else if let error = historyStore.upcomingError, historyStore.upcomingDraft == nil {
-                ErrorView(message: error.localizedDescription) {
-                    Task { await ensureLiveLoaded() }
-                }
-            } else if let draft = historyStore.upcomingDraft {
-                liveDraftBody(draft: draft)
-            } else {
-                EmptyStateView(
-                    icon: "calendar.badge.exclamationmark",
-                    title: "\(nextDraftSeason) Draft Not Scheduled",
-                    message: "The commissioner hasn't created next season's draft yet. Pull to refresh once it's set up."
-                )
-            }
-        }
-    }
-
-    private func liveDraftBody(draft: Draft) -> some View {
-        let teamsBySlot = liveTeamsBySlot(draft: draft)
-        let slots = liveSlots(draft: draft, teamsBySlot: teamsBySlot)
-        let rounds = max(draft.settings?.rounds ?? 5, 1)
-        let totalPicks = slots.count * rounds
-        let firstPick = liveStartDate(draft: draft)
-        let myUserId = userStore.myUser?.userId
-
-        return ScrollView {
-            VStack(alignment: .leading, spacing: XomperTheme.Spacing.md) {
-                liveHeaderCard(draft: draft, totalPicks: totalPicks, firstPick: firstPick)
-
-                sectionHeader("Round 1 order (\(slots.count) slots)")
-                ForEach(slots, id: \.self) { slot in
-                    let team = teamsBySlot[slot]
-                    let isMine = team?.userId != nil && team?.userId == myUserId
-                    liveRow(
-                        slot: slot,
-                        team: team,
-                        isMine: isMine,
-                        pickDate: pickDate(firstPick: firstPick, pickNo: slot)
-                    )
-                }
-            }
-            .padding(.horizontal, XomperTheme.Spacing.md)
-            .padding(.vertical, XomperTheme.Spacing.sm)
-        }
-    }
-
-    private func liveHeaderCard(draft: Draft, totalPicks: Int, firstPick: Date?) -> some View {
-        VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
-            HStack(spacing: XomperTheme.Spacing.xs) {
-                Text("LIVE")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(XomperColors.bgDark)
-                    .padding(.horizontal, XomperTheme.Spacing.xs)
-                    .padding(.vertical, 2)
-                    .background(XomperColors.championGold)
-                    .clipShape(Capsule())
-                Text("\(draft.season) rookie draft")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(XomperColors.championGold)
-            }
-
-            if let firstPick {
-                Text("Starts \(formatted(firstPick))")
-                    .font(.caption)
-                    .foregroundStyle(XomperColors.textSecondary)
-            } else {
-                Text("Slot order is locked. No start time set in Sleeper yet.")
-                    .font(.caption)
-                    .foregroundStyle(XomperColors.textSecondary)
-            }
-
-            if let firstPick, totalPicks > 0,
-               let end = Calendar.current.date(byAdding: .day, value: totalPicks - 1, to: firstPick) {
-                Text("Pace: ~1 day per pick → final pick around \(formattedShort(end))")
-                    .font(.caption2)
-                    .foregroundStyle(XomperColors.textMuted)
-            }
-        }
-        .padding(XomperTheme.Spacing.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(XomperColors.bgCard)
-        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
-        .overlay(
-            RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg)
-                .strokeBorder(XomperColors.championGold.opacity(0.3), lineWidth: 1)
-        )
-    }
-
-    private func liveRow(slot: Int, team: UpcomingDraftTeam?, isMine: Bool, pickDate: Date?) -> some View {
-        HStack(spacing: XomperTheme.Spacing.md) {
-            Text("\(slot)")
-                .font(.title3.weight(.bold))
-                .foregroundStyle(isMine ? XomperColors.championGold : XomperColors.textSecondary)
-                .frame(width: 36, alignment: .leading)
-                .monospacedDigit()
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(team?.teamName ?? "Slot \(slot)")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(XomperColors.textPrimary)
-                    .lineLimit(1)
-                if let pickDate {
-                    Text("Pick #\(slot) · ~\(formattedShort(pickDate))")
-                        .font(.caption2)
-                        .foregroundStyle(XomperColors.textMuted)
-                        .monospacedDigit()
-                } else {
-                    Text("Pick #\(slot)")
-                        .font(.caption2)
-                        .foregroundStyle(XomperColors.textMuted)
-                        .monospacedDigit()
-                }
-            }
-
-            Spacer()
-
-            if isMine {
-                Text("YOU")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(XomperColors.bgDark)
-                    .padding(.horizontal, XomperTheme.Spacing.xs)
-                    .background(XomperColors.championGold)
-                    .clipShape(Capsule())
-            }
-        }
-        .padding(XomperTheme.Spacing.md)
-        .background(XomperColors.bgCard)
-        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
-        .overlay(
-            RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg)
-                .strokeBorder(
-                    isMine ? XomperColors.championGold.opacity(0.4) : Color.clear,
-                    lineWidth: 1
-                )
-        )
-    }
-
-    private func liveTeamsBySlot(draft: Draft) -> [Int: UpcomingDraftTeam] {
-        var byUser: [String: UpcomingDraftTeam] = [:]
-        for user in historyStore.upcomingUsers {
-            guard let userId = user.userId else { continue }
-            byUser[userId] = UpcomingDraftTeam(
-                userId: userId,
-                teamName: user.teamName ?? user.resolvedDisplayName,
-                avatarId: user.avatar
-            )
-        }
-        var bySlot: [Int: UpcomingDraftTeam] = [:]
-        if let order = draft.draftOrder {
-            for (userId, slot) in order {
-                if let team = byUser[userId] {
-                    bySlot[slot] = team
-                }
-            }
-        }
-        return bySlot
-    }
-
-    private func liveSlots(draft: Draft, teamsBySlot: [Int: UpcomingDraftTeam]) -> [Int] {
-        let count = draft.settings?.teams
-            ?? max(teamsBySlot.keys.max() ?? 0, historyStore.upcomingRosters.count)
-        return Array(1...max(count, 1))
-    }
-
-    private func liveStartDate(draft: Draft) -> Date? {
-        guard let epochMillis = draft.startTime, epochMillis > 0 else { return nil }
-        return Date(timeIntervalSince1970: TimeInterval(epochMillis) / 1000.0)
-    }
-
-    /// Each pick gets one calendar day. Pick #N is on `start + (N - 1)
-    /// days`. Picks past slot count belong to round 2+ and aren't shown
-    /// in this list, so we only use this for round-1 slot rows.
-    private func pickDate(firstPick: Date?, pickNo: Int) -> Date? {
-        guard let firstPick else { return nil }
-        return Calendar.current.date(byAdding: .day, value: pickNo - 1, to: firstPick)
-    }
-
-    private func formatted(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.dateFormat = "EEE, MMM d 'at' h:mm a zzz"
-        return f.string(from: date)
-    }
-
-    private func formattedShort(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.dateFormat = "MMM d"
-        return f.string(from: date)
-    }
-
-    private var nextDraftSeason: String {
-        nflStateStore.currentSeason.isEmpty
-            ? (leagueStore.myLeague?.season ?? "next")
-            : nflStateStore.currentSeason
     }
 
     // MARK: - Proposal content
@@ -356,7 +100,7 @@ struct DraftOrderView: View {
                     .foregroundStyle(XomperColors.championGold)
             }
 
-            Text("This is a *proposed* rule, not in effect yet. The actual order set by the commissioner lives on the Live tab.")
+            Text("This is a *proposed* rule, not in effect yet. The actual commissioner-set order lives on the Draft tab's Live sub-tab.")
                 .font(.caption)
                 .foregroundStyle(XomperColors.textSecondary)
 
@@ -466,16 +210,6 @@ struct DraftOrderView: View {
         }
     }
 
-    // MARK: - Mocks placeholder
-
-    private var mocksPlaceholder: some View {
-        EmptyStateView(
-            icon: "wand.and.stars",
-            title: "Mock Drafts Coming Soon",
-            message: "A 5-round rookie mock driven by team-need scoring + multiple draft personalities. Lands in the next update."
-        )
-    }
-
     // MARK: - Compute (proposal)
 
     private func compute() -> DraftOrderProjection {
@@ -500,17 +234,6 @@ struct DraftOrderView: View {
         }
     }
 
-    private func ensureLiveLoaded() async {
-        guard let userId = userStore.myUser?.userId else { return }
-        let homeName = leagueStore.resolvedHomeLeagueName
-        let season = nextDraftSeason
-        await historyStore.loadUpcomingDraft(
-            season: season,
-            homeLeagueName: homeName,
-            userId: userId
-        )
-    }
-
     private var regularSeasonLastWeek: Int {
         guard let value = leagueStore.myLeague?.settings?.additionalSettings?["playoff_week_start"] else {
             return 14
@@ -518,22 +241,6 @@ struct DraftOrderView: View {
         if let i = value.intValue { return max(i - 1, 1) }
         if let d = value.doubleValue { return max(Int(d) - 1, 1) }
         return 14
-    }
-}
-
-// MARK: - View mode
-
-enum DraftOrderViewMode: String, CaseIterable, Identifiable {
-    case live, proposal, mocks
-
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .live:     return "Live"
-        case .proposal: return "Proposal"
-        case .mocks:    return "Mocks"
-        }
     }
 }
 
