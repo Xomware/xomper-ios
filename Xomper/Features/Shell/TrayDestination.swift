@@ -15,6 +15,11 @@ enum TrayDestination: Hashable {
     case standings
     case matchups
     case playoffs
+    // Legacy name — the user-facing label is "Draft" and the
+    // renderer is the post-F3 sub-tabbed `DraftHistoryView` (Live /
+    // Mocks / Recap on the current season; Picks / Recap on past
+    // seasons). The case + the `Features/DraftHistory/` directory
+    // are kept stable to avoid cross-file churn across migrations.
     case draftHistory
     case matchupHistory
     case worldCup

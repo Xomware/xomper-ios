@@ -1,5 +1,22 @@
 import SwiftUI
 
+/// The "Draft" tray destination. The directory name (`DraftHistory/`)
+/// and tray case (`.draftHistory`) are legacy from the pre-F3
+/// single-purpose draft-picks view — preserved across the F3 refactor
+/// to avoid churn. Post-F3 this view is the orchestrator of the per-
+/// year sub-tab structure described in
+/// `docs/features/season-refocus/f3-draft-tab/PLAN.md`:
+///
+/// - Current season → Live / Mocks / Recap (Live + Mocks live in
+///   `Draft/` subfolder; the original Live code was extracted out of
+///   `DraftOrderView` during F3).
+/// - Past seasons → Picks / Recap (Picks is the legacy rounds + board
+///   rendering that lived here pre-F3).
+///
+/// The HeaderBar season chip drives `SeasonStore.selectedSeason`; this
+/// view reads it via `@Environment(\.selectedSeason)`. On a season
+/// change, the sub-tab selection resets to the mode's default
+/// (`.live` for current, `.picks` for past).
 struct DraftHistoryView: View {
     var leagueStore: LeagueStore
     var historyStore: HistoryStore
@@ -7,58 +24,125 @@ struct DraftHistoryView: View {
     var playerPointsStore: PlayerPointsStore
     var userStore: UserStore
     var nflStateStore: NflStateStore
+    var aiReviewStore: AIReviewStore
 
     @Environment(\.selectedSeason) private var seasonStore: SeasonStore?
 
     @State private var filterMode: PickFilter = .all
     @State private var viewMode: DraftViewMode = .rounds
     @State private var selectedPlayer: Player?
+    @State private var selectedSubTab: DraftSubTab = .live
 
     private var currentSeason: String {
         seasonStore?.selectedSeason ?? ""
     }
 
-    /// True when the selected chip is the in-progress NFL season AND
-    /// no completed draft has been ingested for it yet. Triggers the
-    /// upcoming-draft view, which fetches the league + draft from
-    /// Sleeper and renders the actual commissioner-set draft order
-    /// (slots-by-team) in both list and board modes.
-    private var isUpcomingDraft: Bool {
+    /// True when the selected chip equals the in-progress NFL season.
+    /// Broader than the legacy `isUpcomingDraft` check — once the
+    /// current-year draft completes and picks are ingested, the
+    /// current-season sub-tabs (Live / Mocks / Recap) still render.
+    /// The Picks sub-tab is intentionally absent on current years —
+    /// view picks via the Live sub-tab's slot list while the draft
+    /// is in progress.
+    private var isCurrentSeason: Bool {
         !currentSeason.isEmpty
             && currentSeason == nflStateStore.currentSeason
+    }
+
+    /// True when the user has the current season selected AND no
+    /// completed draft has been ingested yet. Drives the "upcoming
+    /// draft" fallback that fetches the commissioner-set order from
+    /// Sleeper for the Picks sub-tab on the current year.
+    private var isUpcomingDraft: Bool {
+        isCurrentSeason
             && historyStore.draftPicksByRound(forSeason: currentSeason).isEmpty
     }
 
+    private var availableSubTabs: [DraftSubTab] {
+        DraftSubTabSelection.availableSubTabs(isCurrentSeason: isCurrentSeason)
+    }
+
     var body: some View {
-        Group {
-            if historyStore.isLoadingDrafts && !historyStore.hasDrafts {
-                LoadingView(message: "Loading draft history...")
-            } else if let error = historyStore.draftError, !historyStore.hasDrafts {
-                ErrorView(message: error.localizedDescription) {
-                    Task { await loadDraftHistory() }
+        VStack(spacing: 0) {
+            DraftSubTabBar(tabs: availableSubTabs, selection: $selectedSubTab)
+
+            Group {
+                switch selectedSubTab {
+                case .live:
+                    LiveDraftView(
+                        leagueStore: leagueStore,
+                        historyStore: historyStore,
+                        userStore: userStore,
+                        nflStateStore: nflStateStore
+                    )
+                case .mocks:
+                    MocksView()
+                case .recap:
+                    DraftRecapView(
+                        aiReviewStore: aiReviewStore,
+                        year: currentSeason
+                    )
+                case .picks:
+                    picksContent
                 }
-            } else if isUpcomingDraft {
-                upcomingDraftContent
-            } else if historyStore.hasDrafts {
-                draftContent
-            } else {
-                EmptyStateView(
-                    icon: "list.clipboard",
-                    title: "No Draft Picks Yet",
-                    message: "Draft picks will appear here once a draft is complete."
-                )
             }
         }
+        .background(XomperColors.bgDark.ignoresSafeArea())
         .task(id: leagueStore.myLeague?.leagueId) {
             await loadDraftHistory()
         }
         .task(id: isUpcomingDraft) {
+            // Only the Picks sub-tab consumes upcoming-draft data;
+            // the Live sub-tab loads it independently. We still
+            // pre-fetch so the manual Picks → current-year path
+            // shows the list without an extra round-trip.
             if isUpcomingDraft {
                 await loadUpcomingDraft()
             }
         }
+        .onChange(of: isCurrentSeason) { _, newValue in
+            // Season chip switched between current and past. Reset
+            // to the new mode's default sub-tab so users don't land
+            // on an unavailable tab.
+            selectedSubTab = DraftSubTabSelection.defaultSubTab(isCurrentSeason: newValue)
+        }
+        .onAppear {
+            // Initial selection: defer to the resolved season's mode.
+            // Without this the `@State` default of `.live` would be
+            // wrong if the user lands on a past year first.
+            if !availableSubTabs.contains(selectedSubTab) {
+                selectedSubTab = DraftSubTabSelection.defaultSubTab(isCurrentSeason: isCurrentSeason)
+            }
+        }
         .sheet(item: $selectedPlayer) { player in
             PlayerDetailView(player: player, playerStore: playerStore)
+        }
+    }
+
+    // MARK: - Picks content
+
+    /// Legacy draft-picks rendering (rounds list + draft-board grid).
+    /// Default sub-tab on past seasons; manually-selectable on the
+    /// current season (falls back to the upcoming-draft slot order
+    /// when picks haven't been ingested yet).
+    @ViewBuilder
+    private var picksContent: some View {
+        if historyStore.isLoadingDrafts && !historyStore.hasDrafts {
+            LoadingView(message: "Loading draft history...")
+        } else if let error = historyStore.draftError, !historyStore.hasDrafts {
+            ErrorView(message: error.localizedDescription) {
+                Task { await loadDraftHistory() }
+            }
+        } else if isUpcomingDraft {
+            upcomingDraftContent
+        } else if historyStore.hasDrafts {
+            draftContent
+        } else {
+            EmptyStateView(
+                icon: "list.clipboard",
+                title: "No Draft Picks Yet",
+                message: "Draft picks will appear here once a draft is complete."
+            )
         }
     }
 
@@ -949,7 +1033,8 @@ enum DraftViewMode: String, CaseIterable, Identifiable {
             playerStore: PlayerStore(),
             playerPointsStore: PlayerPointsStore(),
             userStore: UserStore(),
-            nflStateStore: NflStateStore()
+            nflStateStore: NflStateStore(),
+            aiReviewStore: AIReviewStore()
         )
     }
     .preferredColorScheme(.dark)
