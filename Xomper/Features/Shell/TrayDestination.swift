@@ -9,6 +9,7 @@ import Foundation
 /// - History:  draftHistory, matchupHistory, worldCup
 /// - Roster:   myTeam, taxiSquad
 /// - Rules:    rulebook, scoring, leagueSettings, ruleProposals
+/// - Archive:  archive (hubs past standings + past matchups + past drafts)
 /// - Profile/Settings are surfaced via the profile card and pinned footer.
 enum TrayDestination: Hashable {
     case landing
@@ -33,6 +34,7 @@ enum TrayDestination: Hashable {
     case payouts
     case draftOrder
     case aiReview
+    case archive
     case admin
     case profile
     case settings
@@ -58,6 +60,7 @@ enum TrayDestination: Hashable {
         case .payouts:        "Payouts"
         case .draftOrder:     "Draft Order Proposal"
         case .aiReview:       "AI Review"
+        case .archive:        "Archive"
         case .admin:          "Admin"
         case .profile:        "Profile"
         case .settings:       "Settings"
@@ -84,6 +87,7 @@ enum TrayDestination: Hashable {
         case .payouts:        "dollarsign.circle.fill"
         case .draftOrder:     "list.bullet.rectangle"
         case .aiReview:       "sparkles"
+        case .archive:        "archivebox.fill"
         case .admin:          "wrench.and.screwdriver.fill"
         case .profile:        "person.crop.circle.fill"
         case .settings:       "gearshape.fill"

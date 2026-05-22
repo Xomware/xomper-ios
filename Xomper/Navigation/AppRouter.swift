@@ -23,6 +23,23 @@ enum AppRoute: Hashable {
     /// matches `AIReport.id` (computed from `pk|sk`) and the detail
     /// view resolves the struct from `AIReviewStore`.
     case aiReportDetail(reportId: String)
+
+    // MARK: - Archive (F4)
+
+    /// Pushed from `ArchiveView`'s "Past Standings" card. Lists every
+    /// available historical season as a row → drills into
+    /// `archiveHistoricalStandings(year:)`.
+    case archivePastStandings
+
+    /// Pushed from `archivePastStandings`. Renders that year's standings
+    /// reconstructed from `MatchupHistoryRecord`s via
+    /// `StandingsBuilder.buildStandingsFromHistory`.
+    case archiveHistoricalStandings(year: String)
+
+    /// Pushed from `ArchiveView`'s "Past Drafts" card. Lists past-season
+    /// drafts; on selection sets `SeasonStore.selectedSeason` and switches
+    /// the top-level destination to `.draftHistory`.
+    case archivePastDraftPicker
 }
 
 /// Owns the inner `NavigationStack` path inside `MainShell`. The drawer
