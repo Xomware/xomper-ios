@@ -1,43 +1,31 @@
 import SwiftUI
 
+/// Top-level Standings destination. Thin wrapper around `StandingsListView`
+/// that:
+///
+/// - builds the live `[StandingsTeam]` from `LeagueStore`
+/// - gates on `NflStateStore.isRegularSeason` and renders
+///   `StandingsOffseasonCard` whenever the league isn't actively playing
+///
+/// All actual row + division rendering lives in `StandingsListView` so the
+/// same layout can be reused by the Archive's `HistoricalStandingsView`.
 struct StandingsView: View {
     var leagueStore: LeagueStore
     var teamStore: TeamStore
     var authStore: AuthStore
+    var nflStateStore: NflStateStore
     var router: AppRouter
 
-    @State private var viewMode: StandingsViewMode = .league
     @State private var standings: [StandingsTeam] = []
     @State private var divisionStandings: [String: [StandingsTeam]] = [:]
     @State private var hasDivisions = false
 
     var body: some View {
         Group {
-            if standings.isEmpty && (leagueStore.isLoading || leagueStore.myLeagueRosters.isEmpty) {
-                LoadingView(message: "Loading standings...")
-            } else if standings.isEmpty {
-                EmptyStateView(
-                    icon: "list.number",
-                    title: "Standings Not Loaded",
-                    message: "Pull to refresh to load the latest standings."
-                )
+            if nflStateStore.isRegularSeason {
+                liveStandings
             } else {
-                ScrollView {
-                    VStack(spacing: XomperTheme.Spacing.md) {
-                        if hasDivisions {
-                            viewModeToggle
-                        }
-
-                        switch viewMode {
-                        case .league:
-                            leagueStandingsView
-                        case .division:
-                            divisionStandingsView
-                        }
-                    }
-                    .padding(.horizontal, XomperTheme.Spacing.md)
-                    .padding(.vertical, XomperTheme.Spacing.sm)
-                }
+                offseason
             }
         }
         .background(XomperColors.bgDark)
@@ -58,122 +46,39 @@ struct StandingsView: View {
         }
     }
 
-    // MARK: - View Mode Toggle
+    // MARK: - Live standings (regular season)
 
-    private var viewModeToggle: some View {
-        HStack(spacing: XomperTheme.Spacing.sm) {
-            ForEach(StandingsViewMode.allCases) { mode in
-                Button {
-                    let generator = UIImpactFeedbackGenerator(style: .light)
-                    generator.impactOccurred()
-                    withAnimation(XomperTheme.defaultAnimation) {
-                        viewMode = mode
-                    }
-                } label: {
-                    Text(mode.title)
-                        .font(.subheadline)
-                        .fontWeight(viewMode == mode ? .semibold : .regular)
-                        .foregroundStyle(viewMode == mode ? XomperColors.deepNavy : XomperColors.textSecondary)
-                        .padding(.horizontal, XomperTheme.Spacing.md)
-                        .padding(.vertical, XomperTheme.Spacing.sm)
-                        .frame(minHeight: XomperTheme.minTouchTarget)
-                        .background(viewMode == mode ? XomperColors.championGold : XomperColors.surfaceLight)
-                        .clipShape(Capsule())
-                }
-                .buttonStyle(.pressableCard)
-                .accessibilityLabel("\(mode.title) view")
-                .accessibilityAddTraits(viewMode == mode ? .isSelected : [])
-            }
-            Spacer()
+    @ViewBuilder
+    private var liveStandings: some View {
+        if standings.isEmpty && (leagueStore.isLoading || leagueStore.myLeagueRosters.isEmpty) {
+            LoadingView(message: "Loading standings...")
+        } else if standings.isEmpty {
+            EmptyStateView(
+                icon: "list.number",
+                title: "Standings Not Loaded",
+                message: "Pull to refresh to load the latest standings."
+            )
+        } else {
+            StandingsListView(
+                standings: standings,
+                hasDivisions: hasDivisions,
+                divisionStandings: divisionStandings,
+                playoffCutoff: leagueStore.myLeague?.settings?.playoffTeams,
+                myUserId: authStore.sleeperUserId,
+                onTeamTap: selectTeam,
+                onProfileTap: navigateToProfile
+            )
         }
     }
 
-    // MARK: - League Standings
+    // MARK: - Offseason empty state
 
-    private var leagueStandingsView: some View {
-        LazyVStack(spacing: XomperTheme.Spacing.md) {
-            standingsHeader
-            ForEach(standings) { team in
-                StandingsRowView(
-                    team: team,
-                    rank: team.leagueRank,
-                    isMyTeam: team.userId == authStore.sleeperUserId,
-                    playoffCutoff: leagueStore.myLeague?.settings?.playoffTeams
-                ) {
-                    selectTeam(team)
-                } onProfileTap: {
-                    navigateToProfile(team)
-                }
-            }
+    private var offseason: some View {
+        ScrollView {
+            StandingsOffseasonCard()
+                .padding(.horizontal, XomperTheme.Spacing.md)
+                .padding(.vertical, XomperTheme.Spacing.sm)
         }
-    }
-
-    // MARK: - Division Standings
-
-    private var divisionStandingsView: some View {
-        LazyVStack(spacing: XomperTheme.Spacing.lg) {
-            let sortedKeys = divisionStandings.keys.sorted()
-            ForEach(sortedKeys, id: \.self) { divisionName in
-                if let teams = divisionStandings[divisionName] {
-                    divisionSection(name: divisionName, teams: teams)
-                }
-            }
-        }
-    }
-
-    private func divisionSection(name: String, teams: [StandingsTeam]) -> some View {
-        VStack(spacing: XomperTheme.Spacing.md) {
-            HStack(spacing: XomperTheme.Spacing.sm) {
-                if let avatarId = teams.first?.divisionAvatar {
-                    AvatarView(avatarID: avatarId, size: XomperTheme.AvatarSize.sm, isTeam: true)
-                }
-                Text(name)
-                    .font(.headline)
-                    .foregroundStyle(XomperColors.textPrimary)
-                Spacer()
-            }
-            .padding(.horizontal, XomperTheme.Spacing.md)
-
-            standingsHeader
-
-            ForEach(teams) { team in
-                StandingsRowView(
-                    team: team,
-                    rank: team.divisionRank,
-                    isMyTeam: team.userId == authStore.sleeperUserId,
-                    playoffCutoff: nil
-                ) {
-                    selectTeam(team)
-                } onProfileTap: {
-                    navigateToProfile(team)
-                }
-            }
-        }
-    }
-
-    // MARK: - Header
-
-    private var standingsHeader: some View {
-        HStack(spacing: XomperTheme.Spacing.xs) {
-            Text("#")
-                .frame(width: 28, alignment: .center)
-            Text("Team")
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text("W")
-                .frame(width: 28, alignment: .center)
-            Text("L")
-                .frame(width: 28, alignment: .center)
-            Text("Str")
-                .frame(width: 36, alignment: .center)
-            Text("PF")
-                .frame(width: 64, alignment: .trailing)
-        }
-        .font(.caption2)
-        .fontWeight(.semibold)
-        .foregroundStyle(XomperColors.textMuted)
-        .padding(.horizontal, XomperTheme.Spacing.md)
-        .padding(.vertical, XomperTheme.Spacing.sm)
-        .accessibilityHidden(true)
     }
 
     // MARK: - Actions
@@ -216,162 +121,13 @@ struct StandingsView: View {
     }
 }
 
-// MARK: - Standings Row
-
-private struct StandingsRowView: View {
-    let team: StandingsTeam
-    let rank: Int
-    let isMyTeam: Bool
-    let playoffCutoff: Int?
-    let onTap: () -> Void
-    var onProfileTap: (() -> Void)?
-
-    var body: some View {
-        Button {
-            let generator = UIImpactFeedbackGenerator(style: .light)
-            generator.impactOccurred()
-            onTap()
-        } label: {
-            HStack(spacing: 0) {
-                rankBadge
-                teamInfo
-                statsColumns
-            }
-            .padding(.horizontal, XomperTheme.Spacing.md)
-            .padding(.vertical, XomperTheme.Spacing.sm)
-            .frame(minHeight: XomperTheme.minTouchTarget)
-            .background(XomperColors.bgCard)
-            .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
-            .overlay(
-                RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md)
-                    .stroke(
-                        isMyTeam ? XomperColors.championGold.opacity(0.4) : Color.clear,
-                        lineWidth: 1
-                    )
-            )
-            .xomperShadow(.sm)
-        }
-        .buttonStyle(.pressableCard)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilityDescription)
-        .accessibilityHint("Double tap to view team details")
-        .contextMenu {
-            if let onProfileTap {
-                Button {
-                    onProfileTap()
-                } label: {
-                    Label("View Owner Profile", systemImage: "person.circle")
-                }
-            }
-        }
-    }
-
-    private var rankBadge: some View {
-        Text("\(rank)")
-            .font(.caption)
-            .fontWeight(.bold)
-            .foregroundStyle(rankColor)
-            .frame(width: 28, alignment: .center)
-    }
-
-    private var teamInfo: some View {
-        HStack(spacing: XomperTheme.Spacing.sm) {
-            AvatarView(avatarID: team.avatarId, size: XomperTheme.AvatarSize.sm)
-
-            VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
-                Text(team.teamName)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundStyle(XomperColors.textPrimary)
-                    .lineLimit(1)
-
-                Text(team.displayName)
-                    .font(.caption2)
-                    .foregroundStyle(XomperColors.textSecondary)
-                    .lineLimit(1)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var statsColumns: some View {
-        HStack(spacing: XomperTheme.Spacing.xs) {
-            Text("\(team.wins)")
-                .frame(width: 28, alignment: .center)
-                .foregroundStyle(XomperColors.textPrimary)
-
-            Text("\(team.losses)")
-                .frame(width: 28, alignment: .center)
-                .foregroundStyle(XomperColors.textSecondary)
-
-            Text(team.streak.displayString)
-                .frame(width: 36, alignment: .center)
-                .foregroundStyle(streakColor)
-
-            Text(team.fpts.formattedPoints)
-                .frame(width: 64, alignment: .trailing)
-                .foregroundStyle(XomperColors.textPrimary)
-        }
-        .font(.caption)
-        .fontWeight(.medium)
-    }
-
-    // MARK: - Helpers
-
-    private var rankColor: Color {
-        switch rank {
-        case 1: XomperColors.championGold
-        case 2: Color(hex: 0xC0C0C0)
-        case 3: Color(hex: 0xCD7F32)
-        default: XomperColors.textMuted
-        }
-    }
-
-    private var streakColor: Color {
-        switch team.streak.type {
-        case .win: XomperColors.successGreen
-        case .loss: XomperColors.accentRed
-        case .none: XomperColors.textMuted
-        }
-    }
-
-    private var accessibilityDescription: String {
-        var parts = [
-            "Rank \(rank)",
-            team.teamName,
-            team.displayName,
-            "\(team.wins) wins, \(team.losses) losses",
-            "\(team.fpts.formattedPoints) points for"
-        ]
-        if isMyTeam {
-            parts.insert("Your team", at: 0)
-        }
-        return parts.joined(separator: ", ")
-    }
-}
-
-// MARK: - View Mode Enum
-
-private enum StandingsViewMode: String, CaseIterable, Identifiable {
-    case league
-    case division
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .league: "League"
-        case .division: "Divisions"
-        }
-    }
-}
-
 #Preview {
     NavigationStack {
         StandingsView(
             leagueStore: LeagueStore(),
             teamStore: TeamStore(),
             authStore: AuthStore(),
+            nflStateStore: NflStateStore(),
             router: AppRouter()
         )
     }

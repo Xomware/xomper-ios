@@ -140,6 +140,7 @@ struct MainShell: View {
                     leagueStore: leagueStore,
                     teamStore: teamStore,
                     authStore: authStore,
+                    nflStateStore: nflStateStore,
                     router: router
                 )
 
@@ -225,6 +226,17 @@ struct MainShell: View {
                 AIReviewView(
                     store: aiReviewStore,
                     router: router
+                )
+
+            case .archive:
+                ArchiveView(
+                    navStore: navStore,
+                    router: router,
+                    historyStore: historyStore,
+                    leagueStore: leagueStore,
+                    authStore: authStore,
+                    teamStore: teamStore,
+                    seasonStore: seasonStore
                 )
 
             case .admin:
@@ -346,6 +358,7 @@ struct MainShell: View {
                 leagueStore: leagueStore,
                 teamStore: teamStore,
                 authStore: authStore,
+                nflStateStore: nflStateStore,
                 router: router
             )
 
@@ -449,6 +462,34 @@ struct MainShell: View {
                     message: "We couldn't load this report — pull to refresh the archive."
                 )
             }
+
+        case .archivePastStandings:
+            PastStandingsListView(
+                historyStore: historyStore,
+                leagueStore: leagueStore,
+                authStore: authStore,
+                teamStore: teamStore,
+                router: router
+            )
+
+        case .archiveHistoricalStandings(let year):
+            HistoricalStandingsView(
+                year: year,
+                historyStore: historyStore,
+                leagueStore: leagueStore,
+                authStore: authStore,
+                teamStore: teamStore,
+                router: router
+            )
+
+        case .archivePastDraftPicker:
+            PastDraftPickerView(
+                historyStore: historyStore,
+                seasonStore: seasonStore,
+                navStore: navStore,
+                router: router,
+                currentSeason: nflStateStore.currentSeason
+            )
         }
     }
 

@@ -46,6 +46,10 @@ struct DrawerView: View {
                 title: "League",
                 entries: [.payouts, .aiReview, .rulebook, .scoring, .leagueSettings, .ruleProposals, .draftOrder]
             ),
+            TraySection(
+                title: "Archive",
+                entries: [.archive]
+            ),
         ]
         if isAdmin {
             out.append(TraySection(title: "Admin", entries: [.admin]))
