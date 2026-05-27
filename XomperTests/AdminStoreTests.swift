@@ -272,6 +272,8 @@ final class MockAdminAPIClient: XomperAPIClientProtocol, @unchecked Sendable {
     func unregisterDevice(userId: String, deviceToken: String) async throws { throw MockError.unsupported }
     func adminListNotifications(sleeperUserId: String, daysBack: Int, kind: String?, status: String?, limit: Int) async throws -> AdminNotificationsResponse { throw MockError.unsupported }
     func adminTestSend(sleeperUserId: String, email: String?, kind: String, channels: [String]) async throws -> AdminTestSendResponse { throw MockError.unsupported }
+    func fetchTestEmailRecipients() async throws -> [TestEmailRecipient] { throw MockError.unsupported }
+    func sendTestEmail(recipientSleeperUserId: String, reportId: String) async throws -> TestEmailResponse { throw MockError.unsupported }
 }
 
 enum MockError: Error, LocalizedError {
