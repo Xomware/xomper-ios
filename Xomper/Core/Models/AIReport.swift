@@ -30,13 +30,32 @@ struct AIReport: Decodable, Identifiable, Sendable, Hashable {
     let reportType: AIReportType
     let period: String
     let bodyMarkdown: String
-    let metadata: [String: String]
     /// Raw JSON bytes of the `metadata` Dynamo Map, captured at decode
-    /// time. Used by typed extractors (`decodeMetadata(_:)`) that need
-    /// nested structures the flat `metadata: [String: String]` map
-    /// can't express — e.g. the `picks[]` array on mock-draft reports
-    /// and `matchups[]` on weekly reports.
+    /// time. Single source of truth for metadata — typed extractors
+    /// (`decodeMetadata(_:)`) read nested structures (`picks[]`,
+    /// `matchups[]`) here, and the `metadata` computed property
+    /// surfaces top-level scalar keys lazily for call sites like
+    /// `metadata["dry_run"]`.
     let metadataRawJSON: Data?
+
+    /// Flat string→string view of the metadata blob's top-level scalar
+    /// keys. Derived lazily from `metadataRawJSON` so there is only
+    /// one source of truth — no risk of the two diverging. Nested
+    /// values (arrays, objects) are not surfaced here; use
+    /// `decodeMetadata(_:)` to read those.
+    var metadata: [String: String] {
+        guard let data = metadataRawJSON else { return [:] }
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return [:]
+        }
+        var out: [String: String] = [:]
+        for (k, v) in json {
+            if let s = v as? String { out[k] = s }
+            else if let b = v as? Bool { out[k] = b ? "true" : "false" }
+            else if let n = v as? NSNumber { out[k] = n.stringValue }
+        }
+        return out
+    }
     let createdAt: Date
     let model: String?
     let promptVersion: String?
@@ -65,23 +84,11 @@ struct AIReport: Decodable, Identifiable, Sendable, Hashable {
         self.bodyMarkdown = (try? c.decode(String.self, forKey: .bodyMarkdown)) ?? ""
 
         // Metadata is a Dynamo Map of mixed scalars + nested
-        // structures. Decode leniently as string→string so iOS doesn't
-        // need a full Any-codable layer for the common case (token
-        // counts, dry-run flags, etc.). Nested structures (arrays,
-        // sub-objects) are stripped — typed callers can recover them
-        // via `decodeMetadata(_:)` which reads `metadataRawJSON`.
-        if let raw = try? c.decode([String: AnyScalar].self, forKey: .metadata) {
-            var out: [String: String] = [:]
-            for (k, v) in raw { out[k] = v.stringValue }
-            self.metadata = out
-        } else {
-            self.metadata = [:]
-        }
-
-        // Capture the raw bytes of the metadata map for typed decode
-        // later. `JSONValue` accepts the full JSON grammar (including
-        // nested arrays + objects); re-encoding gives us a portable
-        // blob structured decoders can consume.
+        // structures. We decode it once as `JSONValue` (full JSON
+        // grammar) and re-encode to raw bytes — that single blob is
+        // then the source for both nested typed decode
+        // (`decodeMetadata(_:)`) and the flat `metadata` computed
+        // accessor for scalar reads.
         if let rawValue = try? c.decode(JSONValue.self, forKey: .metadata) {
             self.metadataRawJSON = try? JSONEncoder().encode(rawValue)
         } else {
@@ -97,6 +104,11 @@ struct AIReport: Decodable, Identifiable, Sendable, Hashable {
     }
 
     /// Memberwise init for tests / previews. Not used by the decoder.
+    /// Pass either `metadata` (a flat string map — convenient for tests)
+    /// OR `metadataRawJSON` (raw bytes, supports nested structures). If
+    /// `metadataRawJSON` is provided, it wins. If only `metadata` is
+    /// provided, it's serialized to JSON bytes so the computed
+    /// `metadata` accessor returns the same map round-trip.
     init(
         id: String,
         leagueId: String,
@@ -114,8 +126,13 @@ struct AIReport: Decodable, Identifiable, Sendable, Hashable {
         self.reportType = reportType
         self.period = period
         self.bodyMarkdown = bodyMarkdown
-        self.metadata = metadata
-        self.metadataRawJSON = metadataRawJSON
+        if let metadataRawJSON {
+            self.metadataRawJSON = metadataRawJSON
+        } else if metadata.isEmpty {
+            self.metadataRawJSON = nil
+        } else {
+            self.metadataRawJSON = try? JSONSerialization.data(withJSONObject: metadata)
+        }
         self.createdAt = createdAt
         self.model = model
         self.promptVersion = promptVersion
@@ -271,44 +288,12 @@ struct TokenUsage: Decodable, Sendable {
 
 // MARK: - Helpers
 
-/// Tiny shim that decodes a Dynamo Map attribute (JSON object of
-/// mixed scalars) into something string-coercible. The Anthropic
-/// metadata blob holds counts + names so this is sufficient — no
-/// nested objects to traverse.
-private enum AnyScalar: Decodable, Sendable {
-    case string(String)
-    case int(Int)
-    case double(Double)
-    case bool(Bool)
-    case null
-
-    init(from decoder: Decoder) throws {
-        let c = try decoder.singleValueContainer()
-        if c.decodeNil() { self = .null; return }
-        if let v = try? c.decode(String.self) { self = .string(v); return }
-        if let v = try? c.decode(Int.self)    { self = .int(v); return }
-        if let v = try? c.decode(Double.self) { self = .double(v); return }
-        if let v = try? c.decode(Bool.self)   { self = .bool(v); return }
-        self = .null
-    }
-
-    var stringValue: String {
-        switch self {
-        case .string(let s): s
-        case .int(let i):    String(i)
-        case .double(let d): String(d)
-        case .bool(let b):   String(b)
-        case .null:          ""
-        }
-    }
-}
-
 /// Full JSON-grammar value used when round-tripping the `metadata`
 /// blob through `JSONEncoder` so a typed decoder can later re-extract
 /// nested arrays + objects (mock-draft `picks[]`, weekly
-/// `matchups[]`). The flat string→string `metadata` map on
-/// `AIReport` is preserved for back-compat with the simpler call
-/// sites (e.g. `metadata["dry_run"]` checks in AdminView).
+/// `matchups[]`). Flat scalar reads (`metadata["dry_run"]` in
+/// AdminView, etc.) are surfaced via `AIReport.metadata`, a computed
+/// accessor over the same source-of-truth raw bytes.
 enum JSONValue: Codable, Sendable, Hashable {
     case string(String)
     case int(Int)
