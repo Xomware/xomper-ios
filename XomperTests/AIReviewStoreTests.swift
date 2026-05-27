@@ -332,6 +332,29 @@ final class MockXomperAPIClient: XomperAPIClientProtocol, @unchecked Sendable {
     func triggerPreseasonAIReview(dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse { throw Unsupported.method }
     func triggerWeeklyAIReview(week: Int?, dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse { throw Unsupported.method }
 
+    // MARK: F3 Report Flags
+
+    /// Captured args + configurable response for `setReportFlag`. Used
+    /// by `AIReviewStoreRedactTests` to assert the API client is hit
+    /// with the right `(leagueId, reportType, period, flag, value)`
+    /// tuple and that error paths leave the archive untouched.
+    var setReportFlagResponse: ReportFlagResponse?
+    var setReportFlagError: Error?
+    private(set) var setReportFlagCalls: [(leagueId: String, reportType: AIReportType, period: String, flag: ReportFlag, value: Bool)] = []
+
+    func setReportFlag(
+        leagueId: String,
+        reportType: AIReportType,
+        period: String,
+        flag: ReportFlag,
+        value: Bool
+    ) async throws -> ReportFlagResponse {
+        setReportFlagCalls.append((leagueId, reportType, period, flag, value))
+        if let err = setReportFlagError { throw err }
+        guard let response = setReportFlagResponse else { throw Unsupported.method }
+        return response
+    }
+
     enum Unsupported: Error { case method }
 }
 

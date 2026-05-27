@@ -232,6 +232,7 @@ struct MainShell: View {
             case .aiReview:
                 AIReviewView(
                     store: aiReviewStore,
+                    authStore: authStore,
                     router: router
                 )
 

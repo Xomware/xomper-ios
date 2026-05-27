@@ -327,6 +327,54 @@ final class AdminStore {
         lastPreviewsByType[reportType] = nil
     }
 
+    // MARK: - F3 Report Flags
+
+    /// Convenience accessor for the latest report of a given type.
+    /// Used by `AIReviewPreviewView` to read the current DNB state
+    /// for the active report type without switching on the type at
+    /// the call site.
+    func latest(for reportType: AIReportType) -> AIReport? {
+        switch reportType {
+        case .postDraft: return postDraftLatest
+        case .preseason: return preseasonLatest
+        case .weekly:    return weeklyLatest
+        case .mock:      return nil
+        }
+    }
+
+    /// Toggle a metadata flag (F3) on a report row. Calls the backend
+    /// then re-fetches the affected `*Latest` so the trigger card +
+    /// preview view both reflect the new state. Throws so the caller
+    /// can surface the error inline (the preview view shows it in the
+    /// existing `broadcastError` block).
+    ///
+    /// Returns the full updated metadata map for callers that want to
+    /// apply it locally instead of re-fetching (the archive flow
+    /// does this via `AIReviewStore.setReportFlag`).
+    @discardableResult
+    func setReportFlag(
+        report: AIReport,
+        flag: ReportFlag,
+        value: Bool
+    ) async throws -> [String: String] {
+        let response = try await apiClient.setReportFlag(
+            leagueId: report.leagueId,
+            reportType: report.reportType,
+            period: report.period,
+            flag: flag,
+            value: value
+        )
+        // Refresh the affected latest so trigger card + preview view
+        // pick up the flag change without a manual re-fetch.
+        switch report.reportType {
+        case .postDraft: await loadPostDraftLatest()
+        case .preseason: await loadPreseasonLatest()
+        case .weekly:    await loadWeeklyLatest()
+        case .mock:      break
+        }
+        return response.metadata
+    }
+
     func sendTest(
         kind: AdminTestKind,
         sleeperUserId: String,

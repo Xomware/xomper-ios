@@ -25,6 +25,12 @@ struct AIReviewPreviewView: View {
     @State private var selectedPreview: EmailPreview?
     @State private var showBroadcastConfirm = false
     @State private var broadcastError: String?
+    /// True while the DNB flag write is in-flight. Disables the
+    /// toggle to prevent double-tap races against the round-trip.
+    @State private var dnbInFlight = false
+    /// Surfaces any failure from the DNB flag write inline below the
+    /// lock row so the admin sees why their tap didn't stick.
+    @State private var dnbError: String?
 
     var body: some View {
         content
@@ -63,6 +69,21 @@ struct AIReviewPreviewView: View {
         }
     }
 
+    /// Latest report for the active type. Source of truth for the
+    /// DNB metadata flag — `currentReport?.doNotBroadcast` drives the
+    /// lock row toggle + the disabled state on the Broadcast button.
+    /// `nil` when the trigger card hasn't yet loaded `*Latest` (rare —
+    /// the parent calls `loadXLatest()` on appear).
+    private var currentReport: AIReport? {
+        adminStore.latest(for: reportType)
+    }
+
+    /// Whether the broadcast path is locked by the DNB flag. Pulled
+    /// out so the button + label switch can share one source.
+    private var isDNBLocked: Bool {
+        currentReport?.doNotBroadcast == true
+    }
+
     // MARK: - Content
 
     @ViewBuilder
@@ -77,6 +98,8 @@ struct AIReviewPreviewView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: XomperTheme.Spacing.md) {
                     headerCard
+
+                    dnbLockRow
 
                     broadcastButton
 
@@ -131,6 +154,74 @@ struct AIReviewPreviewView: View {
         .padding(.horizontal, XomperTheme.Spacing.md)
     }
 
+    // MARK: - DNB lock row (F3)
+
+    /// Lock toggle above the Broadcast button. When checked, the
+    /// backend rejects broadcast attempts with 409 and the Broadcast
+    /// button below visibly locks (red tint + "Locked — DNB flag set"
+    /// label) so the admin sees the gate before tapping.
+    ///
+    /// Reads its current state from `currentReport?.doNotBroadcast` so
+    /// re-entering the view always reflects the persisted metadata
+    /// rather than a stale local toggle. The toggle binding fires the
+    /// API write asynchronously; `dnbInFlight` disables the toggle for
+    /// the duration of the round-trip to prevent double-tap races.
+    @ViewBuilder
+    private var dnbLockRow: some View {
+        VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
+            HStack(spacing: XomperTheme.Spacing.sm) {
+                Image(systemName: isDNBLocked ? "lock.fill" : "lock.open")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(isDNBLocked ? XomperColors.errorRed : XomperColors.textMuted)
+                    .frame(width: 20)
+
+                Toggle(
+                    "Do not broadcast",
+                    isOn: Binding(
+                        get: { isDNBLocked },
+                        set: { newValue in
+                            Task { await applyDNB(newValue) }
+                        }
+                    )
+                )
+                .toggleStyle(SwitchToggleStyle(tint: XomperColors.errorRed))
+                .foregroundStyle(XomperColors.textPrimary)
+                .disabled(dnbInFlight || currentReport == nil)
+
+                if dnbInFlight {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                        .tint(XomperColors.championGold)
+                }
+            }
+
+            Text("When checked, this report cannot be sent to all 12 managers.")
+                .font(.caption2)
+                .foregroundStyle(XomperColors.textMuted)
+
+            if let dnbError {
+                Text("✗ \(dnbError)")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(XomperColors.errorRed)
+            }
+        }
+        .padding(XomperTheme.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(XomperColors.bgCard)
+        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
+        .overlay(
+            RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg)
+                .strokeBorder(
+                    (isDNBLocked ? XomperColors.errorRed : XomperColors.textMuted).opacity(0.3),
+                    lineWidth: 1
+                )
+        )
+        .padding(.horizontal, XomperTheme.Spacing.md)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Do not broadcast lock for \(reportType.displayName) report")
+        .accessibilityHint("Toggle on to prevent this report from being broadcast.")
+    }
+
     // MARK: - Broadcast button
 
     private var broadcastButton: some View {
@@ -144,25 +235,55 @@ struct AIReviewPreviewView: View {
                     ProgressView()
                         .scaleEffect(0.7)
                         .tint(XomperColors.bgDark)
+                } else if isDNBLocked {
+                    Image(systemName: "lock.fill")
+                        .font(.caption2)
                 } else {
                     Image(systemName: "paperplane.fill")
                         .font(.caption2)
                 }
-                Text(isTriggerInFlight ? "Broadcasting…" : "Broadcast to all \(previews.count)")
+                Text(broadcastButtonLabel)
                     .font(.subheadline.weight(.bold))
             }
             .foregroundStyle(XomperColors.bgDark)
             .padding(.horizontal, XomperTheme.Spacing.md)
             .padding(.vertical, XomperTheme.Spacing.sm)
             .frame(maxWidth: .infinity, minHeight: XomperTheme.minTouchTarget)
-            .background(isTriggerInFlight ? XomperColors.championGold.opacity(0.5) : XomperColors.championGold)
+            .background(broadcastButtonBackground)
             .clipShape(Capsule())
         }
         .buttonStyle(.pressableCard)
-        .disabled(isTriggerInFlight)
+        .disabled(isTriggerInFlight || isDNBLocked)
         .padding(.horizontal, XomperTheme.Spacing.md)
-        .accessibilityLabel("Broadcast \(reportType.displayName) recap to all \(previews.count) recipients")
-        .accessibilityHint("Opens a confirmation dialog before sending.")
+        .accessibilityLabel(broadcastButtonAccessibilityLabel)
+        .accessibilityHint(
+            isDNBLocked
+                ? "Broadcast is locked by the do-not-broadcast flag. Toggle it off above to re-enable."
+                : "Opens a confirmation dialog before sending."
+        )
+    }
+
+    /// Label for the Broadcast button — switches between in-flight,
+    /// locked-by-DNB, and the normal "Broadcast to all N" state.
+    private var broadcastButtonLabel: String {
+        if isTriggerInFlight { return "Broadcasting…" }
+        if isDNBLocked { return "Locked — DNB flag set" }
+        return "Broadcast to all \(previews.count)"
+    }
+
+    /// Background tint for the Broadcast button. Red when locked,
+    /// dimmed gold while in-flight, full gold otherwise.
+    private var broadcastButtonBackground: Color {
+        if isDNBLocked { return XomperColors.errorRed.opacity(0.5) }
+        if isTriggerInFlight { return XomperColors.championGold.opacity(0.5) }
+        return XomperColors.championGold
+    }
+
+    private var broadcastButtonAccessibilityLabel: String {
+        if isDNBLocked {
+            return "Broadcast locked. Do-not-broadcast flag is set on this \(reportType.displayName) report."
+        }
+        return "Broadcast \(reportType.displayName) recap to all \(previews.count) recipients"
     }
 
     // MARK: - List header
@@ -205,6 +326,26 @@ struct AIReviewPreviewView: View {
             router.path.removeLast()
         } catch {
             broadcastError = error.localizedDescription
+        }
+    }
+
+    /// Write the DNB flag to the backend then re-read `*Latest` so the
+    /// toggle + Broadcast button state reflect the persisted value.
+    /// No-op when the report hasn't loaded yet (toggle is disabled in
+    /// that case so this is defensive).
+    private func applyDNB(_ newValue: Bool) async {
+        guard let report = currentReport else { return }
+        dnbError = nil
+        dnbInFlight = true
+        defer { dnbInFlight = false }
+        do {
+            try await adminStore.setReportFlag(
+                report: report,
+                flag: .doNotBroadcast,
+                value: newValue
+            )
+        } catch {
+            dnbError = error.localizedDescription
         }
     }
 }

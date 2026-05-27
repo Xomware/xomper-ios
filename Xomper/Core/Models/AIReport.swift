@@ -155,6 +155,35 @@ struct AIReport: Decodable, Identifiable, Sendable, Hashable {
         "\(reportType.displayName) — \(period)"
     }
 
+    // MARK: - F3 Metadata flags
+
+    /// True when the admin has marked the report `is_redacted=true`
+    /// in the metadata blob. Non-admin clients are filtered server-
+    /// side; this accessor exists so admin surfaces can render the
+    /// "REDACTED" badge and gate context-menu actions when the
+    /// `showRedacted` toggle on `AIReviewStore` is on.
+    var isRedacted: Bool {
+        metadata["is_redacted"] == "true"
+    }
+
+    /// True when the admin has marked the report `do_not_broadcast=true`.
+    /// Pre-broadcast lock — the backend re-reads metadata immediately
+    /// before SES fan-out and aborts with 409 when this is set. iOS
+    /// surfaces this on the preview view's Broadcast button so the
+    /// admin sees the lock before attempting the round-trip.
+    var doNotBroadcast: Bool {
+        metadata["do_not_broadcast"] == "true"
+    }
+
+    /// When the report was last broadcast to all whitelisted users.
+    /// Stamped by the backend immediately AFTER successful SES fan-out
+    /// (postdraft / preseason / weekly all share the same helper).
+    /// `nil` for dry-run-only reports or before the first broadcast.
+    var broadcastAt: Date? {
+        guard let raw = metadata["broadcast_at"] else { return nil }
+        return AIReport.parseISO(raw)
+    }
+
     /// First ~80 chars of the markdown body, stripped of leading
     /// markdown markers. Used by the archive list + Home card.
     var previewSnippet: String {
@@ -175,7 +204,7 @@ struct AIReport: Decodable, Identifiable, Sendable, Hashable {
         return String(stripped[..<idx]) + "…"
     }
 
-    private static func parseISO(_ raw: String) -> Date? {
+    static func parseISO(_ raw: String) -> Date? {
         guard !raw.isEmpty else { return nil }
         let iso = ISO8601DateFormatter()
         iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]

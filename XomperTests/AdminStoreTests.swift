@@ -262,6 +262,28 @@ final class MockAdminAPIClient: XomperAPIClientProtocol, @unchecked Sendable {
         return response
     }
 
+    // MARK: F3 Report Flags
+
+    /// Captured invocations so tests can assert the right path was
+    /// hit with the right args. `setReportFlagResponse` drives the
+    /// happy path; `setReportFlagError` short-circuits with an error.
+    var setReportFlagResponse: ReportFlagResponse?
+    var setReportFlagError: Error?
+    private(set) var setReportFlagCalls: [(leagueId: String, reportType: AIReportType, period: String, flag: ReportFlag, value: Bool)] = []
+
+    func setReportFlag(
+        leagueId: String,
+        reportType: AIReportType,
+        period: String,
+        flag: ReportFlag,
+        value: Bool
+    ) async throws -> ReportFlagResponse {
+        setReportFlagCalls.append((leagueId, reportType, period, flag, value))
+        if let err = setReportFlagError { throw err }
+        guard let response = setReportFlagResponse else { throw MockError.notConfigured }
+        return response
+    }
+
     // MARK: Unused protocol surface
 
     func sendRuleProposalEmail(proposal: RuleProposalEmailPayload, recipients: [String], userIds: [String]) async throws { throw MockError.unsupported }
