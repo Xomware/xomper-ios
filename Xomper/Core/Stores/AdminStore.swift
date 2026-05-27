@@ -81,6 +81,16 @@ final class AdminStore {
     /// Driven by the override toggle + stepper on the weekly card.
     var weeklyWeekOverride: Int?
 
+    // MARK: - F2 Email Previews
+
+    /// In-memory store of rendered email previews per report type.
+    /// Populated after each successful dry-run trigger (when the
+    /// backend includes `previews` in the response). Broadcast
+    /// responses do NOT touch this — pre-broadcast previews remain
+    /// visible after a broadcast completes so the admin can compare.
+    /// Cleared on app restart (per F2 plan Q3 — no persistence).
+    private(set) var lastPreviewsByType: [AIReportType: [EmailPreview]] = [:]
+
     var filterKind: KindFilter = .all
     var filterStatus: StatusFilter = .all
 
@@ -186,6 +196,13 @@ final class AdminStore {
                 force: force
             )
             postDraftResult = response
+            // F2: capture rendered previews from the dry-run response.
+            // Broadcast responses leave `previews == nil`; we don't
+            // overwrite in that case so the admin can still see what
+            // was about to go out.
+            if let previews = response.previews {
+                lastPreviewsByType[.postDraft] = previews
+            }
             // Refresh latest so the card label updates from "Generate"
             // to "Regenerate (force)" on next render.
             await loadPostDraftLatest()
@@ -230,6 +247,10 @@ final class AdminStore {
                 force: force
             )
             preseasonResult = response
+            // F2: see notes on the post-draft equivalent above.
+            if let previews = response.previews {
+                lastPreviewsByType[.preseason] = previews
+            }
             // Refresh latest so the card label updates from "Generate"
             // to "Regenerate (force)" on next render.
             await loadPreseasonLatest()
@@ -283,6 +304,10 @@ final class AdminStore {
                 force: force
             )
             weeklyResult = response
+            // F2: see notes on the post-draft equivalent above.
+            if let previews = response.previews {
+                lastPreviewsByType[.weekly] = previews
+            }
             // Refresh latest so the card label updates from "Generate"
             // to "Regenerate (force)" on next render.
             await loadWeeklyLatest()
@@ -291,6 +316,15 @@ final class AdminStore {
             weeklyError = error
             throw error
         }
+    }
+
+    // MARK: - F2 Previews
+
+    /// Drops the in-memory preview set for one report type. Used by
+    /// tests + by the preview view after a successful broadcast so
+    /// stale previews don't linger past a successful send.
+    func clearPreviews(for reportType: AIReportType) {
+        lastPreviewsByType[reportType] = nil
     }
 
     func sendTest(

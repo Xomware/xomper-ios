@@ -248,9 +248,15 @@ enum AIReportType: String, Codable, Sendable, CaseIterable, Hashable {
 ///   "delivery_count": 1,
 ///   "model": "claude-haiku-4-5",
 ///   "token_usage": { "input_tokens": 1234, "output_tokens": 567 },
-///   "report": { ...AIReport... }
+///   "report": { ...AIReport... },
+///   "previews": [ ...EmailPreview... ]  // F2: only present on dry_run=true
 /// }
 /// ```
+///
+/// `previews` is populated by the dry-run path only — broadcast
+/// (`dry_run=false`) responses leave it `nil`. See F2 plan for the
+/// cap rules and ordering guarantees (`docs/features/admin-portal/
+/// f2-preview/PLAN.md`).
 struct AIReviewTriggerResponse: Decodable, Sendable {
     let reportId: String
     let dryRun: Bool
@@ -258,6 +264,9 @@ struct AIReviewTriggerResponse: Decodable, Sendable {
     let model: String
     let tokenUsage: TokenUsage?
     let report: AIReport?
+    /// F2: rendered email previews, one per active whitelisted user.
+    /// Server pre-sorts by `display_name`. `nil` when `dry_run=false`.
+    let previews: [EmailPreview]?
 
     enum CodingKeys: String, CodingKey {
         case reportId = "report_id"
@@ -266,6 +275,7 @@ struct AIReviewTriggerResponse: Decodable, Sendable {
         case model
         case tokenUsage = "token_usage"
         case report
+        case previews
     }
 }
 

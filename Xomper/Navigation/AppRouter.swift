@@ -63,6 +63,14 @@ enum AppRoute: Hashable {
     /// Pushed from `AdminView`'s menu — stub destination for F4's
     /// Audit sub-feature (recent admin actions feed).
     case adminAudit
+
+    // MARK: - Admin Portal (F2)
+
+    /// Pushed from `AIReviewSubScreen` after a successful dry-run
+    /// trigger. Hosts the pre-broadcast email preview list — one row
+    /// per active whitelisted user. Source data lives in
+    /// `AdminStore.lastPreviewsByType[reportType]`. F2 deliverable.
+    case adminAIReviewPreview(reportType: AIReportType)
 }
 
 /// Owns the inner `NavigationStack` path inside `MainShell`. The drawer

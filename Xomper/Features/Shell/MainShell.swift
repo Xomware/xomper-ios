@@ -31,6 +31,12 @@ struct MainShell: View {
     @State private var valuesStore = PlayerValuesStore()
     @State private var playerPointsStore = PlayerPointsStore()
     @State private var aiReviewStore = AIReviewStore()
+    /// F2 hoist: previously owned by `AIReviewSubScreen` as `@State`.
+    /// Lifted up so the new `AIReviewPreviewView` route can read the
+    /// same instance — without the hoist a fresh `AdminStore` would
+    /// spin up per push and `lastPreviewsByType` would be empty.
+    /// See `docs/features/admin-portal/f2-preview/PLAN.md` B5.
+    @State private var adminStore = AdminStore()
 
     // MARK: - Body
 
@@ -496,7 +502,9 @@ struct MainShell: View {
         case .adminAIReview:
             AIReviewSubScreen(
                 authStore: authStore,
-                leagueStore: leagueStore
+                leagueStore: leagueStore,
+                store: adminStore,
+                router: router
             )
 
         case .adminTestEmail:
@@ -513,6 +521,13 @@ struct MainShell: View {
 
         case .adminAudit:
             AuditStubView()
+
+        case .adminAIReviewPreview(let reportType):
+            AIReviewPreviewView(
+                reportType: reportType,
+                adminStore: adminStore,
+                router: router
+            )
         }
     }
 
