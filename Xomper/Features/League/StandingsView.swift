@@ -22,7 +22,7 @@ struct StandingsView: View {
 
     var body: some View {
         Group {
-            if nflStateStore.isRegularSeason {
+            if nflStateStore.hasLiveStandings {
                 liveStandings
             } else {
                 offseason
