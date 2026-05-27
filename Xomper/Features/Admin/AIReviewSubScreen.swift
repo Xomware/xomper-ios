@@ -10,13 +10,25 @@ import SwiftUI
 /// look identical to the pre-refactor screen — reviewers should pixel-
 /// diff a recording against the previous AdminView.
 ///
-/// Owns its own `AdminStore` instance (same as the pre-refactor
-/// `AdminView` did). Re-runs `.task` whenever the caller's
-/// `callerSleeperId` changes so the activity feed re-scopes.
+/// `AdminStore` is **injected** from `MainShell` (F2 hoist) so the
+/// preview view route can read the same instance — without the hoist a
+/// pushed `AIReviewPreviewView` would see an empty `lastPreviewsByType`
+/// dictionary because `AIReviewSubScreen`'s `@State` doesn't survive
+/// the navigation push.
 struct AIReviewSubScreen: View {
     var authStore: AuthStore
     var leagueStore: LeagueStore
-    @State private var store = AdminStore()
+    /// F2: hoisted from `@State` to an injected dependency so the
+    /// pushed `AIReviewPreviewView` can read the same preview state.
+    /// Keeping the `store` label (rather than renaming to `adminStore`)
+    /// preserves every existing call site inside the view body. We
+    /// use `@Bindable` so the existing `$store.foo` binding sites
+    /// (toggles, pickers, stepper) keep compiling.
+    @Bindable var store: AdminStore
+    /// F2: needed so the trigger cards can navigate to the new
+    /// `adminAIReviewPreview(reportType:)` route after a successful
+    /// dry-run populates `store.lastPreviewsByType`.
+    var router: AppRouter
 
     var body: some View {
         content
@@ -175,6 +187,8 @@ struct AIReviewSubScreen: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(XomperColors.errorRed)
             }
+
+            previewsButton(for: .postDraft)
         }
         .padding(XomperTheme.Spacing.md)
         .background(XomperColors.bgCard)
@@ -316,6 +330,8 @@ struct AIReviewSubScreen: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(XomperColors.errorRed)
             }
+
+            previewsButton(for: .preseason)
         }
         .padding(XomperTheme.Spacing.md)
         .background(XomperColors.bgCard)
@@ -505,6 +521,8 @@ struct AIReviewSubScreen: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(XomperColors.errorRed)
             }
+
+            previewsButton(for: .weekly)
         }
         .padding(XomperTheme.Spacing.md)
         .background(XomperColors.bgCard)
@@ -555,6 +573,42 @@ struct AIReviewSubScreen: View {
             )
         } catch {
             // Error already surfaced via store.weeklyError.
+        }
+    }
+
+    // MARK: - Preview entry point (F2)
+
+    /// Gold outline capsule shown under each trigger card when
+    /// `store.lastPreviewsByType[reportType]` is non-empty. Tapping
+    /// pushes the F2 preview screen onto the existing nav stack.
+    @ViewBuilder
+    private func previewsButton(for reportType: AIReportType) -> some View {
+        if let previews = store.lastPreviewsByType[reportType], !previews.isEmpty {
+            Button {
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
+                router.navigate(to: .adminAIReviewPreview(reportType: reportType))
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "eye.fill")
+                        .font(.caption2)
+                    Text("View \(previews.count) previews")
+                        .font(.caption.weight(.semibold))
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.bold))
+                }
+                .foregroundStyle(XomperColors.championGold)
+                .padding(.horizontal, XomperTheme.Spacing.sm)
+                .padding(.vertical, XomperTheme.Spacing.xs)
+                .frame(minHeight: 32)
+                .overlay(
+                    Capsule()
+                        .strokeBorder(XomperColors.championGold.opacity(0.6), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.pressableCard)
+            .accessibilityLabel("View \(previews.count) email previews for \(reportType.displayName)")
+            .accessibilityHint("Double tap to review what would be broadcast.")
         }
     }
 
