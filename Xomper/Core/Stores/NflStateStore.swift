@@ -40,4 +40,12 @@ final class NflStateStore {
     var isRegularSeason: Bool {
         nflState?.isRegularSeason ?? false
     }
+
+    var isPostseason: Bool {
+        nflState?.isPostseason ?? false
+    }
+
+    var hasLiveStandings: Bool {
+        nflState?.hasLiveStandings ?? false
+    }
 }

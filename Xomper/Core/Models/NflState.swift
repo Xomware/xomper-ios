@@ -29,6 +29,19 @@ struct NflState: Codable, Sendable {
         seasonType == "regular"
     }
 
+    var isPostseason: Bool {
+        seasonType == "post"
+    }
+
+    /// True during regular season AND playoffs — i.e. any time
+    /// fantasy standings are live and meaningful. Use this for the
+    /// "show live standings vs offseason countdown" gate so that
+    /// week-15-17 playoffs don't incorrectly flip the Standings view
+    /// to the offseason empty state (F4 follow-up).
+    var hasLiveStandings: Bool {
+        isRegularSeason || isPostseason
+    }
+
     var displayLabel: String {
         "Week \(displayWeek ?? week) - \(seasonType?.uppercased() ?? "OFF") Season"
     }
