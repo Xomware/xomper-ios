@@ -13,6 +13,8 @@ protocol XomperAPIClientProtocol: Sendable {
     // Admin portal
     func adminListNotifications(sleeperUserId: String, daysBack: Int, kind: String?, status: String?, limit: Int) async throws -> AdminNotificationsResponse
     func adminTestSend(sleeperUserId: String, email: String?, kind: String, channels: [String]) async throws -> AdminTestSendResponse
+    func fetchTestEmailRecipients() async throws -> [TestEmailRecipient]
+    func sendTestEmail(recipientSleeperUserId: String, reportId: String) async throws -> TestEmailResponse
 
     // AI Review
     func fetchLatestAIReport(type: AIReportType) async throws -> AIReport?
@@ -214,6 +216,58 @@ struct AdminTestSendResponse: Decodable, Sendable {
     }
 }
 
+// MARK: - Admin Test Email (F1)
+
+/// One whitelisted user eligible to receive an admin-triggered test
+/// email. Mirrors the row shape returned by
+/// `GET /admin/email-test-recipients`. `isAdmin` is included so the
+/// picker can flag the admin's own row (useful when iterating tone
+/// — sending to yourself avoids spamming the league).
+struct TestEmailRecipient: Codable, Identifiable, Sendable, Hashable {
+    let userId: String
+    let displayName: String
+    let email: String
+    let isAdmin: Bool
+
+    /// Identity for `ForEach` — Sleeper user IDs are unique within
+    /// the league.
+    var id: String { userId }
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case displayName = "display_name"
+        case email
+        case isAdmin = "is_admin"
+    }
+}
+
+/// Wraps `GET /admin/email-test-recipients`. Backend returns the
+/// rows under a top-level `recipients` key alongside a count.
+struct TestEmailRecipientsResponse: Decodable, Sendable {
+    let recipients: [TestEmailRecipient]
+}
+
+/// Successful response from `POST /admin/email-test`. Carries the
+/// SES message id (when available) so the iOS receipts list can
+/// cross-reference against the notification log row.
+struct TestEmailResponse: Codable, Sendable {
+    let recipientEmail: String
+    let messageId: String?
+    let sentAt: String
+    let template: String
+    let reportType: String
+    let reportPeriod: String
+
+    enum CodingKeys: String, CodingKey {
+        case recipientEmail = "recipient_email"
+        case messageId = "message_id"
+        case sentAt = "sent_at"
+        case template
+        case reportType = "report_type"
+        case reportPeriod = "report_period"
+    }
+}
+
 // MARK: - Errors
 
 enum XomperAPIError: Error, LocalizedError {
@@ -404,6 +458,34 @@ final class XomperAPIClient: XomperAPIClientProtocol {
             body["email"] = email
         }
         return try await postDecoding("/admin/test-send", body: body)
+    }
+
+    /// Admin-only: list whitelisted users eligible to receive a test
+    /// email. Backed by `GET /admin/email-test-recipients` (F1) which
+    /// reads the active rows from Supabase `whitelisted_users`. The
+    /// picker on `TestEmailView` consumes this list.
+    func fetchTestEmailRecipients() async throws -> [TestEmailRecipient] {
+        let response: TestEmailRecipientsResponse = try await get(
+            "/admin/email-test-recipients",
+            queryItems: []
+        )
+        return response.recipients
+    }
+
+    /// Admin-only: deliver one existing AI Review report as an email
+    /// to one whitelisted user. `reportId` matches `AIReport.id`
+    /// (composite `pk|sk`); backend splits on `|` to load the row
+    /// from Dynamo. **Never** writes `metadata.broadcast_at` on the
+    /// report — strictly read-only against `xomper-ai-reports`.
+    func sendTestEmail(
+        recipientSleeperUserId: String,
+        reportId: String
+    ) async throws -> TestEmailResponse {
+        let body: [String: Any] = [
+            "recipient_user_id": recipientSleeperUserId,
+            "report_id": reportId,
+        ]
+        return try await postDecoding("/admin/email-test", body: body)
     }
 
     // MARK: - AI Review

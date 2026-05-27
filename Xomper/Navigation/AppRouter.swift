@@ -40,6 +40,29 @@ enum AppRoute: Hashable {
     /// drafts; on selection sets `SeasonStore.selectedSeason` and switches
     /// the top-level destination to `.draftHistory`.
     case archivePastDraftPicker
+
+    // MARK: - Admin Portal (F1)
+
+    /// Pushed from `AdminView`'s menu — hosts the existing AI Review
+    /// trigger cards + activity feed (extracted verbatim from the
+    /// pre-F1 `AdminView`).
+    case adminAIReview
+
+    /// Pushed from `AdminView`'s menu — hosts the F1 test-email sender
+    /// surface (recipient + report pickers, send button, receipts).
+    case adminTestEmail
+
+    /// Pushed from `AdminView`'s menu — stub destination for F4's
+    /// Tables sub-feature (users / leagues / reports editing).
+    case adminTables
+
+    /// Pushed from `AdminView`'s menu — stub destination for F5's
+    /// Logs sub-feature (CloudWatch tail + search).
+    case adminLogs
+
+    /// Pushed from `AdminView`'s menu — stub destination for F4's
+    /// Audit sub-feature (recent admin actions feed).
+    case adminAudit
 }
 
 /// Owns the inner `NavigationStack` path inside `MainShell`. The drawer

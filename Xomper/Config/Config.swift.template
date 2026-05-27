@@ -18,4 +18,15 @@ enum Config {
     /// "Charlotte Dynasty League"). Leave empty to disable name-based
     /// resolution and rely solely on `whitelistedLeagueId`.
     static let whitelistedLeagueName = ""
+
+    /// Admin portal sub-screen visibility flags. Tables / Logs / Audit
+    /// are scaffolded as "Coming soon" stubs by F1 — the menu entries
+    /// stay hidden in production until their respective F-features land
+    /// (F4 = Tables + Audit, F5 = Logs). AI Review + Test Email rows are
+    /// always visible for admin users.
+    enum AdminFlags {
+        static let showTables: Bool = false
+        static let showLogs:   Bool = false
+        static let showAudit:  Bool = false
+    }
 }

@@ -243,7 +243,8 @@ struct MainShell: View {
             case .admin:
                 AdminView(
                     authStore: authStore,
-                    leagueStore: leagueStore
+                    leagueStore: leagueStore,
+                    router: router
                 )
 
             case .rulebook:
@@ -491,6 +492,27 @@ struct MainShell: View {
                 router: router,
                 currentSeason: nflStateStore.currentSeason
             )
+
+        case .adminAIReview:
+            AIReviewSubScreen(
+                authStore: authStore,
+                leagueStore: leagueStore
+            )
+
+        case .adminTestEmail:
+            TestEmailView(
+                authStore: authStore,
+                aiReviewStore: aiReviewStore
+            )
+
+        case .adminTables:
+            TablesStubView()
+
+        case .adminLogs:
+            LogsStubView()
+
+        case .adminAudit:
+            AuditStubView()
         }
     }
 
