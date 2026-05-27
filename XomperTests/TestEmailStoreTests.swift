@@ -281,6 +281,13 @@ final class MockTestEmailAPIClient: XomperAPIClientProtocol, @unchecked Sendable
     func triggerPreseasonAIReview(dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse { throw TestEmailMockError.unsupported }
     func triggerWeeklyAIReview(week: Int?, dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse { throw TestEmailMockError.unsupported }
     func setReportFlag(leagueId: String, reportType: AIReportType, period: String, flag: ReportFlag, value: Bool) async throws -> ReportFlagResponse { throw TestEmailMockError.unsupported }
+
+    // F4 admin tables + audit — unused here.
+    func fetchWhitelistedUsers() async throws -> [WhitelistedUser] { throw TestEmailMockError.unsupported }
+    func updateWhitelistedUser(userId: String, fields: [String: AdminFieldValue]) async throws -> UserUpdateResponse { throw TestEmailMockError.unsupported }
+    func fetchAdminWhitelistedLeagues() async throws -> [WhitelistedLeague] { throw TestEmailMockError.unsupported }
+    func updateWhitelistedLeague(leagueId: String, fields: [String: AdminFieldValue]) async throws -> LeagueUpdateResponse { throw TestEmailMockError.unsupported }
+    func fetchAuditEntries(limit: Int, cursor: String?) async throws -> AuditListResponse { throw TestEmailMockError.unsupported }
 }
 
 enum TestEmailMockError: Error, LocalizedError {

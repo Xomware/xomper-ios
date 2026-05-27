@@ -37,6 +37,13 @@ struct MainShell: View {
     /// spin up per push and `lastPreviewsByType` would be empty.
     /// See `docs/features/admin-portal/f2-preview/PLAN.md` B5.
     @State private var adminStore = AdminStore()
+    /// F4: drives the Tables (users + leagues) + Audit feed
+    /// sub-screens. Shared across `TablesSubScreenView`,
+    /// `UsersListView`, `UserEditView`, `LeaguesListView`,
+    /// `LeagueEditView`, `AuditFeedView`, and `AuditDetailView`
+    /// so the lists + edit forms + detail view read from the
+    /// same in-memory rows.
+    @State private var adminTablesStore = AdminTablesStore()
 
     // MARK: - Body
 
@@ -515,13 +522,13 @@ struct MainShell: View {
             )
 
         case .adminTables:
-            TablesStubView()
+            TablesSubScreenView(router: router, navStore: navStore)
 
         case .adminLogs:
             LogsStubView()
 
         case .adminAudit:
-            AuditStubView()
+            AuditFeedView(store: adminTablesStore, router: router)
 
         case .adminAIReviewPreview(let reportType):
             AIReviewPreviewView(
@@ -529,6 +536,21 @@ struct MainShell: View {
                 adminStore: adminStore,
                 router: router
             )
+
+        case .adminTablesUsers:
+            UsersListView(store: adminTablesStore, router: router)
+
+        case .adminTablesLeagues:
+            LeaguesListView(store: adminTablesStore, router: router)
+
+        case .adminTablesUserEdit(let userId):
+            UserEditView(userId: userId, store: adminTablesStore, router: router)
+
+        case .adminTablesLeagueEdit(let leagueId):
+            LeagueEditView(leagueId: leagueId, store: adminTablesStore, router: router)
+
+        case .adminAuditDetail(let entryId):
+            AuditDetailView(entryId: entryId, store: adminTablesStore)
         }
     }
 

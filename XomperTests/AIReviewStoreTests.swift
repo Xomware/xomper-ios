@@ -355,6 +355,14 @@ final class MockXomperAPIClient: XomperAPIClientProtocol, @unchecked Sendable {
         return response
     }
 
+    // MARK: - F4 admin tables + audit — unused here.
+
+    func fetchWhitelistedUsers() async throws -> [WhitelistedUser] { throw Unsupported.method }
+    func updateWhitelistedUser(userId: String, fields: [String: AdminFieldValue]) async throws -> UserUpdateResponse { throw Unsupported.method }
+    func fetchAdminWhitelistedLeagues() async throws -> [WhitelistedLeague] { throw Unsupported.method }
+    func updateWhitelistedLeague(leagueId: String, fields: [String: AdminFieldValue]) async throws -> LeagueUpdateResponse { throw Unsupported.method }
+    func fetchAuditEntries(limit: Int, cursor: String?) async throws -> AuditListResponse { throw Unsupported.method }
+
     enum Unsupported: Error { case method }
 }
 

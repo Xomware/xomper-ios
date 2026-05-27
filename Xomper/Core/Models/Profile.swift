@@ -22,7 +22,21 @@ struct XomperProfile: Codable, Sendable {
     }
 }
 
-struct WhitelistedUser: Codable, Sendable {
+/// Mirrors a row in the Supabase `whitelisted_users` table. Used in
+/// two places:
+/// 1. `AuthStore.whitelistedUser` — the current signed-in user's row.
+/// 2. F4 Admin Tables surface — `AdminTablesStore.users` lists every
+///    row for the Users editor.
+///
+/// `id` is the Supabase row UUID. `sleeperUserId` is the Sleeper
+/// identity (optional in the wire shape since the row can exist
+/// before the user finishes the OAuth handshake) and is the key
+/// the F4 admin endpoints accept.
+///
+/// Memberwise + decode init are both defined so the F4 store can
+/// build the model in-memory after a successful update without
+/// re-fetching from Supabase.
+struct WhitelistedUser: Codable, Sendable, Identifiable, Hashable {
     let id: String
     let email: String
     let sleeperUsername: String?
@@ -53,6 +67,43 @@ struct WhitelistedUser: Codable, Sendable {
         role = try c.decodeIfPresent(String.self, forKey: .role)
         isActive = (try? c.decodeIfPresent(Bool.self, forKey: .isActive)) ?? false
         isAdmin = (try? c.decodeIfPresent(Bool.self, forKey: .isAdmin)) ?? false
+    }
+
+    /// Memberwise init for tests / previews and for in-place
+    /// mutation by `AdminTablesStore.updateUser`.
+    init(
+        id: String,
+        email: String,
+        sleeperUsername: String? = nil,
+        sleeperUserId: String? = nil,
+        displayName: String? = nil,
+        role: String? = nil,
+        isActive: Bool,
+        isAdmin: Bool
+    ) {
+        self.id = id
+        self.email = email
+        self.sleeperUsername = sleeperUsername
+        self.sleeperUserId = sleeperUserId
+        self.displayName = displayName
+        self.role = role
+        self.isActive = isActive
+        self.isAdmin = isAdmin
+    }
+
+    /// Stable identity key for F4 admin update calls. Backend keys
+    /// on `sleeper_user_id` when present, falling back to the row
+    /// UUID — same fallback iOS uses for `Identifiable.id` here.
+    var updateKey: String {
+        sleeperUserId ?? id
+    }
+
+    /// Resolved name for list rendering — display name preferred,
+    /// then sleeper username, then a placeholder.
+    var resolvedDisplayName: String {
+        if let displayName, !displayName.isEmpty { return displayName }
+        if let sleeperUsername, !sleeperUsername.isEmpty { return sleeperUsername }
+        return "(unnamed)"
     }
 }
 

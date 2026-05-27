@@ -296,6 +296,13 @@ final class MockAdminAPIClient: XomperAPIClientProtocol, @unchecked Sendable {
     func adminTestSend(sleeperUserId: String, email: String?, kind: String, channels: [String]) async throws -> AdminTestSendResponse { throw MockError.unsupported }
     func fetchTestEmailRecipients() async throws -> [TestEmailRecipient] { throw MockError.unsupported }
     func sendTestEmail(recipientSleeperUserId: String, reportId: String) async throws -> TestEmailResponse { throw MockError.unsupported }
+
+    // F4 admin tables + audit — unused here.
+    func fetchWhitelistedUsers() async throws -> [WhitelistedUser] { throw MockError.unsupported }
+    func updateWhitelistedUser(userId: String, fields: [String: AdminFieldValue]) async throws -> UserUpdateResponse { throw MockError.unsupported }
+    func fetchAdminWhitelistedLeagues() async throws -> [WhitelistedLeague] { throw MockError.unsupported }
+    func updateWhitelistedLeague(leagueId: String, fields: [String: AdminFieldValue]) async throws -> LeagueUpdateResponse { throw MockError.unsupported }
+    func fetchAuditEntries(limit: Int, cursor: String?) async throws -> AuditListResponse { throw MockError.unsupported }
 }
 
 enum MockError: Error, LocalizedError {

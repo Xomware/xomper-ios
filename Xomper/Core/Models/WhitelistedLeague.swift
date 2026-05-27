@@ -4,7 +4,7 @@ import Foundation
 /// `is_active=true` row is the league this build is configured for —
 /// fetched at boot to avoid hardcoding a Sleeper league ID that drifts
 /// every dynasty rollover.
-struct WhitelistedLeague: Codable, Sendable, Identifiable {
+struct WhitelistedLeague: Codable, Sendable, Identifiable, Hashable {
     let id: String
     let leagueId: String
     let leagueName: String
