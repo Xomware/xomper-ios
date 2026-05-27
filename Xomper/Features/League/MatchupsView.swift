@@ -4,6 +4,7 @@ struct MatchupsView: View {
     var leagueStore: LeagueStore
     var historyStore: HistoryStore
     var playerStore: PlayerStore
+    var aiReviewStore: AIReviewStore
     var router: AppRouter
 
     @Environment(\.selectedSeason) private var seasonStore: SeasonStore?
@@ -103,14 +104,78 @@ struct MatchupsView: View {
             if expandedWeek == weekData.week {
                 VStack(spacing: XomperTheme.Spacing.md) {
                     ForEach(weekData.matchups) { matchup in
-                        MatchupCardView(matchup: matchup) {
-                            selectedMatchup = matchup
+                        VStack(spacing: XomperTheme.Spacing.xs) {
+                            MatchupCardView(matchup: matchup) {
+                                selectedMatchup = matchup
+                            }
+
+                            // Inline AI-generated blurb under the matchup
+                            // card. Renders only when the weekly recap
+                            // is present + has a matching `matchup_id`.
+                            // Current weeks and weeks pre-AI-review
+                            // (none of 2024/2025 today, all backfilled)
+                            // produce no blurb — view is silently absent.
+                            if let blurb = blurb(for: matchup, weekData: weekData) {
+                                MatchupBlurbCardView(blurb: blurb)
+                            }
                         }
                     }
                 }
                 .padding(.top, XomperTheme.Spacing.sm)
                 .transition(.opacity.combined(with: .move(edge: .top)))
+                .task(id: weekRecapTaskId(weekData)) {
+                    // Only fetch the recap once a week is expanded AND
+                    // it has scores — otherwise we'd fan out a request
+                    // for every week and waste cycles on the
+                    // unscored current week.
+                    guard weekData.hasScores else { return }
+                    let period = AIReviewStore.weeklyPeriod(
+                        season: currentSeason,
+                        week: weekData.week
+                    )
+                    await aiReviewStore.loadWeeklyReport(period: period)
+                }
             }
+        }
+    }
+
+    /// Stable identifier used by the `.task(id:)` modifier so the
+    /// weekly-recap fetch fires once per (season, week) expansion and
+    /// doesn't repeat on every render. Embedding `currentSeason`
+    /// avoids stale fetches when the season chip flips.
+    private func weekRecapTaskId(_ weekData: WeekMatchups) -> String {
+        "\(currentSeason)-\(weekData.week)"
+    }
+
+    /// Resolves the per-matchup blurb for a rendered matchup. Looks
+    /// up the weekly recap by `(season, week)` period, then keys into
+    /// its `metadata.matchups[]` array by `matchup_id`. Falls back to
+    /// a team-name match if Sleeper rotated the matchup ids after a
+    /// re-roster cycle (rare, but defensive).
+    private func blurb(
+        for matchup: MatchupHistoryRecord,
+        weekData: WeekMatchups
+    ) -> WeeklyMatchupBlurb? {
+        let period = AIReviewStore.weeklyPeriod(
+            season: currentSeason,
+            week: weekData.week
+        )
+        guard !period.isEmpty,
+              let report = aiReviewStore.weeklyReportsByPeriod[period],
+              let recap = report.decodeMetadata(WeeklyRecapMetadata.self) else {
+            return nil
+        }
+
+        if let hit = recap.matchups.first(where: { $0.matchupId == matchup.matchupId }) {
+            return hit
+        }
+        // Fallback: same teams, regardless of `matchup_id`. Order
+        // doesn't matter because both pairings (A→B, B→A) are valid.
+        let aName = matchup.teamATeamName.isEmpty ? matchup.teamAUsername : matchup.teamATeamName
+        let bName = matchup.teamBTeamName.isEmpty ? matchup.teamBUsername : matchup.teamBTeamName
+        return recap.matchups.first { blurb in
+            (blurb.teamA == aName && blurb.teamB == bName) ||
+            (blurb.teamA == bName && blurb.teamB == aName)
         }
     }
 
@@ -327,12 +392,63 @@ private enum MatchupResult {
     }
 }
 
+// MARK: - Matchup Blurb Card
+
+/// Small markdown-rendered card that sits under a `MatchupCardView`
+/// when the week's AI recap has a per-matchup blurb. The blurb
+/// markdown leans on `**bold**` for team names + margins so
+/// `AttributedString(markdown:)` is sufficient — no need for the
+/// heavier interpreted-syntax setup.
+private struct MatchupBlurbCardView: View {
+    let blurb: WeeklyMatchupBlurb
+
+    var body: some View {
+        HStack(alignment: .top, spacing: XomperTheme.Spacing.sm) {
+            Image(systemName: "sparkles")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(XomperColors.championGold)
+                .padding(.top, 2)
+
+            renderedBlurb
+                .font(.caption)
+                .foregroundStyle(XomperColors.textPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(XomperTheme.Spacing.sm)
+        .background(XomperColors.bgCard.opacity(0.6))
+        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
+        .overlay(
+            RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md)
+                .strokeBorder(XomperColors.championGold.opacity(0.25), lineWidth: 0.5)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Recap: \(blurb.blurb)")
+    }
+
+    @ViewBuilder
+    private var renderedBlurb: some View {
+        if let attributed = try? AttributedString(
+            markdown: blurb.blurb,
+            options: AttributedString.MarkdownParsingOptions(
+                interpretedSyntax: .inlineOnlyPreservingWhitespace
+            )
+        ) {
+            Text(attributed)
+        } else {
+            Text(blurb.blurb)
+        }
+    }
+}
+
 #Preview {
     NavigationStack {
         MatchupsView(
             leagueStore: LeagueStore(),
             historyStore: HistoryStore(),
             playerStore: PlayerStore(),
+            aiReviewStore: AIReviewStore(),
             router: AppRouter()
         )
     }

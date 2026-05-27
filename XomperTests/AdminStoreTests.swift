@@ -233,6 +233,14 @@ final class MockAdminAPIClient: XomperAPIClientProtocol, @unchecked Sendable {
         AIReportsListResponse(rows: [], nextCursor: nil)
     }
 
+    func fetchAIReportByPeriod(type: AIReportType, period: String) async throws -> AIReport? {
+        nil
+    }
+
+    func fetchMockDrafts() async throws -> [AIReport] {
+        []
+    }
+
     func triggerPostDraftAIReview(dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse {
         triggerCalls.append((dryRun, force))
         if let err = triggerError { throw err }

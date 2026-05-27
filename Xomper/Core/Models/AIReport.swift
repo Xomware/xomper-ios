@@ -31,6 +31,12 @@ struct AIReport: Decodable, Identifiable, Sendable, Hashable {
     let period: String
     let bodyMarkdown: String
     let metadata: [String: String]
+    /// Raw JSON bytes of the `metadata` Dynamo Map, captured at decode
+    /// time. Used by typed extractors (`decodeMetadata(_:)`) that need
+    /// nested structures the flat `metadata: [String: String]` map
+    /// can't express — e.g. the `picks[]` array on mock-draft reports
+    /// and `matchups[]` on weekly reports.
+    let metadataRawJSON: Data?
     let createdAt: Date
     let model: String?
     let promptVersion: String?
@@ -58,14 +64,28 @@ struct AIReport: Decodable, Identifiable, Sendable, Hashable {
         self.period = (try? c.decode(String.self, forKey: .period)) ?? ""
         self.bodyMarkdown = (try? c.decode(String.self, forKey: .bodyMarkdown)) ?? ""
 
-        // Metadata is a Dynamo Map of mixed scalars. Decode leniently as
-        // string→string so iOS doesn't need a full Any-codable layer.
+        // Metadata is a Dynamo Map of mixed scalars + nested
+        // structures. Decode leniently as string→string so iOS doesn't
+        // need a full Any-codable layer for the common case (token
+        // counts, dry-run flags, etc.). Nested structures (arrays,
+        // sub-objects) are stripped — typed callers can recover them
+        // via `decodeMetadata(_:)` which reads `metadataRawJSON`.
         if let raw = try? c.decode([String: AnyScalar].self, forKey: .metadata) {
             var out: [String: String] = [:]
             for (k, v) in raw { out[k] = v.stringValue }
             self.metadata = out
         } else {
             self.metadata = [:]
+        }
+
+        // Capture the raw bytes of the metadata map for typed decode
+        // later. `JSONValue` accepts the full JSON grammar (including
+        // nested arrays + objects); re-encoding gives us a portable
+        // blob structured decoders can consume.
+        if let rawValue = try? c.decode(JSONValue.self, forKey: .metadata) {
+            self.metadataRawJSON = try? JSONEncoder().encode(rawValue)
+        } else {
+            self.metadataRawJSON = nil
         }
 
         // ISO 8601 with optional fractional seconds.
@@ -84,6 +104,7 @@ struct AIReport: Decodable, Identifiable, Sendable, Hashable {
         period: String,
         bodyMarkdown: String,
         metadata: [String: String] = [:],
+        metadataRawJSON: Data? = nil,
         createdAt: Date,
         model: String? = nil,
         promptVersion: String? = nil
@@ -94,9 +115,21 @@ struct AIReport: Decodable, Identifiable, Sendable, Hashable {
         self.period = period
         self.bodyMarkdown = bodyMarkdown
         self.metadata = metadata
+        self.metadataRawJSON = metadataRawJSON
         self.createdAt = createdAt
         self.model = model
         self.promptVersion = promptVersion
+    }
+
+    /// Decode the structured metadata blob into a strongly-typed
+    /// Swift model — used by mock drafts (`MockDraftMetadata`) and
+    /// weekly recaps (`WeeklyRecapMetadata`) that need the nested
+    /// `picks[]` / `matchups[]` arrays the flat string map throws
+    /// away. Returns `nil` when the raw JSON is missing or the shape
+    /// doesn't match — callers fall back to an empty state.
+    func decodeMetadata<T: Decodable>(_ type: T.Type) -> T? {
+        guard let data = metadataRawJSON else { return nil }
+        return try? JSONDecoder().decode(T.self, from: data)
     }
 
     /// Human-friendly title for cards and detail headers.
@@ -139,14 +172,15 @@ struct AIReport: Decodable, Identifiable, Sendable, Hashable {
 /// values mirror what `report_type` carries in DynamoDB / the API.
 ///
 /// Backend enforces camelCase via `REPORT_TYPES = ("postDraft",
-/// "preseason", "weekly")` in `lambdas/common/ai_reports_store.py`.
-/// `preseason` and `weekly` already default to their case names, but
-/// `postDraft` must be pinned to the camelCase wire value (was
-/// `"post-draft"` in F0, which would fail to decode).
+/// "preseason", "weekly", "mock")` in `lambdas/common/ai_reports_store.py`.
+/// `preseason`, `weekly`, and `mock` already default to their case
+/// names, but `postDraft` must be pinned to the camelCase wire value
+/// (was `"post-draft"` in F0, which would fail to decode).
 enum AIReportType: String, Codable, Sendable, CaseIterable, Hashable {
     case postDraft = "postDraft"
     case preseason = "preseason"
     case weekly = "weekly"
+    case mock = "mock"
 
     /// Display name used in chips and titles.
     var displayName: String {
@@ -154,6 +188,7 @@ enum AIReportType: String, Codable, Sendable, CaseIterable, Hashable {
         case .postDraft: "Post-Draft"
         case .preseason: "Preseason"
         case .weekly:    "Weekly"
+        case .mock:      "Mock Draft"
         }
     }
 
@@ -163,6 +198,7 @@ enum AIReportType: String, Codable, Sendable, CaseIterable, Hashable {
         case .postDraft: "list.clipboard.fill"
         case .preseason: "calendar"
         case .weekly:    "sparkles"
+        case .mock:      "wand.and.stars"
         }
     }
 
@@ -174,6 +210,7 @@ enum AIReportType: String, Codable, Sendable, CaseIterable, Hashable {
         case .postDraft: XomperColors.championGold
         case .preseason: XomperColors.successGreen
         case .weekly:    XomperColors.championGold
+        case .mock:      XomperColors.championGold
         }
     }
 }
@@ -262,6 +299,53 @@ private enum AnyScalar: Decodable, Sendable {
         case .double(let d): String(d)
         case .bool(let b):   String(b)
         case .null:          ""
+        }
+    }
+}
+
+/// Full JSON-grammar value used when round-tripping the `metadata`
+/// blob through `JSONEncoder` so a typed decoder can later re-extract
+/// nested arrays + objects (mock-draft `picks[]`, weekly
+/// `matchups[]`). The flat string→string `metadata` map on
+/// `AIReport` is preserved for back-compat with the simpler call
+/// sites (e.g. `metadata["dry_run"]` checks in AdminView).
+enum JSONValue: Codable, Sendable, Hashable {
+    case string(String)
+    case int(Int)
+    case double(Double)
+    case bool(Bool)
+    case null
+    case array([JSONValue])
+    case object([String: JSONValue])
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.singleValueContainer()
+        if c.decodeNil() { self = .null; return }
+        if let v = try? c.decode(Bool.self)    { self = .bool(v); return }
+        if let v = try? c.decode(Int.self)     { self = .int(v); return }
+        if let v = try? c.decode(Double.self)  { self = .double(v); return }
+        if let v = try? c.decode(String.self)  { self = .string(v); return }
+        if let v = try? c.decode([JSONValue].self) { self = .array(v); return }
+        if let v = try? c.decode([String: JSONValue].self) {
+            self = .object(v)
+            return
+        }
+        throw DecodingError.dataCorruptedError(
+            in: c,
+            debugDescription: "Unsupported JSON value"
+        )
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.singleValueContainer()
+        switch self {
+        case .string(let v): try c.encode(v)
+        case .int(let v):    try c.encode(v)
+        case .double(let v): try c.encode(v)
+        case .bool(let v):   try c.encode(v)
+        case .null:          try c.encodeNil()
+        case .array(let v):  try c.encode(v)
+        case .object(let v): try c.encode(v)
         }
     }
 }
