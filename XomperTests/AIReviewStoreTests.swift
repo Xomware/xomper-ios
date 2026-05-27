@@ -120,7 +120,101 @@ final class AIReviewStoreTests: XCTestCase {
         XCTAssertEqual(mock.listCalls.count, listCallsBefore, "loadMore should be a no-op when cursor is nil")
     }
 
-    // MARK: - Test 6: mostRecentLatest picks newest across types
+    // MARK: - Test 6a: loadMockDrafts populates mockDrafts
+
+    func testLoadMockDrafts_populatesMockDrafts() async {
+        let r1 = makeReport(
+            id: "L1|REPORT#mock#2026-bpa",
+            type: .mock,
+            period: "2026-bpa"
+        )
+        let r2 = makeReport(
+            id: "L1|REPORT#mock#2026-team-fit",
+            type: .mock,
+            period: "2026-team-fit"
+        )
+        let r3 = makeReport(
+            id: "L1|REPORT#mock#2026-wildcard",
+            type: .mock,
+            period: "2026-wildcard"
+        )
+        let mock = MockXomperAPIClient(
+            listPagesByType: [
+                AIReportType.mock.rawValue: [(rows: [r1, r2, r3], cursor: nil)]
+            ]
+        )
+        let store = AIReviewStore(apiClient: mock)
+
+        await store.loadMockDrafts()
+
+        XCTAssertEqual(store.mockDrafts.count, 3)
+        XCTAssertEqual(store.mockDrafts.map(\.period), ["2026-bpa", "2026-team-fit", "2026-wildcard"])
+        XCTAssertNil(store.mockDraftsError)
+        XCTAssertEqual(mock.mockDraftsCallCount, 1)
+    }
+
+    // MARK: - Test 6b: loadMockDrafts short-circuits within freshness window
+
+    func testLoadMockDrafts_skipsWithinFreshnessWindow() async {
+        let r1 = makeReport(
+            id: "L1|REPORT#mock#2026-bpa",
+            type: .mock,
+            period: "2026-bpa"
+        )
+        let mock = MockXomperAPIClient(
+            listPagesByType: [
+                AIReportType.mock.rawValue: [(rows: [r1], cursor: nil)]
+            ]
+        )
+        let store = AIReviewStore(apiClient: mock)
+
+        await store.loadMockDrafts()
+        XCTAssertEqual(mock.mockDraftsCallCount, 1)
+
+        await store.loadMockDrafts()
+        XCTAssertEqual(mock.mockDraftsCallCount, 1, "Should short-circuit inside the 12-hour window")
+
+        await store.loadMockDrafts(force: true)
+        XCTAssertEqual(mock.mockDraftsCallCount, 2)
+    }
+
+    // MARK: - Test 6c: loadWeeklyReport caches by period
+
+    func testLoadWeeklyReport_cachesByPeriod() async {
+        let r = makeReport(
+            id: "L1|REPORT#weekly#2025W04",
+            type: .weekly,
+            period: "2025W04"
+        )
+        let mock = MockXomperAPIClient(
+            reportsByPeriod: ["2025W04": r]
+        )
+        let store = AIReviewStore(apiClient: mock)
+
+        await store.loadWeeklyReport(period: "2025W04")
+        XCTAssertEqual(store.weeklyReportsByPeriod["2025W04"]?.id, r.id)
+        XCTAssertEqual(mock.byPeriodCalls.count, 1)
+
+        // Second call for the same period — must short-circuit.
+        await store.loadWeeklyReport(period: "2025W04")
+        XCTAssertEqual(mock.byPeriodCalls.count, 1, "Cached period should not refetch")
+
+        // Different period — must fetch.
+        await store.loadWeeklyReport(period: "2025W05")
+        XCTAssertEqual(mock.byPeriodCalls.count, 2)
+    }
+
+    // MARK: - Test 6d: loadWeeklyReport ignores empty period
+
+    func testLoadWeeklyReport_ignoresEmptyPeriod() async {
+        let mock = MockXomperAPIClient()
+        let store = AIReviewStore(apiClient: mock)
+
+        await store.loadWeeklyReport(period: "")
+        XCTAssertEqual(mock.byPeriodCalls.count, 0)
+    }
+
+    // MARK: - Test 7: mostRecentLatest picks newest across types
 
     func testMostRecentLatest_picksNewestAcrossTypes() async {
         let older = makeReport(
@@ -155,17 +249,31 @@ final class AIReviewStoreTests: XCTestCase {
 final class MockXomperAPIClient: XomperAPIClientProtocol, @unchecked Sendable {
     var latest: [AIReportType: AIReport]
     var listPages: [(rows: [AIReport], cursor: String?)]
+    /// Pages returned by `fetchAIReportsList` when a `type` filter is
+    /// passed. Keys are stringly the rawValue so tests don't need to
+    /// reach into the enum. Falls back to the unfiltered `listPages`
+    /// queue when no type-specific override is registered.
+    var listPagesByType: [String: [(rows: [AIReport], cursor: String?)]]
+    private var listPageIndexByType: [String: Int] = [:]
+    /// `(period, report)` rows returned by `fetchAIReportByPeriod`.
+    var reportsByPeriod: [String: AIReport]
 
     private(set) var latestCalls: [AIReportType] = []
     private(set) var listCalls: [(type: AIReportType?, limit: Int, cursor: String?)] = []
+    private(set) var byPeriodCalls: [(type: AIReportType, period: String)] = []
+    private(set) var mockDraftsCallCount = 0
     private var listPageIndex = 0
 
     init(
         latest: [AIReportType: AIReport] = [:],
-        listPages: [(rows: [AIReport], cursor: String?)] = []
+        listPages: [(rows: [AIReport], cursor: String?)] = [],
+        listPagesByType: [String: [(rows: [AIReport], cursor: String?)]] = [:],
+        reportsByPeriod: [String: AIReport] = [:]
     ) {
         self.latest = latest
         self.listPages = listPages
+        self.listPagesByType = listPagesByType
+        self.reportsByPeriod = reportsByPeriod
     }
 
     // MARK: AI Review
@@ -181,12 +289,31 @@ final class MockXomperAPIClient: XomperAPIClientProtocol, @unchecked Sendable {
         cursor: String?
     ) async throws -> AIReportsListResponse {
         listCalls.append((type, limit, cursor))
+        if let type, let pages = listPagesByType[type.rawValue] {
+            let idx = listPageIndexByType[type.rawValue] ?? 0
+            guard idx < pages.count else {
+                return AIReportsListResponse(rows: [], nextCursor: nil)
+            }
+            let page = pages[idx]
+            listPageIndexByType[type.rawValue] = idx + 1
+            return AIReportsListResponse(rows: page.rows, nextCursor: page.cursor)
+        }
         guard listPageIndex < listPages.count else {
             return AIReportsListResponse(rows: [], nextCursor: nil)
         }
         let page = listPages[listPageIndex]
         listPageIndex += 1
         return AIReportsListResponse(rows: page.rows, nextCursor: page.cursor)
+    }
+
+    func fetchAIReportByPeriod(type: AIReportType, period: String) async throws -> AIReport? {
+        byPeriodCalls.append((type, period))
+        return reportsByPeriod[period]
+    }
+
+    func fetchMockDrafts() async throws -> [AIReport] {
+        mockDraftsCallCount += 1
+        return listPagesByType[AIReportType.mock.rawValue]?.flatMap(\.rows) ?? []
     }
 
     // MARK: Unused protocol surface — throw to catch accidental calls

@@ -149,6 +149,7 @@ struct MainShell: View {
                     leagueStore: leagueStore,
                     historyStore: historyStore,
                     playerStore: playerStore,
+                    aiReviewStore: aiReviewStore,
                     router: router
                 )
 

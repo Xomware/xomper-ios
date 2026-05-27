@@ -17,6 +17,8 @@ protocol XomperAPIClientProtocol: Sendable {
     // AI Review
     func fetchLatestAIReport(type: AIReportType) async throws -> AIReport?
     func fetchAIReportsList(type: AIReportType?, limit: Int, cursor: String?) async throws -> AIReportsListResponse
+    func fetchAIReportByPeriod(type: AIReportType, period: String) async throws -> AIReport?
+    func fetchMockDrafts() async throws -> [AIReport]
     func triggerPostDraftAIReview(dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse
     func triggerPreseasonAIReview(dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse
     func triggerWeeklyAIReview(week: Int?, dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse
@@ -437,6 +439,63 @@ final class XomperAPIClient: XomperAPIClientProtocol {
             items.append(URLQueryItem(name: "cursor", value: cursor))
         }
         return try await get("/ai-reports/list", queryItems: items)
+    }
+
+    /// Look up a single AI report by its `(type, period)` pair. The
+    /// list endpoint doesn't yet accept a `period=` query param, so
+    /// this lists by type and client-side picks the row whose
+    /// `period` matches. Returns `nil` when no row matches — caller
+    /// can render an empty state. Walks the cursor if necessary so a
+    /// later-period report deep in the archive is still resolvable.
+    ///
+    /// Used by `MatchupsView` to fetch the weekly recap whose
+    /// `metadata.matchups[]` carries the per-matchup blurbs for a
+    /// past, scored week (e.g. `period = "2025W04"`).
+    func fetchAIReportByPeriod(
+        type: AIReportType,
+        period: String
+    ) async throws -> AIReport? {
+        var cursor: String? = nil
+        // Cap the walk so a misconfigured backend can't loop us.
+        // 5 pages × 20 rows = 100 reports of a single type, which is
+        // far more than the league produces in a season.
+        for _ in 0..<5 {
+            let response = try await fetchAIReportsList(
+                type: type,
+                limit: 20,
+                cursor: cursor
+            )
+            if let hit = response.rows.first(where: { $0.period == period }) {
+                return hit
+            }
+            guard let next = response.nextCursor, !next.isEmpty else {
+                return nil
+            }
+            cursor = next
+        }
+        return nil
+    }
+
+    /// Convenience wrapper over `fetchAIReportsList(type: .mock)` —
+    /// the mock-draft surface always wants every mock the backend has
+    /// produced for the active draft year, so we drain the cursor up
+    /// front instead of building cursor state into `MocksView`. The
+    /// per-personality count is small (3 today, ~handful at most), so
+    /// the all-pages walk is cheap.
+    func fetchMockDrafts() async throws -> [AIReport] {
+        var all: [AIReport] = []
+        var cursor: String? = nil
+        for _ in 0..<5 {
+            let response = try await fetchAIReportsList(
+                type: .mock,
+                limit: 20,
+                cursor: cursor
+            )
+            all.append(contentsOf: response.rows)
+            guard let next = response.nextCursor, !next.isEmpty else { break }
+            cursor = next
+        }
+        return all
     }
 
     /// Admin-only: fires the backend `notif_ai_review_postdraft`
