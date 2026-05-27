@@ -24,6 +24,15 @@ protocol XomperAPIClientProtocol: Sendable {
     func triggerPostDraftAIReview(dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse
     func triggerPreseasonAIReview(dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse
     func triggerWeeklyAIReview(week: Int?, dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse
+
+    // Admin: report metadata flags (F3)
+    func setReportFlag(
+        leagueId: String,
+        reportType: AIReportType,
+        period: String,
+        flag: ReportFlag,
+        value: Bool
+    ) async throws -> ReportFlagResponse
 }
 
 // MARK: - Request Payloads
@@ -639,6 +648,33 @@ final class XomperAPIClient: XomperAPIClientProtocol {
             "/admin/ai-review-weekly-trigger",
             body: payload
         )
+    }
+
+    // MARK: - Admin Report Flags (F3)
+
+    /// Admin-only: toggle `is_redacted` or `do_not_broadcast` on a
+    /// single report row. Backend path is `/admin/reports-flag` —
+    /// flat (not nested under report id) so the same handler can
+    /// service any of the three report types without re-routing.
+    ///
+    /// Returns the full updated metadata map so callers can mutate
+    /// the local cached `AIReport` in place without a follow-up
+    /// `/ai-reports/latest` round-trip.
+    func setReportFlag(
+        leagueId: String,
+        reportType: AIReportType,
+        period: String,
+        flag: ReportFlag,
+        value: Bool
+    ) async throws -> ReportFlagResponse {
+        let body: [String: Any] = [
+            "league_id": leagueId,
+            "report_type": reportType.rawValue,
+            "period": period,
+            "flag": flag.rawValue,
+            "value": value,
+        ]
+        return try await postDecoding("/admin/reports-flag", body: body)
     }
 
     // MARK: - Private

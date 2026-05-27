@@ -280,6 +280,7 @@ final class MockTestEmailAPIClient: XomperAPIClientProtocol, @unchecked Sendable
     func triggerPostDraftAIReview(dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse { throw TestEmailMockError.unsupported }
     func triggerPreseasonAIReview(dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse { throw TestEmailMockError.unsupported }
     func triggerWeeklyAIReview(week: Int?, dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse { throw TestEmailMockError.unsupported }
+    func setReportFlag(leagueId: String, reportType: AIReportType, period: String, flag: ReportFlag, value: Bool) async throws -> ReportFlagResponse { throw TestEmailMockError.unsupported }
 }
 
 enum TestEmailMockError: Error, LocalizedError {

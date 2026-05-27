@@ -52,6 +52,14 @@ final class AIReviewStore {
     private(set) var error: Error?
     private(set) var lastLoadedAt: Date?
 
+    /// Admin-only opt-in to see redacted rows in the archive. Defaults
+    /// off so admins see the same view as everyone else by default. The
+    /// archive view gates the toolbar toggle behind `authStore.isAdmin`,
+    /// and the server already filters redacted rows for non-admin
+    /// callers — this flag is only meaningful when the caller is admin.
+    /// Client-side filter is defense-in-depth on top of the server.
+    var showRedacted: Bool = false
+
     // MARK: - Dependencies
 
     private let apiClient: XomperAPIClientProtocol
@@ -198,6 +206,54 @@ final class AIReviewStore {
         } catch {
             self.error = error
         }
+    }
+
+    // MARK: - F3 Report Flags
+
+    /// Toggle `is_redacted` / `do_not_broadcast` on a single archive
+    /// row. On API success, the matching row in `archive` (and
+    /// `latestByType` when present) is replaced with a fresh copy that
+    /// carries the updated metadata so the UI reflects the new state
+    /// instantly — no follow-up `/ai-reports/list` round-trip.
+    ///
+    /// Mirrors `AdminStore.setReportFlag` but mutates archive entries
+    /// instead of triggering a `*Latest` re-fetch. Both stores route
+    /// through the same `XomperAPIClientProtocol.setReportFlag` call.
+    @discardableResult
+    func setReportFlag(
+        report: AIReport,
+        flag: ReportFlag,
+        value: Bool
+    ) async throws -> [String: String] {
+        let response = try await apiClient.setReportFlag(
+            leagueId: report.leagueId,
+            reportType: report.reportType,
+            period: report.period,
+            flag: flag,
+            value: value
+        )
+        // Rebuild the report with the backend's authoritative metadata
+        // map so any other metadata keys (broadcast_at, model, etc.)
+        // round-trip cleanly. Then apply the mutation in place.
+        let updated = AIReport(
+            id: report.id,
+            leagueId: report.leagueId,
+            reportType: report.reportType,
+            period: report.period,
+            bodyMarkdown: report.bodyMarkdown,
+            metadata: response.metadata,
+            metadataRawJSON: nil,
+            createdAt: report.createdAt,
+            model: report.model,
+            promptVersion: report.promptVersion
+        )
+        if let idx = archive.firstIndex(where: { $0.id == report.id }) {
+            archive[idx] = updated
+        }
+        if latestByType[report.reportType]?.id == report.id {
+            latestByType[report.reportType] = updated
+        }
+        return response.metadata
     }
 
     /// Format a `(season, week)` pair into the wire period string the
