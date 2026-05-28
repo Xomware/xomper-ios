@@ -288,6 +288,9 @@ final class MockTestEmailAPIClient: XomperAPIClientProtocol, @unchecked Sendable
     func fetchAdminWhitelistedLeagues() async throws -> [WhitelistedLeague] { throw TestEmailMockError.unsupported }
     func updateWhitelistedLeague(leagueId: String, fields: [String: AdminFieldValue]) async throws -> LeagueUpdateResponse { throw TestEmailMockError.unsupported }
     func fetchAuditEntries(limit: Int, cursor: String?) async throws -> AuditListResponse { throw TestEmailMockError.unsupported }
+
+    // F5 admin logs — unused here.
+    func fetchLogEvents(logGroup: LogGroup, level: LogLevel?, search: String?, limit: Int, cursor: String?) async throws -> LogsQueryResponse { throw TestEmailMockError.unsupported }
 }
 
 enum TestEmailMockError: Error, LocalizedError {
