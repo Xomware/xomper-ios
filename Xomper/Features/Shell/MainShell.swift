@@ -179,6 +179,7 @@ struct MainShell: View {
                     historyStore: historyStore,
                     playerStore: playerStore,
                     playerPointsStore: playerPointsStore,
+                    playerValuesStore: valuesStore,
                     userStore: userStore,
                     nflStateStore: nflStateStore,
                     aiReviewStore: aiReviewStore
@@ -415,6 +416,7 @@ struct MainShell: View {
                 historyStore: historyStore,
                 playerStore: playerStore,
                 playerPointsStore: playerPointsStore,
+                playerValuesStore: valuesStore,
                 userStore: userStore,
                 nflStateStore: nflStateStore,
                 aiReviewStore: aiReviewStore
