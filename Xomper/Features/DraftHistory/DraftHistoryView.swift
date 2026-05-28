@@ -22,6 +22,7 @@ struct DraftHistoryView: View {
     var historyStore: HistoryStore
     var playerStore: PlayerStore
     var playerPointsStore: PlayerPointsStore
+    var playerValuesStore: PlayerValuesStore
     var userStore: UserStore
     var nflStateStore: NflStateStore
     var aiReviewStore: AIReviewStore
@@ -77,7 +78,12 @@ struct DraftHistoryView: View {
                     )
                 case .mocks:
                     MocksView(
-                        aiReviewStore: aiReviewStore,
+                        leagueStore: leagueStore,
+                        historyStore: historyStore,
+                        playerStore: playerStore,
+                        playerValuesStore: playerValuesStore,
+                        playerPointsStore: playerPointsStore,
+                        nflStateStore: nflStateStore,
                         userStore: userStore
                     )
                 case .recap:
@@ -1035,6 +1041,7 @@ enum DraftViewMode: String, CaseIterable, Identifiable {
             historyStore: HistoryStore(),
             playerStore: PlayerStore(),
             playerPointsStore: PlayerPointsStore(),
+            playerValuesStore: PlayerValuesStore(),
             userStore: UserStore(),
             nflStateStore: NflStateStore(),
             aiReviewStore: AIReviewStore()

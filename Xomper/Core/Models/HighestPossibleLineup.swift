@@ -77,9 +77,31 @@ enum HighestPossibleCalculator {
         rosterPositions: [String],
         playerStore: PlayerStore
     ) -> Double {
+        optimalLineupPointsByPosition(
+            playerPoints: playerPoints,
+            rosterPositions: rosterPositions,
+            playerStore: playerStore
+        ).values.reduce(0, +)
+    }
+
+    /// Per-position breakdown of the optimal-lineup points for a single
+    /// week. Returns a `[positionLabel: totalPointsCreditedAtThatPosition]`
+    /// map — keys are the chosen player's *position* (QB / RB / WR /
+    /// TE / K / DEF / IDP labels), NOT the slot they filled. So a WR
+    /// chosen at FLEX is credited to `"WR"`.
+    ///
+    /// Drives Team Fit's `needBoost`: summing this map's WR/RB/TE/QB
+    /// entries across regular-season weeks gives `teamPosHPP` per
+    /// position. Greedy + slot-restrictiveness ordering identical to
+    /// `optimalLineupPoints` so the totals match exactly.
+    static func optimalLineupPointsByPosition(
+        playerPoints: [String: Double],
+        rosterPositions: [String],
+        playerStore: PlayerStore
+    ) -> [String: Double] {
         // 1. Filter to active starting slots
         let activeSlots = rosterPositions.filter { !nonStartingSlots.contains($0) }
-        guard !activeSlots.isEmpty else { return 0 }
+        guard !activeSlots.isEmpty else { return [:] }
 
         // 2. Resolve each slot's eligibility set
         let slots: [(slot: String, eligible: Set<String>)] = activeSlots.map { slot in
@@ -103,18 +125,19 @@ enum HighestPossibleCalculator {
         let orderedSlots = slots.sorted { $0.eligible.count < $1.eligible.count }
 
         // 5. Greedy: each slot grabs the highest-scoring eligible
-        //    unassigned candidate.
+        //    unassigned candidate; credit it to the chosen player's
+        //    position bucket.
         var used: Set<String> = []
-        var total: Double = 0
+        var byPos: [String: Double] = [:]
         for slotEntry in orderedSlots {
             let pick = candidates
                 .filter { !used.contains($0.id) && slotEntry.eligible.contains($0.pos) }
                 .max(by: { $0.pts < $1.pts })
             if let pick {
                 used.insert(pick.id)
-                total += pick.pts
+                byPos[pick.pos, default: 0] += pick.pts
             }
         }
-        return total
+        return byPos
     }
 }

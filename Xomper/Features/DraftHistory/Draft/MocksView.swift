@@ -1,70 +1,91 @@
 import SwiftUI
 
-/// Renders the three mock-draft personalities (BPA, Team Fit,
-/// Wildcard) as collapsible cards. Each card surfaces the first five
-/// rounds of the 60-pick mock as a table — round / slot / team /
-/// player / pos — with a "YOU" badge on the rows belonging to the
-/// signed-in user.
+/// Mocks tab — client-side rookie mock-draft engine. Replaces the
+/// earlier backend-fetched view that pulled `report_type=mock` rows
+/// from Dynamo. The engine is pure Swift (see
+/// `Features/DraftOrder/Mocks/MockDraftEngine`) and runs against the
+/// live FantasyCalc rookie pool + the Sleeper-set slot order for the
+/// upcoming draft.
 ///
-/// Data flow:
-/// 1. On appear, `aiReviewStore.loadMockDrafts()` pulls every
-///    `type=mock` report for the league. Cached for 12 hours.
-/// 2. Each report's `metadata.personality` field maps to a
-///    `MockDraftPersonality`; the 60-pick `metadata.picks[]` array
-///    is decoded via `AIReport.decodeMetadata(MockDraftMetadata.self)`.
-/// 3. The first personality card (BPA) is expanded by default; the
-///    other two start collapsed to keep the surface tight on first
-///    appearance.
+/// Two viewing modes (see `PLAN.md §5`):
+/// - **Pure**: one mock per personality (5 mocks, every team picks
+///   the same way).
+/// - **Mixed**: 3 mocks, each with a random per-team personality
+///   assignment.
 ///
-/// Backend dependency: the `"mock"` AIReportType case must be
-/// recognized by the list endpoint (Xomware/xomper-back-end#62). On a
-/// stack where that PR hasn't deployed yet, the fetch returns zero
-/// rows and the view falls back to the empty state.
+/// Cached for the session via `MockDraftStore`. Reshuffle bumps the
+/// seed and regenerates the stochastic mocks (Wildcard + Hype Train)
+/// — deterministic mocks (BPA / Team Fit / Win-Now) reuse the same
+/// inputs and produce identical output.
 struct MocksView: View {
-    var aiReviewStore: AIReviewStore
+    var leagueStore: LeagueStore
+    var historyStore: HistoryStore
+    var playerStore: PlayerStore
+    var playerValuesStore: PlayerValuesStore
+    var playerPointsStore: PlayerPointsStore
+    var nflStateStore: NflStateStore
     var userStore: UserStore
 
-    /// Tracks which personality cards are expanded. BPA expanded by
-    /// default per the spec ("first expanded, rest collapsed").
-    @State private var expanded: Set<MockDraftPersonality> = [.bpa]
+    @State private var store = MockDraftStore()
+    @State private var expandedIds: Set<String> = []
 
     var body: some View {
         Group {
-            if aiReviewStore.isLoadingMockDrafts && aiReviewStore.mockDrafts.isEmpty {
-                LoadingView(message: "Loading mock drafts…")
-            } else if let error = aiReviewStore.mockDraftsError,
-                      aiReviewStore.mockDrafts.isEmpty {
-                ErrorView(message: error.localizedDescription) {
-                    Task { await aiReviewStore.loadMockDrafts(force: true) }
-                }
-            } else if aiReviewStore.mockDrafts.isEmpty {
+            switch store.status {
+            case .idle, .pending:
+                LoadingView(message: "Generating mock drafts…")
+            case .noUpcomingDraft:
                 EmptyStateView(
-                    icon: "wand.and.stars",
-                    title: "No Mock Drafts Yet",
-                    message: "The mock-draft engine hasn't published results for this year. Check back after the next run."
+                    icon: "calendar.badge.exclamationmark",
+                    title: "No Upcoming Draft",
+                    message: "The commissioner hasn't set up the next draft yet. Once it's scheduled in Sleeper, mocks will appear here."
                 )
-            } else {
-                mocksContent
+            case .noRookiePool:
+                EmptyStateView(
+                    icon: "person.fill.questionmark",
+                    title: "No Rookies Found",
+                    message: "FantasyCalc didn't return any rookies with non-zero dynasty value. Try refreshing after the NFL draft."
+                )
+            case .error(let message):
+                ErrorView(message: message) {
+                    loadDependencies()
+                }
+            case .ready:
+                content
             }
         }
         .background(XomperColors.bgDark.ignoresSafeArea())
-        .task {
-            await aiReviewStore.loadMockDrafts()
+        .task(id: triggerKey) {
+            loadDependencies()
         }
         .refreshable {
-            await aiReviewStore.loadMockDrafts(force: true)
+            await refresh()
         }
     }
 
-    // MARK: - Content
+    // MARK: - Ready content
 
-    private var mocksContent: some View {
+    private var content: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: XomperTheme.Spacing.md) {
-                ForEach(MockDraftPersonality.displayOrder, id: \.self) { personality in
-                    if let report = report(for: personality) {
-                        personalityCard(report: report, personality: personality)
-                    }
+                topBar
+
+                if store.didFallbackPool {
+                    fallbackNotice(
+                        text: "Rookie pool widened to include 1st-year vets — strict yearsExp = 0 pool was too small."
+                    )
+                }
+                if store.didFallbackTeamContext {
+                    fallbackNotice(
+                        text: "Team Fit degraded to BPA — no weekly points loaded yet."
+                    )
+                }
+
+                switch store.mode {
+                case .pure:
+                    pureCards
+                case .mixed:
+                    mixedCards
                 }
             }
             .padding(.horizontal, XomperTheme.Spacing.md)
@@ -72,256 +93,216 @@ struct MocksView: View {
         }
     }
 
-    // MARK: - Personality Card
+    // MARK: - Top bar (mode toggle + reshuffle)
 
-    @ViewBuilder
-    private func personalityCard(report: AIReport, personality: MockDraftPersonality) -> some View {
-        if let metadata = report.decodeMetadata(MockDraftMetadata.self) {
-            personalityCardBody(
-                report: report,
-                personality: personality,
-                metadata: metadata
-            )
-        } else {
-            // Metadata couldn't be decoded — body markdown is still
-            // available, but the table view depends on the structured
-            // picks. Fall back to an empty card with a hint.
-            personalityHeaderOnly(personality: personality, report: report)
+    private var topBar: some View {
+        HStack(alignment: .center, spacing: XomperTheme.Spacing.sm) {
+            modeToggle
+            Spacer(minLength: 0)
+            reshuffleButton
         }
     }
 
-    private func personalityCardBody(
-        report: AIReport,
-        personality: MockDraftPersonality,
-        metadata: MockDraftMetadata
-    ) -> some View {
-        let isExpanded = expanded.contains(personality)
+    private var modeToggle: some View {
+        HStack(spacing: 0) {
+            modePill(.pure, label: "Pure")
+            modePill(.mixed, label: "Mixed")
+        }
+        .padding(2)
+        .background(XomperColors.surfaceLight.opacity(0.4))
+        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md + 2))
+    }
 
-        return VStack(alignment: .leading, spacing: 0) {
-            cardHeader(
-                personality: personality,
-                report: report,
-                isExpanded: isExpanded
+    private func modePill(_ mode: MockDraftResult.Mode, label: String) -> some View {
+        let isSelected = store.mode == mode
+        return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(XomperTheme.defaultAnimation) {
+                store.setMode(mode)
+            }
+        } label: {
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(isSelected ? XomperColors.bgDark : XomperColors.textSecondary)
+                .padding(.horizontal, XomperTheme.Spacing.sm)
+                .padding(.vertical, 6)
+                .frame(minWidth: 64)
+                .background(isSelected ? XomperColors.championGold : Color.clear)
+                .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
+        }
+        .buttonStyle(.pressableCard)
+        .accessibilityLabel("\(label) mode")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private var reshuffleButton: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            store.reshuffle(
+                leagueStore: leagueStore,
+                historyStore: historyStore,
+                playerStore: playerStore,
+                playerValuesStore: playerValuesStore,
+                playerPointsStore: playerPointsStore,
+                regularSeasonLastWeek: regularSeasonLastWeek
             )
+        } label: {
+            HStack(spacing: XomperTheme.Spacing.xxs) {
+                Image(systemName: "arrow.triangle.2.circlepath")
+                Text("Reshuffle")
+            }
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(XomperColors.championGold)
+            .padding(.horizontal, XomperTheme.Spacing.sm)
+            .padding(.vertical, 6)
+            .frame(minHeight: 32)
+            .background(XomperColors.bgCard)
+            .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
+            .overlay(
+                RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md)
+                    .strokeBorder(XomperColors.championGold.opacity(0.4), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.pressableCard)
+        .accessibilityLabel("Reshuffle stochastic mocks")
+    }
 
-            if isExpanded {
-                VStack(alignment: .leading, spacing: XomperTheme.Spacing.sm) {
-                    Text(personality.blurb)
-                        .font(.caption)
-                        .foregroundStyle(XomperColors.textSecondary)
-                        .padding(.top, XomperTheme.Spacing.xs)
+    private func fallbackNotice(text: String) -> some View {
+        HStack(alignment: .top, spacing: XomperTheme.Spacing.xs) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(XomperColors.championGold)
+            Text(text)
+                .font(.caption)
+                .foregroundStyle(XomperColors.textSecondary)
+        }
+        .padding(XomperTheme.Spacing.sm)
+        .background(XomperColors.bgCard)
+        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
+    }
 
-                    Divider()
-                        .overlay(XomperColors.surfaceLight)
-                        .padding(.vertical, XomperTheme.Spacing.xs)
+    // MARK: - Cards
 
-                    picksTable(picks: metadata.picks)
-
-                    Text("Showing rounds 1–5 of \(metadata.picksCount / 12)")
-                        .font(.caption2)
-                        .foregroundStyle(XomperColors.textMuted)
-                        .padding(.top, XomperTheme.Spacing.xs)
+    private var pureCards: some View {
+        VStack(alignment: .leading, spacing: XomperTheme.Spacing.md) {
+            ForEach(DraftPersonality.displayOrder) { personality in
+                if let result = store.pureMocks[personality] {
+                    card(for: result)
                 }
-                .padding(.top, XomperTheme.Spacing.sm)
-                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .padding(XomperTheme.Spacing.md)
-        .background(XomperColors.bgCard)
-        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
-        .overlay(
-            RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg)
-                .strokeBorder(XomperColors.championGold.opacity(0.25), lineWidth: 1)
+    }
+
+    private var mixedCards: some View {
+        VStack(alignment: .leading, spacing: XomperTheme.Spacing.md) {
+            ForEach(store.mixedMocks) { result in
+                card(for: result)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func card(for result: MockDraftResult) -> some View {
+        MockDraftCard(
+            result: result,
+            slotOrder: store.slotOrder,
+            myUserId: userStore.myUser?.userId,
+            isExpanded: binding(for: result.id)
         )
     }
 
-    private func personalityHeaderOnly(
-        personality: MockDraftPersonality,
-        report: AIReport
-    ) -> some View {
-        VStack(alignment: .leading, spacing: XomperTheme.Spacing.sm) {
-            cardHeader(personality: personality, report: report, isExpanded: false)
-            Text("Mock results couldn't be parsed.")
-                .font(.caption)
-                .foregroundStyle(XomperColors.textMuted)
-        }
-        .padding(XomperTheme.Spacing.md)
-        .background(XomperColors.bgCard)
-        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
-    }
-
-    // MARK: - Header
-
-    private func cardHeader(
-        personality: MockDraftPersonality,
-        report: AIReport,
-        isExpanded: Bool
-    ) -> some View {
-        Button {
-            let generator = UIImpactFeedbackGenerator(style: .light)
-            generator.impactOccurred()
-            withAnimation(XomperTheme.defaultAnimation) {
-                if expanded.contains(personality) {
-                    expanded.remove(personality)
+    private func binding(for id: String) -> Binding<Bool> {
+        Binding(
+            get: { expandedIds.contains(id) },
+            set: { newValue in
+                if newValue {
+                    expandedIds.insert(id)
                 } else {
-                    expanded.insert(personality)
+                    expandedIds.remove(id)
                 }
             }
-        } label: {
-            HStack(spacing: XomperTheme.Spacing.sm) {
-                Image(systemName: "wand.and.stars")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(XomperColors.championGold)
-                    .frame(width: 24)
+        )
+    }
 
-                VStack(alignment: .leading, spacing: XomperTheme.Spacing.xxs) {
-                    Text(personality.displayName)
-                        .font(.headline)
-                        .foregroundStyle(XomperColors.textPrimary)
-                    Text(report.period)
-                        .font(.caption2)
-                        .foregroundStyle(XomperColors.textMuted)
-                        .monospacedDigit()
-                }
+    // MARK: - Side-effects
 
-                Spacer()
-
-                Image(systemName: "chevron.down")
-                    .font(.caption)
-                    .foregroundStyle(XomperColors.textMuted)
-                    .rotationEffect(.degrees(isExpanded ? 180 : 0))
-                    .animation(XomperTheme.defaultAnimation, value: isExpanded)
+    /// Pulls the dependencies the store needs and triggers generation.
+    /// Idempotent — `MockDraftStore.ensureLoaded` no-ops when the
+    /// inputs haven't changed.
+    private func loadDependencies() {
+        Task {
+            // 1. Upcoming draft (slot order). Loaded by Live tab too;
+            //    `historyStore.loadUpcomingDraft` is cached per season.
+            if historyStore.upcomingDraft == nil,
+               let userId = userStore.myUser?.userId {
+                await historyStore.loadUpcomingDraft(
+                    season: nflStateStore.currentSeason,
+                    homeLeagueName: leagueStore.resolvedHomeLeagueName,
+                    userId: userId
+                )
             }
-            .frame(minHeight: XomperTheme.minTouchTarget)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.pressableCard)
-        .accessibilityLabel("\(personality.displayName), \(report.period)")
-        .accessibilityHint(isExpanded ? "Collapse" : "Expand to see the first five rounds")
-    }
-
-    // MARK: - Picks Table
-
-    /// Renders rounds 1-5 as a simple table. Sleeper drafts are 12
-    /// teams × 60 picks (5 rounds), so for the typical mock this is
-    /// the entire roster. Filter on `round <= 5` defensively in case
-    /// the engine ever runs more.
-    private func picksTable(picks: [MockedPick]) -> some View {
-        let myUserId = userStore.myUser?.userId
-        let first5Rounds = picks
-            .filter { $0.round <= 5 }
-            .sorted { $0.pickNo < $1.pickNo }
-
-        return VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
-            tableHeader
-
-            ForEach(first5Rounds) { pick in
-                pickRow(pick: pick, isMine: !pick.userId.isEmpty && pick.userId == myUserId)
+            // 2. FantasyCalc rookie values.
+            if !playerValuesStore.hasValues {
+                await playerValuesStore.loadValues()
             }
-        }
-    }
-
-    private var tableHeader: some View {
-        HStack(spacing: XomperTheme.Spacing.xs) {
-            Text("R")
-                .frame(width: 18, alignment: .center)
-            Text("Pick")
-                .frame(width: 38, alignment: .center)
-            Text("Team")
-                .frame(width: 90, alignment: .leading)
-            Text("Player")
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text("Pos")
-                .frame(width: 34, alignment: .center)
-        }
-        .font(.caption2.weight(.bold))
-        .foregroundStyle(XomperColors.textMuted)
-        .textCase(.uppercase)
-        .tracking(0.5)
-        .padding(.vertical, XomperTheme.Spacing.xxs)
-    }
-
-    private func pickRow(pick: MockedPick, isMine: Bool) -> some View {
-        HStack(spacing: XomperTheme.Spacing.xs) {
-            Text("\(pick.round)")
-                .frame(width: 18, alignment: .center)
-                .foregroundStyle(XomperColors.championGold)
-                .font(.caption.weight(.bold))
-                .monospacedDigit()
-
-            Text("#\(pick.pickNo)")
-                .frame(width: 38, alignment: .center)
-                .foregroundStyle(XomperColors.textMuted)
-                .font(.caption2)
-                .monospacedDigit()
-
-            Text(pick.team.isEmpty ? pick.handle : pick.team)
-                .frame(width: 90, alignment: .leading)
-                .font(.caption.weight(isMine ? .bold : .regular))
-                .foregroundStyle(isMine ? XomperColors.championGold : XomperColors.textSecondary)
-                .lineLimit(1)
-                .truncationMode(.tail)
-
-            HStack(spacing: XomperTheme.Spacing.xs) {
-                Text(pick.playerName)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(XomperColors.textPrimary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-
-                if isMine {
-                    Text("YOU")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(XomperColors.bgDark)
-                        .padding(.horizontal, XomperTheme.Spacing.xs)
-                        .padding(.vertical, 1)
-                        .background(XomperColors.championGold)
-                        .clipShape(Capsule())
+            // 3. Per-week per-roster points for Team Fit needBoost.
+            if playerPointsStore.weeklyRosterPoints.isEmpty,
+               let leagueId = leagueStore.myLeague?.leagueId {
+                await playerPointsStore.loadRegularSeason(
+                    leagueId: leagueId,
+                    regularSeasonLastWeek: regularSeasonLastWeek
+                )
+            }
+            // 4. Generate.
+            store.ensureLoaded(
+                leagueStore: leagueStore,
+                historyStore: historyStore,
+                playerStore: playerStore,
+                playerValuesStore: playerValuesStore,
+                playerPointsStore: playerPointsStore,
+                regularSeasonLastWeek: regularSeasonLastWeek
+            )
+            // 5. Default-expand the first card so users land on
+            //    content per the plan.
+            if expandedIds.isEmpty {
+                if let first = DraftPersonality.displayOrder
+                    .compactMap({ store.pureMocks[$0]?.id })
+                    .first {
+                    expandedIds = [first]
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            Text(pick.position)
-                .frame(width: 34, alignment: .center)
-                .font(.caption2.weight(.bold))
-                .foregroundStyle(XomperColors.bgDark)
-                .padding(.vertical, 2)
-                .background(positionColor(pick.position))
-                .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.sm))
-        }
-        .padding(.vertical, XomperTheme.Spacing.xxs)
-    }
-
-    // MARK: - Helpers
-
-    /// Resolves the `AIReport` for a personality by matching
-    /// `metadata.personality`. Personality strings ride in the flat
-    /// `metadata: [String: String]` map so we don't have to round-trip
-    /// the structured decoder for the lookup.
-    private func report(for personality: MockDraftPersonality) -> AIReport? {
-        aiReviewStore.mockDrafts.first { report in
-            let raw = report.metadata["personality"] ?? ""
-            return MockDraftPersonality.from(raw) == personality
         }
     }
 
-    private func positionColor(_ pos: String) -> Color {
-        switch pos.uppercased() {
-        case "QB": return Color(red: 0.95, green: 0.30, blue: 0.42)
-        case "RB": return Color(red: 0.20, green: 0.80, blue: 0.50)
-        case "WR": return Color(red: 0.30, green: 0.55, blue: 0.95)
-        case "TE": return Color(red: 0.95, green: 0.65, blue: 0.20)
-        case "K":  return Color(red: 0.65, green: 0.55, blue: 0.85)
-        case "DEF", "DST": return Color(red: 0.55, green: 0.55, blue: 0.55)
-        default: return XomperColors.surfaceLight
-        }
+    private func refresh() async {
+        // Bump the seed + reload dependencies.
+        await playerValuesStore.loadValues(forceRefresh: true)
+        store.reshuffle(
+            leagueStore: leagueStore,
+            historyStore: historyStore,
+            playerStore: playerStore,
+            playerValuesStore: playerValuesStore,
+            playerPointsStore: playerPointsStore,
+            regularSeasonLastWeek: regularSeasonLastWeek
+        )
     }
-}
 
-#Preview {
-    MocksView(
-        aiReviewStore: AIReviewStore(),
-        userStore: UserStore()
-    )
-    .preferredColorScheme(.dark)
+    // MARK: - Triggers
+
+    /// Composite key the `.task` watches — re-runs `loadDependencies`
+    /// when the upcoming-draft id or FantasyCalc snapshot changes.
+    private var triggerKey: String {
+        let draft = historyStore.upcomingDraft?.draftId ?? "no-draft"
+        let stamp = playerValuesStore.lastLoadedAt.map { String(Int($0.timeIntervalSince1970)) } ?? "no-values"
+        let players = playerStore.players.isEmpty ? "no-players" : "players"
+        return "\(draft)|\(stamp)|\(players)"
+    }
+
+    /// Last regular-season week to feed into the per-position HPP
+    /// calc. Reuses `NflStateStore` if present; defaults to 14 (our
+    /// league's regular season).
+    private var regularSeasonLastWeek: Int {
+        // Default — matches PayoutsView and Live draft tab. If a
+        // store-driven value is needed later, lift it through here.
+        14
+    }
 }

@@ -84,6 +84,14 @@ final class PlayerStore {
         players[id]
     }
 
+    /// Test seam: inject a synthetic players dict for unit tests that
+    /// drive helpers (e.g. `HighestPossibleCalculator`) without
+    /// touching the network. Production code should never call this
+    /// — it bypasses ETag invalidation + the disk-cache contract.
+    func setPlayersForTesting(_ players: [String: Player]) {
+        self.players = players
+    }
+
     /// Lazily fetches and caches per-season fantasy stats. No-op if
     /// already cached or already in flight. Errors are swallowed
     /// silently — calling sites can render `nil` averages on failure
