@@ -52,17 +52,44 @@ enum AppRoute: Hashable {
     /// surface (recipient + report pickers, send button, receipts).
     case adminTestEmail
 
-    /// Pushed from `AdminView`'s menu — stub destination for F4's
-    /// Tables sub-feature (users / leagues / reports editing).
+    /// Pushed from `AdminView`'s menu — opens the Tables sub-screen
+    /// (Users / Leagues / Reports flags menu). F4 deliverable.
     case adminTables
 
     /// Pushed from `AdminView`'s menu — stub destination for F5's
     /// Logs sub-feature (CloudWatch tail + search).
     case adminLogs
 
-    /// Pushed from `AdminView`'s menu — stub destination for F4's
-    /// Audit sub-feature (recent admin actions feed).
+    /// Pushed from `AdminView`'s menu — opens the Audit feed (recent
+    /// admin actions, paginated via cursor). F4 deliverable.
     case adminAudit
+
+    // MARK: - Admin Portal (F4)
+
+    /// Pushed from `TablesSubScreenView` — list of all
+    /// `whitelisted_users` rows with role + status chips. Tap a row
+    /// to drill into `.adminTablesUserEdit`.
+    case adminTablesUsers
+
+    /// Pushed from `TablesSubScreenView` — list of all
+    /// `whitelisted_leagues` rows. Tap a row to drill into
+    /// `.adminTablesLeagueEdit`.
+    case adminTablesLeagues
+
+    /// Pushed from `UsersListView` — typed edit form for one
+    /// `whitelisted_users` row (email + display_name + is_admin +
+    /// is_active). `userId` matches `WhitelistedUser.sleeperUserId`.
+    case adminTablesUserEdit(userId: String)
+
+    /// Pushed from `LeaguesListView` — typed edit form for one
+    /// `whitelisted_leagues` row (league_name + is_active + is_dynasty
+    /// + has_taxi). `leagueId` matches `WhitelistedLeague.leagueId`.
+    case adminTablesLeagueEdit(leagueId: String)
+
+    /// Pushed from `AuditFeedView` — detail view for one audit row
+    /// (before/after/metadata as collapsible JSON blocks). `entryId`
+    /// matches `AuditEntry.id` (the Supabase UUID PK).
+    case adminAuditDetail(entryId: String)
 
     // MARK: - Admin Portal (F2)
 

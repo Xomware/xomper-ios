@@ -33,6 +33,13 @@ protocol XomperAPIClientProtocol: Sendable {
         flag: ReportFlag,
         value: Bool
     ) async throws -> ReportFlagResponse
+
+    // Admin: tables + audit (F4)
+    func fetchWhitelistedUsers() async throws -> [WhitelistedUser]
+    func updateWhitelistedUser(userId: String, fields: [String: AdminFieldValue]) async throws -> UserUpdateResponse
+    func fetchAdminWhitelistedLeagues() async throws -> [WhitelistedLeague]
+    func updateWhitelistedLeague(leagueId: String, fields: [String: AdminFieldValue]) async throws -> LeagueUpdateResponse
+    func fetchAuditEntries(limit: Int, cursor: String?) async throws -> AuditListResponse
 }
 
 // MARK: - Request Payloads
@@ -274,6 +281,112 @@ struct TestEmailResponse: Codable, Sendable {
         case template
         case reportType = "report_type"
         case reportPeriod = "report_period"
+    }
+}
+
+// MARK: - Admin Tables + Audit (F4)
+
+/// Strongly-typed value for an `updateUser` / `updateLeague` field
+/// payload. The wire body is `{"fields": {...}}` with heterogeneous
+/// types — strings for names + emails, bools for is_admin /
+/// is_active / is_dynasty / has_taxi. Wrapping the values in this
+/// enum keeps the API surface type-safe up to the JSONSerialization
+/// hop, which expects `Any`.
+enum AdminFieldValue: Sendable, Hashable {
+    case string(String)
+    case bool(Bool)
+
+    /// Render this value as a JSONSerialization-compatible scalar.
+    var jsonValue: Any {
+        switch self {
+        case .string(let s): return s
+        case .bool(let b):   return b
+        }
+    }
+}
+
+/// Wraps `GET /admin/users-list`. Backend returns rows under the
+/// top-level `users` key (per the F4 plan's API client decodables).
+struct UsersListResponse: Decodable, Sendable {
+    let users: [WhitelistedUser]
+    let count: Int?
+}
+
+/// Wraps `POST /admin/users-update`. Backend returns the diff
+/// (before / after) so the iOS audit feed can render the change
+/// without a second fetch. `Success` matches the canonical
+/// XomperAPIResponse convention.
+struct UserUpdateResponse: Decodable, Sendable {
+    let success: Bool
+    let userId: String
+    let before: JSONValue?
+    let after: JSONValue?
+
+    enum CodingKeys: String, CodingKey {
+        case success = "Success"
+        case userId = "user_id"
+        case before
+        case after
+    }
+}
+
+/// Wraps `GET /admin/leagues-list`. Same shape as `UsersListResponse`
+/// but for `whitelisted_leagues` rows.
+struct AdminLeaguesListResponse: Decodable, Sendable {
+    let leagues: [WhitelistedLeague]
+    let count: Int?
+}
+
+/// Wraps `POST /admin/leagues-update`. Mirrors `UserUpdateResponse`.
+struct LeagueUpdateResponse: Decodable, Sendable {
+    let success: Bool
+    let leagueId: String
+    let before: JSONValue?
+    let after: JSONValue?
+
+    enum CodingKeys: String, CodingKey {
+        case success = "Success"
+        case leagueId = "league_id"
+        case before
+        case after
+    }
+}
+
+/// Wraps `GET /admin/audit-list`. `tableMissing` is set true when
+/// the Supabase `admin_audit` table hasn't been provisioned yet
+/// (manual migration pending) — iOS renders a friendly explanatory
+/// empty state instead of crashing or showing a generic empty list.
+struct AuditListResponse: Decodable, Sendable {
+    let success: Bool
+    let count: Int
+    let rows: [AuditEntry]
+    let nextCursor: String?
+    let tableMissing: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case success = "Success"
+        case count
+        case rows
+        case nextCursor = "next_cursor"
+        case tableMissing = "table_missing"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.success = (try? c.decode(Bool.self, forKey: .success)) ?? false
+        self.count = (try? c.decode(Int.self, forKey: .count)) ?? 0
+        self.rows = (try? c.decode([AuditEntry].self, forKey: .rows)) ?? []
+        self.nextCursor = try? c.decodeIfPresent(String.self, forKey: .nextCursor)
+        self.tableMissing = (try? c.decodeIfPresent(Bool.self, forKey: .tableMissing)) ?? false
+    }
+
+    /// Memberwise init for tests / previews.
+    init(success: Bool, count: Int, rows: [AuditEntry], nextCursor: String?, tableMissing: Bool) {
+        self.success = success
+        self.count = count
+        self.rows = rows
+        self.nextCursor = nextCursor
+        self.tableMissing = tableMissing
     }
 }
 
@@ -675,6 +788,87 @@ final class XomperAPIClient: XomperAPIClientProtocol {
             "value": value,
         ]
         return try await postDecoding("/admin/reports-flag", body: body)
+    }
+
+    // MARK: - Admin Tables + Audit (F4)
+
+    /// Admin-only: list every row of `whitelisted_users`. Returns the
+    /// rich shape needed by the Users editor (`is_admin`, `is_active`,
+    /// etc.) — separate from F1's `/admin/email-test-recipients`
+    /// which trims columns for the email picker.
+    func fetchWhitelistedUsers() async throws -> [WhitelistedUser] {
+        let response: UsersListResponse = try await get(
+            "/admin/users-list",
+            queryItems: []
+        )
+        return response.users
+    }
+
+    /// Admin-only: update a single `whitelisted_users` row. Backend
+    /// enforces a field allowlist (`email`, `display_name`, `is_admin`,
+    /// `is_active`) and writes one `admin_audit` row per call. iOS
+    /// passes only the fields the admin actually changed (`fields`).
+    func updateWhitelistedUser(
+        userId: String,
+        fields: [String: AdminFieldValue]
+    ) async throws -> UserUpdateResponse {
+        var jsonFields: [String: Any] = [:]
+        for (key, value) in fields {
+            jsonFields[key] = value.jsonValue
+        }
+        let body: [String: Any] = [
+            "user_id": userId,
+            "fields": jsonFields,
+        ]
+        return try await postDecoding("/admin/users-update", body: body)
+    }
+
+    /// Admin-only: list every row of `whitelisted_leagues`. Same call
+    /// pattern as `fetchWhitelistedUsers`. Method-name prefixed
+    /// `Admin` so we don't collide with `LeagueStore`'s public-read
+    /// Supabase call which is single-row + active-only.
+    func fetchAdminWhitelistedLeagues() async throws -> [WhitelistedLeague] {
+        let response: AdminLeaguesListResponse = try await get(
+            "/admin/leagues-list",
+            queryItems: []
+        )
+        return response.leagues
+    }
+
+    /// Admin-only: update a single `whitelisted_leagues` row. Backend
+    /// enforces the allowlist (`league_name`, `is_active`,
+    /// `is_dynasty`, `has_taxi`) and writes one `admin_audit` row.
+    func updateWhitelistedLeague(
+        leagueId: String,
+        fields: [String: AdminFieldValue]
+    ) async throws -> LeagueUpdateResponse {
+        var jsonFields: [String: Any] = [:]
+        for (key, value) in fields {
+            jsonFields[key] = value.jsonValue
+        }
+        let body: [String: Any] = [
+            "league_id": leagueId,
+            "fields": jsonFields,
+        ]
+        return try await postDecoding("/admin/leagues-update", body: body)
+    }
+
+    /// Admin-only: paginated audit feed from `admin_audit`. Cursor is
+    /// the opaque token returned by the previous page's `next_cursor`.
+    /// When the Supabase table hasn't been provisioned yet, backend
+    /// returns `tableMissing: true` and an empty row list — iOS
+    /// renders a friendly explanatory empty state in that case.
+    func fetchAuditEntries(
+        limit: Int = 50,
+        cursor: String? = nil
+    ) async throws -> AuditListResponse {
+        var items: [URLQueryItem] = [
+            URLQueryItem(name: "limit", value: String(limit)),
+        ]
+        if let cursor, !cursor.isEmpty {
+            items.append(URLQueryItem(name: "cursor", value: cursor))
+        }
+        return try await get("/admin/audit-list", queryItems: items)
     }
 
     // MARK: - Private
