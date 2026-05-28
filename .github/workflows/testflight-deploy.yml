@@ -48,6 +48,17 @@ jobs:
               static var isConfigured: Bool {
                   !supabaseURL.contains("YOUR_") && !supabaseAnonKey.contains("YOUR_")
               }
+
+              // Admin portal feature flags. Mirror the committed
+              // Xomper/Config/Config.swift.template — CI does NOT read
+              // the template; this enum must be kept in sync by hand
+              // when AdminFlags changes. Keep flags here matching the
+              // committed template so AdminView's feature gates resolve.
+              enum AdminFlags {
+                  static let showTables: Bool = true     // F4
+                  static let showLogs:   Bool = true     // F5
+                  static let showAudit:  Bool = true     // F4
+              }
           }
           EOF
 
