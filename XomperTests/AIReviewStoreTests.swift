@@ -363,6 +363,10 @@ final class MockXomperAPIClient: XomperAPIClientProtocol, @unchecked Sendable {
     func updateWhitelistedLeague(leagueId: String, fields: [String: AdminFieldValue]) async throws -> LeagueUpdateResponse { throw Unsupported.method }
     func fetchAuditEntries(limit: Int, cursor: String?) async throws -> AuditListResponse { throw Unsupported.method }
 
+    // MARK: - F5 admin logs — unused here.
+
+    func fetchLogEvents(logGroup: LogGroup, level: LogLevel?, search: String?, limit: Int, cursor: String?) async throws -> LogsQueryResponse { throw Unsupported.method }
+
     enum Unsupported: Error { case method }
 }
 

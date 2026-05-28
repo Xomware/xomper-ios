@@ -525,7 +525,7 @@ struct MainShell: View {
             TablesSubScreenView(router: router, navStore: navStore)
 
         case .adminLogs:
-            LogsStubView()
+            LogsView()
 
         case .adminAudit:
             AuditFeedView(store: adminTablesStore, router: router)

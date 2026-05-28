@@ -40,6 +40,15 @@ protocol XomperAPIClientProtocol: Sendable {
     func fetchAdminWhitelistedLeagues() async throws -> [WhitelistedLeague]
     func updateWhitelistedLeague(leagueId: String, fields: [String: AdminFieldValue]) async throws -> LeagueUpdateResponse
     func fetchAuditEntries(limit: Int, cursor: String?) async throws -> AuditListResponse
+
+    // Admin: CloudWatch log viewer (F5)
+    func fetchLogEvents(
+        logGroup: LogGroup,
+        level: LogLevel?,
+        search: String?,
+        limit: Int,
+        cursor: String?
+    ) async throws -> LogsQueryResponse
 }
 
 // MARK: - Request Payloads
@@ -387,6 +396,42 @@ struct AuditListResponse: Decodable, Sendable {
         self.rows = rows
         self.nextCursor = nextCursor
         self.tableMissing = tableMissing
+    }
+}
+
+// MARK: - Admin Logs (F5)
+
+/// Wraps `GET /admin/logs-query`. Backend returns CloudWatch events
+/// for one allowlisted log group with PII pre-redacted. `nextToken`
+/// is the opaque cursor for "Load older" pagination — nil when the
+/// CloudWatch response had no more pages.
+struct LogsQueryResponse: Decodable, Sendable {
+    let success: Bool
+    let logGroup: String
+    let events: [LogEvent]
+    let nextToken: String?
+
+    enum CodingKeys: String, CodingKey {
+        case success = "Success"
+        case logGroup = "log_group"
+        case events
+        case nextToken = "next_token"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.success = (try? c.decode(Bool.self, forKey: .success)) ?? false
+        self.logGroup = (try? c.decode(String.self, forKey: .logGroup)) ?? ""
+        self.events = (try? c.decode([LogEvent].self, forKey: .events)) ?? []
+        self.nextToken = try? c.decodeIfPresent(String.self, forKey: .nextToken)
+    }
+
+    /// Memberwise init for tests / previews.
+    init(success: Bool, logGroup: String, events: [LogEvent], nextToken: String?) {
+        self.success = success
+        self.logGroup = logGroup
+        self.events = events
+        self.nextToken = nextToken
     }
 }
 
@@ -869,6 +914,40 @@ final class XomperAPIClient: XomperAPIClientProtocol {
             items.append(URLQueryItem(name: "cursor", value: cursor))
         }
         return try await get("/admin/audit-list", queryItems: items)
+    }
+
+    // MARK: - Admin Logs (F5)
+
+    /// Admin-only: query CloudWatch for one allowlisted log group's
+    /// recent events. Backend pre-redacts every returned `message`
+    /// (emails / sleeper IDs / Anthropic keys) before returning.
+    ///
+    /// `cursor` is the opaque `next_token` from a previous page;
+    /// passing nil means "first page". `level` and `search` are
+    /// optional filters — when nil, the backend omits the
+    /// CloudWatch `filterPattern` entirely. The backend caps `limit`
+    /// at 200 server-side; we send the caller's value as-is.
+    func fetchLogEvents(
+        logGroup: LogGroup,
+        level: LogLevel?,
+        search: String?,
+        limit: Int = 50,
+        cursor: String? = nil
+    ) async throws -> LogsQueryResponse {
+        var items: [URLQueryItem] = [
+            URLQueryItem(name: "log_group", value: logGroup.rawValue),
+            URLQueryItem(name: "limit", value: String(limit)),
+        ]
+        if let level {
+            items.append(URLQueryItem(name: "level", value: level.rawValue))
+        }
+        if let search, !search.isEmpty {
+            items.append(URLQueryItem(name: "search", value: search))
+        }
+        if let cursor, !cursor.isEmpty {
+            items.append(URLQueryItem(name: "next_token", value: cursor))
+        }
+        return try await get("/admin/logs-query", queryItems: items)
     }
 
     // MARK: - Private

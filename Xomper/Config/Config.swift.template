@@ -25,7 +25,7 @@ enum Config {
     /// admin users.
     enum AdminFlags {
         static let showTables: Bool = true     // F4
-        static let showLogs:   Bool = false    // F5
+        static let showLogs:   Bool = true     // F5
         static let showAudit:  Bool = true     // F4
     }
 }
