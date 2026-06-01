@@ -641,14 +641,17 @@ final class XomperAPIClient: XomperAPIClientProtocol {
         self.encoder = JSONEncoder()
     }
 
-    /// Pulls the current Supabase access token, refreshing it via the
-    /// SDK if expired. Returns nil if the user isn't signed in, in
-    /// which case the request goes out unauthenticated and API GW's
-    /// JWT authorizer will reject it with 401 — surfaced normally as
-    /// an `httpError`, not silently dropped.
+    /// Attaches the Bearer JWT plus the caller's email header.
+    /// The custom API GW authorizer decodes the JWT for an Allow/Deny
+    /// but does NOT forward claims into the integration context, so
+    /// admin endpoints have to receive the identifier separately —
+    /// they read `x-user-email` to gate via `admin_gate.require_admin`.
+    /// Public endpoints ignore the extra header.
     private func attachAuth(_ request: inout URLRequest) async {
-        if let token = try? await supabase.auth.session.accessToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        guard let session = try? await supabase.auth.session else { return }
+        request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        if let email = session.user.email, !email.isEmpty {
+            request.setValue(email, forHTTPHeaderField: "x-user-email")
         }
     }
 
