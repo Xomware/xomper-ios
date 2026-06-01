@@ -56,6 +56,14 @@ final class MockDraftStore {
     /// view can warn when Team Fit degrades to BPA.
     private(set) var didFallbackTeamContext: Bool = false
 
+    /// Whether the slot order was derived from prior-season standings
+    /// (inverse — worst record first) instead of the upcoming-draft's
+    /// `draft_order`. True when the commish hasn't yet created the
+    /// Sleeper league for the upcoming season, in which case Sleeper
+    /// has no `Draft` row to seed slot positions from. The view
+    /// surfaces a banner when this is true.
+    private(set) var usingFallbackSlotOrder: Bool = false
+
     /// Active viewing mode. Defaults to Pure on first appear per the
     /// plan.
     private(set) var mode: MockDraftResult.Mode = .pure
@@ -91,11 +99,8 @@ final class MockDraftStore {
         playerPointsStore: PlayerPointsStore,
         regularSeasonLastWeek: Int
     ) {
-        // Gate on the dependencies the engine needs.
-        guard let upcomingDraft = historyStore.upcomingDraft else {
-            status = .noUpcomingDraft
-            return
-        }
+        // Player values + player pool are non-negotiable — neither
+        // path (upcoming draft or fallback) can run without them.
         guard playerValuesStore.hasValues else {
             status = .pending
             return
@@ -105,33 +110,73 @@ final class MockDraftStore {
             return
         }
 
-        // Snake-draft warning per PLAN.md step 18. v1 ships linear-only;
-        // we render the mocks anyway under linear assumptions.
-        if let type = upcomingDraft.type?.lowercased(),
-           type == "snake" {
-            // Just log — the view surfaces a banner. (No print(); use
-            // os_log later if needed.)
-            _ = type
+        // Resolve slot order. Prefer the upcoming draft when Sleeper
+        // has set one; otherwise fall back to prior-season standings
+        // (inverse). The fallback exists because the commish typically
+        // creates the next Sleeper league well after we want to show
+        // mocks — without it, the Mocks tab would be empty all
+        // off-season.
+        let resolvedSlots: [Int: SlotTeam]
+        let isFallback: Bool
+        let cacheIdent: String
+        if let upcomingDraft = historyStore.upcomingDraft {
+            // Snake-draft warning per PLAN.md step 18. v1 ships
+            // linear-only; we render the mocks anyway under linear
+            // assumptions.
+            if let type = upcomingDraft.type?.lowercased(),
+               type == "snake" {
+                _ = type
+            }
+
+            let slots = resolveSlotOrder(
+                draft: upcomingDraft,
+                historyStore: historyStore
+            )
+            if slots.isEmpty {
+                // Sleeper returned a draft row with no `draft_order`
+                // populated yet — fall back to standings just like
+                // the no-draft path.
+                let proxy = Self.proxySlotOrder(
+                    rosters: leagueStore.myLeagueRosters,
+                    users: leagueStore.myLeagueUsers
+                )
+                guard !proxy.isEmpty else {
+                    status = .noUpcomingDraft
+                    return
+                }
+                resolvedSlots = proxy
+                isFallback = true
+                cacheIdent = "fallback-\(leagueStore.myLeague?.leagueId ?? "no-league")"
+            } else {
+                resolvedSlots = slots
+                isFallback = false
+                cacheIdent = upcomingDraft.draftId
+            }
+        } else {
+            let proxy = Self.proxySlotOrder(
+                rosters: leagueStore.myLeagueRosters,
+                users: leagueStore.myLeagueUsers
+            )
+            guard !proxy.isEmpty else {
+                // No upcoming draft AND no prior-season standings yet
+                // — keep the empty state.
+                status = .noUpcomingDraft
+                return
+            }
+            resolvedSlots = proxy
+            isFallback = true
+            cacheIdent = "fallback-\(leagueStore.myLeague?.leagueId ?? "no-league")"
         }
 
         let buildKey = makeBuildKey(
-            draftId: upcomingDraft.draftId,
+            draftId: cacheIdent,
             valuesLoadedAt: playerValuesStore.lastLoadedAt,
             seed: currentSeed
         )
         if buildKey == lastBuildKey { return }
 
-        // Resolve slot order from `draft_order` + upcoming users +
-        // rosters.
-        let slots = resolveSlotOrder(
-            draft: upcomingDraft,
-            historyStore: historyStore
-        )
-        guard !slots.isEmpty else {
-            status = .noUpcomingDraft
-            return
-        }
-        slotOrder = slots
+        slotOrder = resolvedSlots
+        usingFallbackSlotOrder = isFallback
 
         // Build the rookie pool.
         let (pool, didFallback) = buildRookiePool(
@@ -146,7 +191,7 @@ final class MockDraftStore {
         didFallbackPool = didFallback
 
         // Per-roster per-position HPP snapshot.
-        let rosterIds = Array(Set(slots.values.map { $0.rosterId })).sorted()
+        let rosterIds = Array(Set(resolvedSlots.values.map { $0.rosterId })).sorted()
         let context = TeamContext.build(
             rosterIds: rosterIds,
             leagueStore: leagueStore,
@@ -264,6 +309,51 @@ final class MockDraftStore {
     }
 
     // MARK: - Slot order
+
+    /// Fallback slot order: worst regular-season record gets slot 1,
+    /// best gets slot N (12 in our league). Sort key is `wins ASC,
+    /// pointsFor ASC` (worst first). Returned as the same `[slot:
+    /// SlotTeam]` dict shape `resolveSlotOrder` produces so the engine
+    /// can run unchanged.
+    ///
+    /// Used when Sleeper hasn't created the upcoming league's draft
+    /// yet — most of the off-season. The view banners the fallback so
+    /// users know the slot positions are a proxy.
+    ///
+    /// Static so tests can drive it without spinning up a full
+    /// `MockDraftStore` + dependency graph.
+    static func proxySlotOrder(
+        rosters: [Roster],
+        users: [SleeperUser]
+    ) -> [Int: SlotTeam] {
+        guard !rosters.isEmpty else { return [:] }
+
+        // Worst-first sort: lowest wins, then lowest fpts as the
+        // tiebreak (same proxy the static-mock backfill uses earlier
+        // in the year).
+        let sorted = rosters.sorted { lhs, rhs in
+            let lWins = lhs.settings?.wins ?? 0
+            let rWins = rhs.settings?.wins ?? 0
+            if lWins != rWins { return lWins < rWins }
+            return lhs.pointsFor < rhs.pointsFor
+        }
+
+        var bySlot: [Int: SlotTeam] = [:]
+        for (index, roster) in sorted.enumerated() {
+            let slot = index + 1
+            let ownerId = roster.ownerId ?? ""
+            let user = users.first { ($0.userId ?? "") == ownerId }
+            let teamName = user?.teamName
+                ?? user?.resolvedDisplayName
+                ?? "Slot \(slot)"
+            bySlot[slot] = SlotTeam(
+                rosterId: roster.rosterId,
+                userId: ownerId,
+                teamName: teamName
+            )
+        }
+        return bySlot
+    }
 
     /// Resolves `slot → SlotTeam` from the upcoming-draft snapshot.
     /// `draft.draftOrder` is `[user_id: slot]`; cross-reference with

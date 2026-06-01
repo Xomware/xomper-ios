@@ -35,10 +35,13 @@ struct MocksView: View {
             case .idle, .pending:
                 LoadingView(message: "Generating mock drafts…")
             case .noUpcomingDraft:
+                // Reached only when both Sleeper's upcoming-draft row
+                // is missing AND the prior-season standings fallback
+                // can't produce a slot order (no rosters loaded yet).
                 EmptyStateView(
                     icon: "calendar.badge.exclamationmark",
                     title: "No Upcoming Draft",
-                    message: "The commissioner hasn't set up the next draft yet. Once it's scheduled in Sleeper, mocks will appear here."
+                    message: "The commissioner hasn't set up the next draft yet, and prior-season standings haven't loaded. Try again once the league finishes loading."
                 )
             case .noRookiePool:
                 EmptyStateView(
@@ -70,6 +73,11 @@ struct MocksView: View {
             VStack(alignment: .leading, spacing: XomperTheme.Spacing.md) {
                 topBar
 
+                if store.usingFallbackSlotOrder {
+                    fallbackNotice(
+                        text: "Using prior-season standings as proxy slot order — actual draft order TBD until commish creates the Sleeper league."
+                    )
+                }
                 if store.didFallbackPool {
                     fallbackNotice(
                         text: "Rookie pool widened to include 1st-year vets — strict yearsExp = 0 pool was too small."
