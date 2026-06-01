@@ -629,19 +629,27 @@ enum XomperAPIError: Error, LocalizedError {
 
 final class XomperAPIClient: XomperAPIClientProtocol {
     private let baseURL: String
-    private let authToken: String
     private let session: URLSession
     private let encoder: JSONEncoder
 
     init(
         baseURL: String = Config.apiGatewayURL,
-        authToken: String = "",
         session: URLSession = .shared
     ) {
         self.baseURL = baseURL
-        self.authToken = authToken
         self.session = session
         self.encoder = JSONEncoder()
+    }
+
+    /// Pulls the current Supabase access token, refreshing it via the
+    /// SDK if expired. Returns nil if the user isn't signed in, in
+    /// which case the request goes out unauthenticated and API GW's
+    /// JWT authorizer will reject it with 401 — surfaced normally as
+    /// an `httpError`, not silently dropped.
+    private func attachAuth(_ request: inout URLRequest) async {
+        if let token = try? await supabase.auth.session.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
     }
 
     // MARK: - Rule Emails
@@ -1242,9 +1250,7 @@ final class XomperAPIClient: XomperAPIClientProtocol {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        if !authToken.isEmpty {
-            request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
-        }
+        await attachAuth(&request)
 
         let (data, response): (Data, URLResponse)
         do {
@@ -1280,9 +1286,7 @@ final class XomperAPIClient: XomperAPIClientProtocol {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        if !authToken.isEmpty {
-            request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
-        }
+        await attachAuth(&request)
 
         do {
             request.httpBody = try encoder.encode(body)
@@ -1317,9 +1321,7 @@ final class XomperAPIClient: XomperAPIClientProtocol {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        if !authToken.isEmpty {
-            request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
-        }
+        await attachAuth(&request)
 
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -1355,9 +1357,7 @@ final class XomperAPIClient: XomperAPIClientProtocol {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if !authToken.isEmpty {
-            request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
-        }
+        await attachAuth(&request)
 
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
