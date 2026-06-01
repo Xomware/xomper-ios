@@ -434,6 +434,8 @@ final class MockAdminTablesAPIClient: XomperAPIClientProtocol, @unchecked Sendab
     func triggerWeeklyAIReview(week: Int?, dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse { throw AdminTablesMockError.unsupported }
     func setReportFlag(leagueId: String, reportType: AIReportType, period: String, flag: ReportFlag, value: Bool) async throws -> ReportFlagResponse { throw AdminTablesMockError.unsupported }
     func fetchLogEvents(logGroup: LogGroup, level: LogLevel?, search: String?, limit: Int, cursor: String?) async throws -> LogsQueryResponse { throw AdminTablesMockError.unsupported }
+    func fetchCronSettings() async throws -> CronSettingsListResponse { throw AdminTablesMockError.unsupported }
+    func updateCronSetting(cronKey: String, enabled: Bool?, testMode: Bool?) async throws -> CronSettingUpdateResponse { throw AdminTablesMockError.unsupported }
 }
 
 enum AdminTablesMockError: Error, LocalizedError {

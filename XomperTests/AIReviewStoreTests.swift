@@ -367,6 +367,11 @@ final class MockXomperAPIClient: XomperAPIClientProtocol, @unchecked Sendable {
 
     func fetchLogEvents(logGroup: LogGroup, level: LogLevel?, search: String?, limit: Int, cursor: String?) async throws -> LogsQueryResponse { throw Unsupported.method }
 
+    // MARK: - admin-cron-settings — unused here.
+
+    func fetchCronSettings() async throws -> CronSettingsListResponse { throw Unsupported.method }
+    func updateCronSetting(cronKey: String, enabled: Bool?, testMode: Bool?) async throws -> CronSettingUpdateResponse { throw Unsupported.method }
+
     enum Unsupported: Error { case method }
 }
 

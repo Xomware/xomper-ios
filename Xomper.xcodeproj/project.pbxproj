@@ -13,6 +13,7 @@
 		04C5B75AA224E7ED8314FBA5 /* AIReviewHomeCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D12507ED13C57EFA8B240301 /* AIReviewHomeCard.swift */; };
 		063FCD6AA342CA5D64ED79ED /* HistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F013CD37874EFB0FA1CB4261 /* HistoryStore.swift */; };
 		08251EFB3181B634553CDCE1 /* TaxiSquadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57940AEB84889A20016648F2 /* TaxiSquadView.swift */; };
+		087C52AE54EBC054E36E696B /* CronSettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B9527EA5CA26FE5197FCF5 /* CronSettingsStore.swift */; };
 		0905D6C3E336782530E5F4B4 /* LogLevel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99981051F598B42534DE81CB /* LogLevel.swift */; };
 		0A87A5226863819FF3884F6C /* AnnouncementsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DCF4387BA57375E04A8940B /* AnnouncementsCard.swift */; };
 		0C2B77E0A46ECE55AE8CE46F /* DivisionBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B670A3A0762D22FB3202E1E /* DivisionBadge.swift */; };
@@ -76,6 +77,7 @@
 		58FD67DB9B137F1A8BE50521 /* TeamAnalyzerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8098F78566BB324ACC70FB94 /* TeamAnalyzerView.swift */; };
 		5BAA65DF5DF710DCBAAC2BF8 /* StandingsOffseasonCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D6C6489A04EC9CA00FFBD0F /* StandingsOffseasonCard.swift */; };
 		5C041F847E3239901238FD5F /* LandingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7048EDD875E2582C792BE47 /* LandingView.swift */; };
+		5E06735B11149010019AFA3F /* CronSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7474B2C8F1F2B14821F4539 /* CronSettingsView.swift */; };
 		6010F16122E110BA50642611 /* CareerStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD43D54AB620DABD559F8A40 /* CareerStats.swift */; };
 		602B6E0F6BCF1DA7E3D75F07 /* AuthStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 536B3E71286A0BC3A7CD8DA6 /* AuthStore.swift */; };
 		60D967E9FEA043C0CF58EFBF /* AdminTablesStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DBAC7CE2DC64237D218FAB8 /* AdminTablesStoreTests.swift */; };
@@ -97,10 +99,12 @@
 		75AB19702AADCC870510A1FC /* WeeklyRecapMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2549566AC9312F44BA381BB6 /* WeeklyRecapMetadata.swift */; };
 		7607DB7C775FCCC3B7C3377B /* StandingsTeam.swift in Sources */ = {isa = PBXBuildFile; fileRef = B29D510D87CD290AE7F76FBF /* StandingsTeam.swift */; };
 		76260F26A40213A62E5F22FB /* RecordBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AD376EFB7AD4A192FAB3E8F /* RecordBadge.swift */; };
+		76B8EBD352AAA56BD6A5F446 /* CronSetting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E172A0188BB654B8E010842 /* CronSetting.swift */; };
 		775985FFAD33E6481C34174A /* TrophyCaseCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD2908776CDAC0CACB28B4B1 /* TrophyCaseCard.swift */; };
 		7794B2E1BA5055ACFF150166 /* LogsStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED8C8F9BD9880370D65EDF0B /* LogsStoreTests.swift */; };
 		77A0EFCEE4340D3A7853BF08 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43685B0C212A644C0EF202E5 /* ProfileView.swift */; };
 		77CFB7F9C5E4975E6350662B /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3AFC2ADE424F95E3121BF22 /* SettingsView.swift */; };
+		77E21904E6B1A4427AB48C50 /* CronSettingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFB439DD73C2D26421BE97E7 /* CronSettingTests.swift */; };
 		78094B6DF90F54E0FA59898A /* TrayDestination.swift in Sources */ = {isa = PBXBuildFile; fileRef = E70E04168BDBA7D3372BB605 /* TrayDestination.swift */; };
 		79083ADBA183714E71D3DC36 /* MockDraftCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6608DF8A0DC5E1EF5A36A39 /* MockDraftCard.swift */; };
 		7956271EA17998F79679D970 /* AuditFeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1358E97D2A18E9A5440D8CC /* AuditFeedView.swift */; };
@@ -180,6 +184,7 @@
 		E64E815819D87CED1DF5383F /* AIReviewPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE6B846E697A235684C8EBA4 /* AIReviewPreviewView.swift */; };
 		EDDACB3FFB20E468D9D9D67D /* HeaderBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1E7D0FD804723AC6A3E4298 /* HeaderBar.swift */; };
 		EE987501F73209179D5CEEB4 /* TestEmailStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E98CD5B3ECB6292B6D7637B /* TestEmailStore.swift */; };
+		F118537BB85C27688E57C703 /* CronSettingsStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A4C60C4B1F35CD6B056AC29 /* CronSettingsStoreTests.swift */; };
 		F201A3A40D624F6AAA0C0CC1 /* PlayoffBracket.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B160A8ED14F5BE08B79C7FA /* PlayoffBracket.swift */; };
 		F57132F0D80EAB60AC0E07F3 /* WhitelistedLeague.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3747C6FC769C117588F8A93E /* WhitelistedLeague.swift */; };
 		F5AC0E08C9F82995736A62EF /* LogsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B38051DBBEE34C89E9446FE /* LogsView.swift */; };
@@ -226,11 +231,13 @@
 		2DB0B979B62A1CF6EB80417F /* DraftRecapResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DraftRecapResolverTests.swift; sourceTree = "<group>"; };
 		2DBAC7CE2DC64237D218FAB8 /* AdminTablesStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminTablesStoreTests.swift; sourceTree = "<group>"; };
 		2DCF4387BA57375E04A8940B /* AnnouncementsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnnouncementsCard.swift; sourceTree = "<group>"; };
+		2E172A0188BB654B8E010842 /* CronSetting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CronSetting.swift; sourceTree = "<group>"; };
 		323F422F2D0E1C2BA5D46C0A /* SearchResults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchResults.swift; sourceTree = "<group>"; };
 		36A01820FD0F6643BBF8511D /* TeamStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamStore.swift; sourceTree = "<group>"; };
 		3728C5F6BEF61FE509A3EA32 /* ClinchCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClinchCalculator.swift; sourceTree = "<group>"; };
 		3747C6FC769C117588F8A93E /* WhitelistedLeague.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhitelistedLeague.swift; sourceTree = "<group>"; };
 		37E65C159F2C84E48B61A9A8 /* ArchiveNavigationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveNavigationTests.swift; sourceTree = "<group>"; };
+		3A4C60C4B1F35CD6B056AC29 /* CronSettingsStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CronSettingsStoreTests.swift; sourceTree = "<group>"; };
 		3A51BC6B9389405FE754DCEB /* AIReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIReviewView.swift; sourceTree = "<group>"; };
 		3B38051DBBEE34C89E9446FE /* LogsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogsView.swift; sourceTree = "<group>"; };
 		3E4EC7FDB93C47A9EE601BA3 /* TrayItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrayItem.swift; sourceTree = "<group>"; };
@@ -329,6 +336,7 @@
 		AE543CB2E49335ADD02E8000 /* Roster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Roster.swift; sourceTree = "<group>"; };
 		B04B5251715A37E924DF7CEF /* LiveDraftView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveDraftView.swift; sourceTree = "<group>"; };
 		B1358E97D2A18E9A5440D8CC /* AuditFeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuditFeedView.swift; sourceTree = "<group>"; };
+		B1B9527EA5CA26FE5197FCF5 /* CronSettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CronSettingsStore.swift; sourceTree = "<group>"; };
 		B29D510D87CD290AE7F76FBF /* StandingsTeam.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingsTeam.swift; sourceTree = "<group>"; };
 		B3893B13276074EF6033CEA2 /* ClinchCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClinchCalculatorTests.swift; sourceTree = "<group>"; };
 		B6060C3A4F2B355757F1E3A2 /* DraftHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DraftHistoryView.swift; sourceTree = "<group>"; };
@@ -346,12 +354,14 @@
 		C1CD5644F6F8376CA86092AF /* Xomper.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Xomper.entitlements; sourceTree = "<group>"; };
 		C206B0A18917D2B43B17ADCF /* AdminTablesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminTablesStore.swift; sourceTree = "<group>"; };
 		C3AFC2ADE424F95E3121BF22 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		C7474B2C8F1F2B14821F4539 /* CronSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CronSettingsView.swift; sourceTree = "<group>"; };
 		C82B0FEAAB9BC80BA0801E98 /* XomperColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XomperColors.swift; sourceTree = "<group>"; };
 		C83EF3C6C93199CF3FCBAE42 /* Matchup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Matchup.swift; sourceTree = "<group>"; };
 		C921F3EC29B03A85D9F2A42C /* ThisWeekMatchupsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThisWeekMatchupsCard.swift; sourceTree = "<group>"; };
 		C9382BCB18DFEB416A50A039 /* RulesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RulesView.swift; sourceTree = "<group>"; };
 		CC3F6B5022E8151683A45F4F /* PlayerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerStore.swift; sourceTree = "<group>"; };
 		CEAEC7A4917990425085AE71 /* PushNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationManager.swift; sourceTree = "<group>"; };
+		CFB439DD73C2D26421BE97E7 /* CronSettingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CronSettingTests.swift; sourceTree = "<group>"; };
 		D12507ED13C57EFA8B240301 /* AIReviewHomeCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIReviewHomeCard.swift; sourceTree = "<group>"; };
 		D34E8D4C4B1A29FC412EBA41 /* StandingsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingsListView.swift; sourceTree = "<group>"; };
 		D36829F2AD0FD089788B9CE1 /* PlayerPointsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerPointsStore.swift; sourceTree = "<group>"; };
@@ -541,6 +551,8 @@
 				37E65C159F2C84E48B61A9A8 /* ArchiveNavigationTests.swift */,
 				DD0B55BBDA885ABE51022738 /* AuditEntryTests.swift */,
 				B3893B13276074EF6033CEA2 /* ClinchCalculatorTests.swift */,
+				3A4C60C4B1F35CD6B056AC29 /* CronSettingsStoreTests.swift */,
+				CFB439DD73C2D26421BE97E7 /* CronSettingTests.swift */,
 				2DB0B979B62A1CF6EB80417F /* DraftRecapResolverTests.swift */,
 				ED7456E9AFD3FA47DA3DA0F7 /* DraftSubTabSelectionTests.swift */,
 				4D0F4D0BBA2C48A0232C43FF /* EmailPreviewTests.swift */,
@@ -688,6 +700,7 @@
 				63E231D553037403D68EB216 /* AuditEntry.swift */,
 				AD43D54AB620DABD559F8A40 /* CareerStats.swift */,
 				18383A0375F5728A9E3FE065 /* Championship.swift */,
+				2E172A0188BB654B8E010842 /* CronSetting.swift */,
 				7EECC0AA469B6BEE9D1AEFFE /* Draft.swift */,
 				A789B8D49FA4430886626289 /* DraftHistory.swift */,
 				44F22FF3CF671CAA9E80918C /* EmailPreview.swift */,
@@ -781,6 +794,7 @@
 				FB3748F7A26B406C00F1C546 /* AIReviewSubScreen.swift */,
 				1687307C5353DC42503BD721 /* AuditDetailView.swift */,
 				B1358E97D2A18E9A5440D8CC /* AuditFeedView.swift */,
+				C7474B2C8F1F2B14821F4539 /* CronSettingsView.swift */,
 				9E8B04D9DD0B2952BBABAB46 /* LeagueEditView.swift */,
 				BC0B516C6EF1C2084E204E8E /* LeaguesListView.swift */,
 				B67C55260D2B14215D920245 /* LogsRowView.swift */,
@@ -801,6 +815,7 @@
 				6E6A6BADE3F51FA922A078F4 /* AIReviewStore.swift */,
 				536B3E71286A0BC3A7CD8DA6 /* AuthStore.swift */,
 				3728C5F6BEF61FE509A3EA32 /* ClinchCalculator.swift */,
+				B1B9527EA5CA26FE5197FCF5 /* CronSettingsStore.swift */,
 				F013CD37874EFB0FA1CB4261 /* HistoryStore.swift */,
 				56BB91320E3D5EBE1F777838 /* LeagueStore.swift */,
 				A3AF6560D898E487AD13DA35 /* LogsStore.swift */,
@@ -985,6 +1000,8 @@
 				42F9C81AF6338A720FE0BC12 /* ArchiveNavigationTests.swift in Sources */,
 				DA424E9343EC13B81360C48A /* AuditEntryTests.swift in Sources */,
 				02AC6FBAE68011749AA17644 /* ClinchCalculatorTests.swift in Sources */,
+				77E21904E6B1A4427AB48C50 /* CronSettingTests.swift in Sources */,
+				F118537BB85C27688E57C703 /* CronSettingsStoreTests.swift in Sources */,
 				2BE0B9AB9BAEFD6AA714D2EF /* DraftRecapResolverTests.swift in Sources */,
 				E0951007574761D3F51B21B9 /* DraftSubTabSelectionTests.swift in Sources */,
 				50E9D9254D779960D0D2C5B1 /* EmailPreviewTests.swift in Sources */,
@@ -1032,6 +1049,9 @@
 				9134D2C8A8737083C9FB8F7F /* ClinchCalculator.swift in Sources */,
 				2F50FD9BC26550139DAD2E96 /* Config.swift in Sources */,
 				578172B9CCF7AD92CB66821E /* ContentView.swift in Sources */,
+				76B8EBD352AAA56BD6A5F446 /* CronSetting.swift in Sources */,
+				087C52AE54EBC054E36E696B /* CronSettingsStore.swift in Sources */,
+				5E06735B11149010019AFA3F /* CronSettingsView.swift in Sources */,
 				0C2B77E0A46ECE55AE8CE46F /* DivisionBadge.swift in Sources */,
 				A28A24923C27CF0929ED97E1 /* Double+Formatting.swift in Sources */,
 				1C4049A62CC4A443AC38E464 /* Draft.swift in Sources */,

@@ -64,6 +64,10 @@ enum AppRoute: Hashable {
     /// admin actions, paginated via cursor). F4 deliverable.
     case adminAudit
 
+    /// Pushed from `AdminView`'s menu — opens the Cron Settings
+    /// sub-screen (per-lambda kill switch + test-mode toggles).
+    case adminCronSettings
+
     // MARK: - Admin Portal (F4)
 
     /// Pushed from `TablesSubScreenView` — list of all
