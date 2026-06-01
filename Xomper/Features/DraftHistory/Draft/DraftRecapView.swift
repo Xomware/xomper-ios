@@ -7,15 +7,20 @@ import SwiftUI
 /// `AIReviewDetailView`.
 ///
 /// Data flow:
-/// 1. On appear / year change, lazy-load the archive if it hasn't
-///    been pulled yet.
-/// 2. Filter `aiReviewStore.archive` for `reportType == .postDraft`
-///    AND `period.contains(year)`. The archive is newest-first so
-///    `first(where:)` returns the most recent match.
+/// 1. On appear / year change, lazy-load the dedicated postDraft
+///    archive (`loadPostDraftArchive`) if it hasn't been pulled yet.
+///    The dedicated fetch (`type=postDraft`) guarantees past-year
+///    recaps are reachable even when the global archive's first 20
+///    rows wouldn't include them.
+/// 2. Filter `aiReviewStore.postDraftArchive` for
+///    `reportType == .postDraft` AND `period.contains(year)`. The
+///    archive is newest-first so `first(where:)` returns the most
+///    recent match.
 /// 3. Render header (period + createdAt) and body
 ///    (`AttributedString(markdown:)`).
 ///
-/// Pull-to-refresh forces an archive reload via `force: true`.
+/// Pull-to-refresh forces a postDraft archive reload via
+/// `force: true`.
 struct DraftRecapView: View {
     var aiReviewStore: AIReviewStore
     let year: String
@@ -24,7 +29,7 @@ struct DraftRecapView: View {
         Group {
             if let report = matchingReport {
                 reportContent(report)
-            } else if aiReviewStore.isLoading {
+            } else if aiReviewStore.isLoadingPostDraftArchive {
                 LoadingView(message: "Loading \(year) draft recap…")
             } else {
                 EmptyStateView(
@@ -39,17 +44,17 @@ struct DraftRecapView: View {
             await ensureArchiveLoaded()
         }
         .refreshable {
-            await aiReviewStore.loadArchive(force: true)
+            await aiReviewStore.loadPostDraftArchive(force: true)
         }
     }
 
     // MARK: - Resolved report
 
-    /// Resolves the matching report from the store's archive. Static
-    /// peer (`Self.matchingReport`) holds the actual logic so tests
-    /// can drive it directly.
+    /// Resolves the matching report from the store's postDraft
+    /// archive. Static peer (`Self.matchingReport`) holds the actual
+    /// logic so tests can drive it directly.
     private var matchingReport: AIReport? {
-        Self.matchingReport(in: aiReviewStore.archive, year: year)
+        Self.matchingReport(in: aiReviewStore.postDraftArchive, year: year)
     }
 
     /// Pure filter: take the first `postDraft` report whose `period`
@@ -69,13 +74,11 @@ struct DraftRecapView: View {
     // MARK: - Loading
 
     private func ensureArchiveLoaded() async {
-        // Lazy-load only when the archive is empty. The 12-hour
-        // freshness guard inside `loadArchive` short-circuits any
-        // subsequent calls, so we don't need to gate on
-        // `lastLoadedAt` here.
-        if aiReviewStore.archive.isEmpty {
-            await aiReviewStore.loadArchive()
-        }
+        // Lazy-load the dedicated postDraft archive. The 12-hour
+        // freshness guard inside `loadPostDraftArchive` short-circuits
+        // any subsequent calls, so we don't need to gate on
+        // `postDraftArchiveLoadedAt` here.
+        await aiReviewStore.loadPostDraftArchive()
     }
 
     // MARK: - Report content

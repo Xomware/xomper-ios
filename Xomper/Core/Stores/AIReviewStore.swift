@@ -40,6 +40,17 @@ final class AIReviewStore {
     private(set) var mockDraftsError: Error?
     private(set) var mockDraftsLoadedAt: Date?
 
+    /// `postDraft` reports for the league, newest-first. Populated by
+    /// `loadPostDraftArchive()` and consumed by `DraftRecapView` so
+    /// past-year recaps remain visible even when the global archive
+    /// page (limit=20) doesn't reach them. Held separately so the year
+    /// switcher in the Draft tab doesn't compete with the main archive
+    /// list for the same 20-row budget.
+    private(set) var postDraftArchive: [AIReport] = []
+    private(set) var isLoadingPostDraftArchive = false
+    private(set) var postDraftArchiveError: Error?
+    private(set) var postDraftArchiveLoadedAt: Date?
+
     /// Weekly recap reports indexed by `period` (e.g. `"2025W04"`).
     /// Populated by `loadWeeklyReport(period:)` and consumed by
     /// `MatchupsView` to render per-matchup blurbs under the matchup
@@ -176,6 +187,38 @@ final class AIReviewStore {
         }
     }
 
+    /// Fetch the postDraft archive — every `type=postDraft` report for
+    /// the league, newest-first. Replaces `postDraftArchive` wholesale.
+    /// Skips re-fetch within 12 hours unless `force` is set.
+    ///
+    /// Loaded lazily by `DraftRecapView` so the per-year year-switcher
+    /// can always resolve past recaps, even when the global archive
+    /// page (limit=20) doesn't reach them.
+    func loadPostDraftArchive(force: Bool = false) async {
+        guard !isLoadingPostDraftArchive else { return }
+        if !force,
+           !postDraftArchive.isEmpty,
+           let last = postDraftArchiveLoadedAt,
+           Date().timeIntervalSince(last) < 12 * 60 * 60 {
+            return
+        }
+        isLoadingPostDraftArchive = true
+        defer { isLoadingPostDraftArchive = false }
+        postDraftArchiveError = nil
+
+        do {
+            let response = try await apiClient.fetchAIReportsList(
+                type: .postDraft,
+                limit: 20,
+                cursor: nil
+            )
+            self.postDraftArchive = response.rows
+            self.postDraftArchiveLoadedAt = Date()
+        } catch {
+            self.postDraftArchiveError = error
+        }
+    }
+
     /// Fetch the weekly recap whose `period` matches the supplied
     /// string (e.g. `"2025W04"`). Cached in `weeklyReportsByPeriod`
     /// so subsequent reads on the same week return immediately. No-op
@@ -273,6 +316,8 @@ final class AIReviewStore {
         latestByType = [:]
         mockDrafts = []
         mockDraftsLoadedAt = nil
+        postDraftArchive = []
+        postDraftArchiveLoadedAt = nil
         weeklyReportsByPeriod = [:]
         lastLoadedAt = nil
         error = nil

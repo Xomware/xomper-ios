@@ -103,6 +103,16 @@ struct MatchupsView: View {
 
             if expandedWeek == weekData.week {
                 VStack(spacing: XomperTheme.Spacing.md) {
+                    // Prominent full-recap card at the top of the
+                    // expanded week. Primary surface for the
+                    // AI-generated weekly content — renders only when
+                    // the recap has loaded for this `(season, week)`.
+                    // Per-matchup blurbs below each matchup card stay
+                    // as a secondary detail surface.
+                    if let recap = weeklyRecap(for: weekData) {
+                        WeeklyRecapHeaderCard(report: recap)
+                    }
+
                     ForEach(weekData.matchups) { matchup in
                         VStack(spacing: XomperTheme.Spacing.xs) {
                             MatchupCardView(matchup: matchup) {
@@ -145,6 +155,22 @@ struct MatchupsView: View {
     /// avoids stale fetches when the season chip flips.
     private func weekRecapTaskId(_ weekData: WeekMatchups) -> String {
         "\(currentSeason)-\(weekData.week)"
+    }
+
+    /// Resolves the full weekly recap for an expanded past-and-scored
+    /// week. Returns the cached `AIReport` for the
+    /// `AIReviewStore.weeklyPeriod(season:, week:)` key, or `nil` when
+    /// the recap hasn't been generated yet (current / future weeks,
+    /// pre-AI-review backfilled weeks). The
+    /// `WeeklyRecapHeaderCard` is silently absent in either case.
+    private func weeklyRecap(for weekData: WeekMatchups) -> AIReport? {
+        guard weekData.hasScores else { return nil }
+        let period = AIReviewStore.weeklyPeriod(
+            season: currentSeason,
+            week: weekData.week
+        )
+        guard !period.isEmpty else { return nil }
+        return aiReviewStore.weeklyReportsByPeriod[period]
     }
 
     /// Resolves the per-matchup blurb for a rendered matchup. Looks

@@ -141,4 +141,47 @@ final class DraftRecapResolverTests: XCTestCase {
         let match = DraftRecapView.matchingReport(in: [], year: "2026")
         XCTAssertNil(match)
     }
+
+    // MARK: - Test 8: type=postDraft fetch surfaces past-year recaps
+    // that the global archive's first-page limit would have buried
+
+    /// Simulates the production fix: the view now reads from
+    /// `aiReviewStore.postDraftArchive`, populated by
+    /// `loadPostDraftArchive()` which calls
+    /// `fetchAIReportsList(type: .postDraft, limit: 20)`. As long as
+    /// the postDraft archive contains the 2024 row, the resolver finds
+    /// it — regardless of how many weekly / mock rows sit "ahead" of it
+    /// in the global archive.
+    func testPostDraftArchive_resolvesOldYearEvenWithLargeOtherCorpus() {
+        // 39-row corpus (36 weekly + 2 postDraft + 3 mock) where the
+        // 2024 postDraft is buried after 30 weekly rows by createdAt.
+        // The dedicated postDraft fetch trims to just the two postDraft
+        // rows, so the resolver lands on 2024 in O(2).
+        let postDraft2024 = makeReport(
+            id: "L1|REPORT#postDraft#2024",
+            type: .postDraft,
+            period: "2024",
+            createdAt: Date(timeIntervalSinceNow: -86_400 * 600)
+        )
+        let postDraft2025 = makeReport(
+            id: "L1|REPORT#postDraft#2025",
+            type: .postDraft,
+            period: "2025",
+            createdAt: Date(timeIntervalSinceNow: -86_400 * 300)
+        )
+        // What `postDraftArchive` ends up holding (newest-first).
+        let postDraftArchive = [postDraft2025, postDraft2024]
+
+        let match2024 = DraftRecapView.matchingReport(
+            in: postDraftArchive,
+            year: "2024"
+        )
+        XCTAssertEqual(match2024?.id, postDraft2024.id)
+
+        let match2025 = DraftRecapView.matchingReport(
+            in: postDraftArchive,
+            year: "2025"
+        )
+        XCTAssertEqual(match2025?.id, postDraft2025.id)
+    }
 }
