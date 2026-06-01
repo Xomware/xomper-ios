@@ -290,6 +290,11 @@ final class MockCronSettingsAPIClient: XomperAPIClientProtocol, @unchecked Senda
     func updateWhitelistedLeague(leagueId: String, fields: [String: AdminFieldValue]) async throws -> LeagueUpdateResponse { throw CronMockError.unsupported }
     func fetchAuditEntries(limit: Int, cursor: String?) async throws -> AuditListResponse { throw CronMockError.unsupported }
     func fetchLogEvents(logGroup: LogGroup, level: LogLevel?, search: String?, limit: Int, cursor: String?) async throws -> LogsQueryResponse { throw CronMockError.unsupported }
+    func fetchAnnouncements() async throws -> AnnouncementsListResponse { throw CronMockError.unsupported }
+    func fetchAdminAnnouncements() async throws -> AdminAnnouncementsListResponse { throw CronMockError.unsupported }
+    func createAnnouncement(title: String, body: String, priority: String, expiresAt: Date?, isActive: Bool, displayOrder: Int) async throws -> AnnouncementMutationResponse { throw CronMockError.unsupported }
+    func updateAnnouncement(id: UUID, fields: [String: AdminFieldValue]) async throws -> AnnouncementMutationResponse { throw CronMockError.unsupported }
+    func deleteAnnouncement(id: UUID) async throws -> AnnouncementMutationResponse { throw CronMockError.unsupported }
 }
 
 enum CronMockError: Error, LocalizedError {

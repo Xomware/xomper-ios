@@ -70,6 +70,7 @@ final class LandingViewTests: XCTestCase {
             authStore: AuthStore(),
             nflStateStore: NflStateStore(),
             aiReviewStore: AIReviewStore(),
+            announcementsStore: AnnouncementsStore(),
             navStore: NavigationStore(),
             router: AppRouter()
         )

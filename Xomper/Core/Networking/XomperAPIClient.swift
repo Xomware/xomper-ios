@@ -53,6 +53,20 @@ protocol XomperAPIClientProtocol: Sendable {
     // Admin: Cron settings (kill switch + test mode)
     func fetchCronSettings() async throws -> CronSettingsListResponse
     func updateCronSetting(cronKey: String, enabled: Bool?, testMode: Bool?) async throws -> CronSettingUpdateResponse
+
+    // Announcements (public read + admin CRUD)
+    func fetchAnnouncements() async throws -> AnnouncementsListResponse
+    func fetchAdminAnnouncements() async throws -> AdminAnnouncementsListResponse
+    func createAnnouncement(
+        title: String,
+        body: String,
+        priority: String,
+        expiresAt: Date?,
+        isActive: Bool,
+        displayOrder: Int
+    ) async throws -> AnnouncementMutationResponse
+    func updateAnnouncement(id: UUID, fields: [String: AdminFieldValue]) async throws -> AnnouncementMutationResponse
+    func deleteAnnouncement(id: UUID) async throws -> AnnouncementMutationResponse
 }
 
 // MARK: - Request Payloads
@@ -299,21 +313,29 @@ struct TestEmailResponse: Codable, Sendable {
 
 // MARK: - Admin Tables + Audit (F4)
 
-/// Strongly-typed value for an `updateUser` / `updateLeague` field
-/// payload. The wire body is `{"fields": {...}}` with heterogeneous
-/// types — strings for names + emails, bools for is_admin /
-/// is_active / is_dynasty / has_taxi. Wrapping the values in this
-/// enum keeps the API surface type-safe up to the JSONSerialization
-/// hop, which expects `Any`.
+/// Strongly-typed value for an `updateUser` / `updateLeague` /
+/// `updateAnnouncement` field payload. The wire body is
+/// `{"fields": {...}}` with heterogeneous types — strings for names +
+/// emails, bools for is_admin / is_active / is_dynasty / has_taxi,
+/// ints for display_order, ISO8601 strings (or explicit JSON null)
+/// for expires_at. Wrapping the values in this enum keeps the API
+/// surface type-safe up to the JSONSerialization hop, which expects
+/// `Any`.
 enum AdminFieldValue: Sendable, Hashable {
     case string(String)
     case bool(Bool)
+    case int(Int)
+    /// Explicit null — used for `expires_at` clears. JSONSerialization
+    /// represents null as `NSNull()`.
+    case null
 
     /// Render this value as a JSONSerialization-compatible scalar.
     var jsonValue: Any {
         switch self {
         case .string(let s): return s
         case .bool(let b):   return b
+        case .int(let i):    return i
+        case .null:          return NSNull()
         }
     }
 }
@@ -485,6 +507,99 @@ struct LogsQueryResponse: Decodable, Sendable {
         self.logGroup = logGroup
         self.events = events
         self.nextToken = nextToken
+    }
+}
+
+// MARK: - Announcements
+
+/// Wraps `GET /announcements`. Public-read endpoint (JWT-gated only,
+/// not admin-gated). Returns active + non-expired rows sorted
+/// critical-first then `display_order`. `Success` matches the
+/// canonical `XomperAPIResponse` convention.
+struct AnnouncementsListResponse: Decodable, Sendable {
+    let success: Bool
+    let count: Int
+    let rows: [LeagueAnnouncement]
+
+    enum CodingKeys: String, CodingKey {
+        case success = "Success"
+        case count
+        case rows
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.success = (try? c.decode(Bool.self, forKey: .success)) ?? false
+        self.count = (try? c.decode(Int.self, forKey: .count)) ?? 0
+        self.rows = (try? c.decode([LeagueAnnouncement].self, forKey: .rows)) ?? []
+    }
+
+    /// Memberwise init for tests / previews.
+    init(success: Bool, count: Int, rows: [LeagueAnnouncement]) {
+        self.success = success
+        self.count = count
+        self.rows = rows
+    }
+}
+
+/// Wraps `GET /admin/announcements-list`. Returns every row including
+/// inactive + expired so the admin can manage them. `tableMissing` is
+/// set true when the Supabase `league_announcements` table hasn't been
+/// provisioned yet — iOS renders a dedicated empty state in that case
+/// (mirrors the F4 audit / cron-settings pattern).
+struct AdminAnnouncementsListResponse: Decodable, Sendable {
+    let success: Bool
+    let count: Int
+    let rows: [LeagueAnnouncement]
+    let tableMissing: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case success = "Success"
+        case count
+        case rows
+        case tableMissing = "table_missing"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.success = (try? c.decode(Bool.self, forKey: .success)) ?? false
+        self.count = (try? c.decode(Int.self, forKey: .count)) ?? 0
+        self.rows = (try? c.decode([LeagueAnnouncement].self, forKey: .rows)) ?? []
+        self.tableMissing = (try? c.decodeIfPresent(Bool.self, forKey: .tableMissing)) ?? false
+    }
+
+    /// Memberwise init for tests / previews.
+    init(success: Bool, count: Int, rows: [LeagueAnnouncement], tableMissing: Bool) {
+        self.success = success
+        self.count = count
+        self.rows = rows
+        self.tableMissing = tableMissing
+    }
+}
+
+/// Wraps `POST /admin/announcements-create|update|delete`. Backend
+/// echoes the resolved row after the mutation so the iOS store can
+/// reconcile the optimistic state. Delete returns the row with
+/// `is_active = false`.
+struct AnnouncementMutationResponse: Decodable, Sendable {
+    let success: Bool
+    let row: LeagueAnnouncement
+
+    enum CodingKeys: String, CodingKey {
+        case success = "Success"
+        case row
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.success = (try? c.decode(Bool.self, forKey: .success)) ?? false
+        self.row = try c.decode(LeagueAnnouncement.self, forKey: .row)
+    }
+
+    /// Memberwise init for tests / previews.
+    init(success: Bool, row: LeagueAnnouncement) {
+        self.success = success
+        self.row = row
     }
 }
 
@@ -1034,6 +1149,88 @@ final class XomperAPIClient: XomperAPIClientProtocol {
         }
         return try await postDecoding("/admin/cron-settings-update", body: body)
     }
+
+    // MARK: - Announcements
+
+    /// Public-read of active + non-expired announcements. JWT-gated
+    /// only — any signed-in league member can read. Sort + filter are
+    /// applied server-side (critical-first then `display_order`,
+    /// `is_active = true AND (expires_at IS NULL OR expires_at > now())`).
+    func fetchAnnouncements() async throws -> AnnouncementsListResponse {
+        return try await get("/announcements/list", queryItems: [])
+    }
+
+    /// Admin-only: list every row of `league_announcements`, including
+    /// inactive + expired ones. `tableMissing` is set true by the
+    /// backend when the Supabase migration hasn't yet been applied —
+    /// iOS renders a friendly empty state in that case.
+    func fetchAdminAnnouncements() async throws -> AdminAnnouncementsListResponse {
+        return try await get("/admin/announcements-list", queryItems: [])
+    }
+
+    /// Admin-only: create one row. Backend writes the row plus one
+    /// `admin_audit` entry (`announcements.create`). Returns the
+    /// resolved row including the server-assigned `id` + timestamps.
+    func createAnnouncement(
+        title: String,
+        body: String,
+        priority: String,
+        expiresAt: Date?,
+        isActive: Bool,
+        displayOrder: Int
+    ) async throws -> AnnouncementMutationResponse {
+        var body: [String: Any] = [
+            "title": title,
+            "body": body,
+            "priority": priority,
+            "is_active": isActive,
+            "display_order": displayOrder,
+        ]
+        if let expiresAt {
+            body["expires_at"] = Self.iso8601Formatter.string(from: expiresAt)
+        }
+        return try await postDecoding("/admin/announcements-create", body: body)
+    }
+
+    /// Admin-only: partial-update one row by `id`. Only the fields the
+    /// admin actually changed are sent — the backend writes one
+    /// `admin_audit` row per call with the field-level diff.
+    func updateAnnouncement(
+        id: UUID,
+        fields: [String: AdminFieldValue]
+    ) async throws -> AnnouncementMutationResponse {
+        var jsonFields: [String: Any] = [:]
+        for (key, value) in fields {
+            jsonFields[key] = value.jsonValue
+        }
+        let body: [String: Any] = [
+            "id": id.uuidString,
+            "fields": jsonFields,
+        ]
+        return try await postDecoding("/admin/announcements-update", body: body)
+    }
+
+    /// Admin-only: soft-delete one row. Sets `is_active = false` and
+    /// writes one `admin_audit` entry. Row stays in `league_announcements`
+    /// so the audit trail remains queryable.
+    func deleteAnnouncement(id: UUID) async throws -> AnnouncementMutationResponse {
+        let body: [String: Any] = [
+            "id": id.uuidString,
+        ]
+        return try await postDecoding("/admin/announcements-delete", body: body)
+    }
+
+    /// Shared ISO8601 formatter for outgoing `expires_at` strings.
+    /// Matches the format the backend's Pydantic models expect for
+    /// `datetime` columns (full datetime, no fractional seconds, UTC
+    /// `Z` suffix). `nonisolated(unsafe)` acknowledges that
+    /// `ISO8601DateFormatter` is thread-safe for read-only access
+    /// once configured.
+    nonisolated(unsafe) private static let iso8601Formatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
 
     // MARK: - Private
 

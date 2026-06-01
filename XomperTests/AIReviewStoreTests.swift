@@ -372,6 +372,14 @@ final class MockXomperAPIClient: XomperAPIClientProtocol, @unchecked Sendable {
     func fetchCronSettings() async throws -> CronSettingsListResponse { throw Unsupported.method }
     func updateCronSetting(cronKey: String, enabled: Bool?, testMode: Bool?) async throws -> CronSettingUpdateResponse { throw Unsupported.method }
 
+    // MARK: - announcements — unused here.
+
+    func fetchAnnouncements() async throws -> AnnouncementsListResponse { throw Unsupported.method }
+    func fetchAdminAnnouncements() async throws -> AdminAnnouncementsListResponse { throw Unsupported.method }
+    func createAnnouncement(title: String, body: String, priority: String, expiresAt: Date?, isActive: Bool, displayOrder: Int) async throws -> AnnouncementMutationResponse { throw Unsupported.method }
+    func updateAnnouncement(id: UUID, fields: [String: AdminFieldValue]) async throws -> AnnouncementMutationResponse { throw Unsupported.method }
+    func deleteAnnouncement(id: UUID) async throws -> AnnouncementMutationResponse { throw Unsupported.method }
+
     enum Unsupported: Error { case method }
 }
 

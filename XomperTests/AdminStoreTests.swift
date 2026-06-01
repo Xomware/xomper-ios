@@ -310,6 +310,13 @@ final class MockAdminAPIClient: XomperAPIClientProtocol, @unchecked Sendable {
     // admin-cron-settings — unused here.
     func fetchCronSettings() async throws -> CronSettingsListResponse { throw MockError.unsupported }
     func updateCronSetting(cronKey: String, enabled: Bool?, testMode: Bool?) async throws -> CronSettingUpdateResponse { throw MockError.unsupported }
+
+    // announcements — unused here.
+    func fetchAnnouncements() async throws -> AnnouncementsListResponse { throw MockError.unsupported }
+    func fetchAdminAnnouncements() async throws -> AdminAnnouncementsListResponse { throw MockError.unsupported }
+    func createAnnouncement(title: String, body: String, priority: String, expiresAt: Date?, isActive: Bool, displayOrder: Int) async throws -> AnnouncementMutationResponse { throw MockError.unsupported }
+    func updateAnnouncement(id: UUID, fields: [String: AdminFieldValue]) async throws -> AnnouncementMutationResponse { throw MockError.unsupported }
+    func deleteAnnouncement(id: UUID) async throws -> AnnouncementMutationResponse { throw MockError.unsupported }
 }
 
 enum MockError: Error, LocalizedError {

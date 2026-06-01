@@ -68,6 +68,15 @@ enum AppRoute: Hashable {
     /// sub-screen (per-lambda kill switch + test-mode toggles).
     case adminCronSettings
 
+    /// Pushed from `AdminView`'s menu — opens the Announcements
+    /// admin list (all rows including inactive + expired).
+    case adminAnnouncements
+
+    /// Pushed from `AnnouncementsListView` — typed edit form for one
+    /// `league_announcements` row. `id == nil` means create a new row;
+    /// otherwise edit the row with that uuid.
+    case adminAnnouncementEdit(id: UUID?)
+
     // MARK: - Admin Portal (F4)
 
     /// Pushed from `TablesSubScreenView` — list of all

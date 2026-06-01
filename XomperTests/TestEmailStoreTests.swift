@@ -295,6 +295,13 @@ final class MockTestEmailAPIClient: XomperAPIClientProtocol, @unchecked Sendable
     // admin-cron-settings — unused here.
     func fetchCronSettings() async throws -> CronSettingsListResponse { throw TestEmailMockError.unsupported }
     func updateCronSetting(cronKey: String, enabled: Bool?, testMode: Bool?) async throws -> CronSettingUpdateResponse { throw TestEmailMockError.unsupported }
+
+    // announcements — unused here.
+    func fetchAnnouncements() async throws -> AnnouncementsListResponse { throw TestEmailMockError.unsupported }
+    func fetchAdminAnnouncements() async throws -> AdminAnnouncementsListResponse { throw TestEmailMockError.unsupported }
+    func createAnnouncement(title: String, body: String, priority: String, expiresAt: Date?, isActive: Bool, displayOrder: Int) async throws -> AnnouncementMutationResponse { throw TestEmailMockError.unsupported }
+    func updateAnnouncement(id: UUID, fields: [String: AdminFieldValue]) async throws -> AnnouncementMutationResponse { throw TestEmailMockError.unsupported }
+    func deleteAnnouncement(id: UUID) async throws -> AnnouncementMutationResponse { throw TestEmailMockError.unsupported }
 }
 
 enum TestEmailMockError: Error, LocalizedError {
