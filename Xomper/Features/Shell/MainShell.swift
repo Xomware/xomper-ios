@@ -44,6 +44,10 @@ struct MainShell: View {
     /// so the lists + edit forms + detail view read from the
     /// same in-memory rows.
     @State private var adminTablesStore = AdminTablesStore()
+    /// admin-cron-settings: drives the Admin → Cron Settings sub-screen.
+    /// Single-instance to keep optimistic toggles + pending-row state
+    /// stable across re-renders during the in-flight POST.
+    @State private var cronSettingsStore = CronSettingsStore()
 
     // MARK: - Body
 
@@ -531,6 +535,9 @@ struct MainShell: View {
 
         case .adminAudit:
             AuditFeedView(store: adminTablesStore, router: router)
+
+        case .adminCronSettings:
+            CronSettingsView(store: cronSettingsStore)
 
         case .adminAIReviewPreview(let reportType):
             AIReviewPreviewView(

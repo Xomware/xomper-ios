@@ -306,6 +306,10 @@ final class MockAdminAPIClient: XomperAPIClientProtocol, @unchecked Sendable {
 
     // F5 admin logs — unused here.
     func fetchLogEvents(logGroup: LogGroup, level: LogLevel?, search: String?, limit: Int, cursor: String?) async throws -> LogsQueryResponse { throw MockError.unsupported }
+
+    // admin-cron-settings — unused here.
+    func fetchCronSettings() async throws -> CronSettingsListResponse { throw MockError.unsupported }
+    func updateCronSetting(cronKey: String, enabled: Bool?, testMode: Bool?) async throws -> CronSettingUpdateResponse { throw MockError.unsupported }
 }
 
 enum MockError: Error, LocalizedError {

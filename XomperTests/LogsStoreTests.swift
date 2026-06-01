@@ -291,6 +291,8 @@ final class MockLogsAPIClient: XomperAPIClientProtocol, @unchecked Sendable {
     func fetchAdminWhitelistedLeagues() async throws -> [WhitelistedLeague] { throw LogsMockError.unsupported }
     func updateWhitelistedLeague(leagueId: String, fields: [String: AdminFieldValue]) async throws -> LeagueUpdateResponse { throw LogsMockError.unsupported }
     func fetchAuditEntries(limit: Int, cursor: String?) async throws -> AuditListResponse { throw LogsMockError.unsupported }
+    func fetchCronSettings() async throws -> CronSettingsListResponse { throw LogsMockError.unsupported }
+    func updateCronSetting(cronKey: String, enabled: Bool?, testMode: Bool?) async throws -> CronSettingUpdateResponse { throw LogsMockError.unsupported }
 }
 
 enum LogsMockError: Error, LocalizedError {

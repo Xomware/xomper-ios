@@ -56,6 +56,15 @@ struct AdminView: View {
                     action: { router.navigate(to: .adminTestEmail) }
                 )
 
+                if Config.AdminFlags.showCronSettings {
+                    AdminMenuRow(
+                        icon: "clock.badge.checkmark",
+                        title: "Cron Settings",
+                        subtitle: "Kill switch + test mode per scheduled lambda",
+                        action: { router.navigate(to: .adminCronSettings) }
+                    )
+                }
+
                 if Config.AdminFlags.showTables {
                     AdminMenuRow(
                         icon: "tablecells",

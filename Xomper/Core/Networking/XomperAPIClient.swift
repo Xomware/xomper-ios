@@ -49,6 +49,10 @@ protocol XomperAPIClientProtocol: Sendable {
         limit: Int,
         cursor: String?
     ) async throws -> LogsQueryResponse
+
+    // Admin: Cron settings (kill switch + test mode)
+    func fetchCronSettings() async throws -> CronSettingsListResponse
+    func updateCronSetting(cronKey: String, enabled: Bool?, testMode: Bool?) async throws -> CronSettingUpdateResponse
 }
 
 // MARK: - Request Payloads
@@ -396,6 +400,55 @@ struct AuditListResponse: Decodable, Sendable {
         self.rows = rows
         self.nextCursor = nextCursor
         self.tableMissing = tableMissing
+    }
+}
+
+// MARK: - Admin Cron Settings
+
+/// Wraps `GET /admin/cron-settings-list`. The backend returns the rows
+/// under a top-level `rows` key alongside a `count`. `tableMissing` is
+/// set true when the Supabase `admin_cron_settings` table hasn't been
+/// provisioned yet (manual migration pending) — iOS renders a friendly
+/// explanatory empty state in that case (mirrors the F4 audit pattern).
+struct CronSettingsListResponse: Decodable, Sendable {
+    let count: Int
+    let rows: [CronSetting]
+    let tableMissing: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case count
+        case rows
+        case tableMissing = "table_missing"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.count = (try? c.decode(Int.self, forKey: .count)) ?? 0
+        self.rows = (try? c.decode([CronSetting].self, forKey: .rows)) ?? []
+        self.tableMissing = (try? c.decodeIfPresent(Bool.self, forKey: .tableMissing)) ?? false
+    }
+
+    /// Memberwise init for tests / previews.
+    init(count: Int, rows: [CronSetting], tableMissing: Bool) {
+        self.count = count
+        self.rows = rows
+        self.tableMissing = tableMissing
+    }
+}
+
+/// Wraps `POST /admin/cron-settings-update`. Backend echoes the
+/// resolved row state after the patch so the iOS store can confirm
+/// the optimistic flip stuck (or rebuild if it didn't). Backend also
+/// writes an `admin_audit` row per call.
+struct CronSettingUpdateResponse: Decodable, Sendable {
+    let cronKey: String
+    let enabled: Bool
+    let testMode: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case cronKey = "cron_key"
+        case enabled
+        case testMode = "test_mode"
     }
 }
 
@@ -948,6 +1001,38 @@ final class XomperAPIClient: XomperAPIClientProtocol {
             items.append(URLQueryItem(name: "next_token", value: cursor))
         }
         return try await get("/admin/logs-query", queryItems: items)
+    }
+
+    // MARK: - Admin Cron Settings
+
+    /// Admin-only: list every row of `admin_cron_settings`. Backend
+    /// returns the rows under `rows` plus a `tableMissing` flag when
+    /// the Supabase migration hasn't yet been applied — iOS renders a
+    /// dedicated empty state in that case.
+    func fetchCronSettings() async throws -> CronSettingsListResponse {
+        return try await get("/admin/cron-settings-list", queryItems: [])
+    }
+
+    /// Admin-only: patch a single `admin_cron_settings` row. Pass
+    /// `enabled` and/or `testMode` — either may be nil to leave that
+    /// column untouched. The wire payload omits any nil key (via
+    /// per-key add) so the backend treats absence as "don't touch".
+    /// Backend writes an `admin_audit` row per call.
+    func updateCronSetting(
+        cronKey: String,
+        enabled: Bool?,
+        testMode: Bool?
+    ) async throws -> CronSettingUpdateResponse {
+        var body: [String: Any] = [
+            "cron_key": cronKey,
+        ]
+        if let enabled {
+            body["enabled"] = enabled
+        }
+        if let testMode {
+            body["test_mode"] = testMode
+        }
+        return try await postDecoding("/admin/cron-settings-update", body: body)
     }
 
     // MARK: - Private

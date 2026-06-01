@@ -55,9 +55,10 @@ jobs:
               // when AdminFlags changes. Keep flags here matching the
               // committed template so AdminView's feature gates resolve.
               enum AdminFlags {
-                  static let showTables: Bool = true     // F4
-                  static let showLogs:   Bool = true     // F5
-                  static let showAudit:  Bool = true     // F4
+                  static let showTables: Bool = true            // F4
+                  static let showLogs:   Bool = true            // F5
+                  static let showAudit:  Bool = true            // F4
+                  static let showCronSettings: Bool = true      // admin-cron-settings
               }
           }
           EOF
