@@ -56,6 +56,15 @@ struct AdminView: View {
                     action: { router.navigate(to: .adminTestEmail) }
                 )
 
+                if Config.AdminFlags.showAnnouncements {
+                    AdminMenuRow(
+                        icon: "megaphone.fill",
+                        title: "Announcements",
+                        subtitle: "Create, edit, and retire league announcements",
+                        action: { router.navigate(to: .adminAnnouncements) }
+                    )
+                }
+
                 if Config.AdminFlags.showCronSettings {
                     AdminMenuRow(
                         icon: "clock.badge.checkmark",

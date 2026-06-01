@@ -293,6 +293,11 @@ final class MockLogsAPIClient: XomperAPIClientProtocol, @unchecked Sendable {
     func fetchAuditEntries(limit: Int, cursor: String?) async throws -> AuditListResponse { throw LogsMockError.unsupported }
     func fetchCronSettings() async throws -> CronSettingsListResponse { throw LogsMockError.unsupported }
     func updateCronSetting(cronKey: String, enabled: Bool?, testMode: Bool?) async throws -> CronSettingUpdateResponse { throw LogsMockError.unsupported }
+    func fetchAnnouncements() async throws -> AnnouncementsListResponse { throw LogsMockError.unsupported }
+    func fetchAdminAnnouncements() async throws -> AdminAnnouncementsListResponse { throw LogsMockError.unsupported }
+    func createAnnouncement(title: String, body: String, priority: String, expiresAt: Date?, isActive: Bool, displayOrder: Int) async throws -> AnnouncementMutationResponse { throw LogsMockError.unsupported }
+    func updateAnnouncement(id: UUID, fields: [String: AdminFieldValue]) async throws -> AnnouncementMutationResponse { throw LogsMockError.unsupported }
+    func deleteAnnouncement(id: UUID) async throws -> AnnouncementMutationResponse { throw LogsMockError.unsupported }
 }
 
 enum LogsMockError: Error, LocalizedError {

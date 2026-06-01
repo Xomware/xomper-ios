@@ -38,6 +38,7 @@ struct LandingView: View {
     var authStore: AuthStore
     var nflStateStore: NflStateStore
     var aiReviewStore: AIReviewStore
+    var announcementsStore: AnnouncementsStore
     var navStore: NavigationStore
     var router: AppRouter
 
@@ -52,7 +53,7 @@ struct LandingView: View {
                     router: router
                 )
 
-                AnnouncementsCard()
+                AnnouncementsCard(store: announcementsStore)
 
                 StandingsScrollBar(
                     leagueStore: leagueStore,
@@ -96,8 +97,9 @@ struct LandingView: View {
         async let ai:       () = aiReviewStore.refresh()
         async let nfl:      () = nflStateStore.fetchState()
         async let league:   () = leagueStore.loadMyLeague()
+        async let ann:      () = announcementsStore.load(force: true)
         async let matchups: () = matchupsController.bumpAndWait()
-        _ = await (ai, nfl, league, matchups)
+        _ = await (ai, nfl, league, ann, matchups)
     }
 }
 
@@ -108,6 +110,7 @@ struct LandingView: View {
             authStore: AuthStore(),
             nflStateStore: NflStateStore(),
             aiReviewStore: AIReviewStore(),
+            announcementsStore: AnnouncementsStore(),
             navStore: NavigationStore(),
             router: AppRouter()
         )

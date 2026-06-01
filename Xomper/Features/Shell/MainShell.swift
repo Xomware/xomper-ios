@@ -48,6 +48,12 @@ struct MainShell: View {
     /// Single-instance to keep optimistic toggles + pending-row state
     /// stable across re-renders during the in-flight POST.
     @State private var cronSettingsStore = CronSettingsStore()
+    /// announcements: drives the Landing → Announcements card (public
+    /// read) and the Admin → Announcements sub-screen (admin CRUD).
+    /// Single instance so optimistic admin mutations land on the same
+    /// public-read array the Landing card observes — saves a refetch
+    /// after a successful save.
+    @State private var announcementsStore = AnnouncementsStore()
 
     // MARK: - Body
 
@@ -148,6 +154,7 @@ struct MainShell: View {
                     authStore: authStore,
                     nflStateStore: nflStateStore,
                     aiReviewStore: aiReviewStore,
+                    announcementsStore: announcementsStore,
                     navStore: navStore,
                     router: router
                 )
@@ -538,6 +545,12 @@ struct MainShell: View {
 
         case .adminCronSettings:
             CronSettingsView(store: cronSettingsStore)
+
+        case .adminAnnouncements:
+            AnnouncementsListView(store: announcementsStore, router: router)
+
+        case .adminAnnouncementEdit(let id):
+            AnnouncementEditView(id: id, store: announcementsStore, router: router)
 
         case .adminAIReviewPreview(let reportType):
             AIReviewPreviewView(

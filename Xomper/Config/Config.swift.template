@@ -28,5 +28,6 @@ enum Config {
         static let showLogs:   Bool = true            // F5
         static let showAudit:  Bool = true            // F4
         static let showCronSettings: Bool = true      // admin-cron-settings
+        static let showAnnouncements: Bool = true     // announcements
     }
 }
