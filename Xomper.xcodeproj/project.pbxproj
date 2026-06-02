@@ -129,6 +129,7 @@
 		90B62C24495752B9C03F5CE8 /* HighestPossibleCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A6D698BC8816DA02019846C /* HighestPossibleCalculatorTests.swift */; };
 		9134D2C8A8737083C9FB8F7F /* ClinchCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3728C5F6BEF61FE509A3EA32 /* ClinchCalculator.swift */; };
 		93D8C8E352B60752D37FD0FF /* PlayerSeasonStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67C24A12080AD428D5A40A7E /* PlayerSeasonStats.swift */; };
+		93E069814B933A306E4EA2E3 /* TestEmailKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = C964C2174FEA2E5B4DE790BB /* TestEmailKind.swift */; };
 		95DE1C46E20BF6910D4E5447 /* TrayItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E4EC7FDB93C47A9EE601BA3 /* TrayItem.swift */; };
 		98D5EE595D14742780A47B81 /* ThisWeekMatchupsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C921F3EC29B03A85D9F2A42C /* ThisWeekMatchupsCard.swift */; };
 		98F895FBCECB23325658339C /* StandingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6A47FD1CF3BE7AE0B940DEC /* StandingsView.swift */; };
@@ -369,6 +370,7 @@
 		C83EF3C6C93199CF3FCBAE42 /* Matchup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Matchup.swift; sourceTree = "<group>"; };
 		C921F3EC29B03A85D9F2A42C /* ThisWeekMatchupsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThisWeekMatchupsCard.swift; sourceTree = "<group>"; };
 		C9382BCB18DFEB416A50A039 /* RulesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RulesView.swift; sourceTree = "<group>"; };
+		C964C2174FEA2E5B4DE790BB /* TestEmailKind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestEmailKind.swift; sourceTree = "<group>"; };
 		CC3F6B5022E8151683A45F4F /* PlayerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerStore.swift; sourceTree = "<group>"; };
 		CEAEC7A4917990425085AE71 /* PushNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationManager.swift; sourceTree = "<group>"; };
 		CFB439DD73C2D26421BE97E7 /* CronSettingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CronSettingTests.swift; sourceTree = "<group>"; };
@@ -741,6 +743,7 @@
 				B29D510D87CD290AE7F76FBF /* StandingsTeam.swift */,
 				A2DA1B65780757E6CC78CD61 /* TaxiSquadPlayer.swift */,
 				FC09DFF48D9AAFEF0A286BAD /* TeamAnalysis.swift */,
+				C964C2174FEA2E5B4DE790BB /* TestEmailKind.swift */,
 				9F49969EE42BDE6462664021 /* TradedPick.swift */,
 				2549566AC9312F44BA381BB6 /* WeeklyRecapMetadata.swift */,
 				3747C6FC769C117588F8A93E /* WhitelistedLeague.swift */,
@@ -1185,6 +1188,7 @@
 				E1E44482FBD2CBBA9ED6E829 /* TeamContext.swift in Sources */,
 				40C507B6FB2EF2A7E647AA3C /* TeamStore.swift in Sources */,
 				B7EB06298BFBF6AC76ABF53E /* TeamView.swift in Sources */,
+				93E069814B933A306E4EA2E3 /* TestEmailKind.swift in Sources */,
 				EE987501F73209179D5CEEB4 /* TestEmailStore.swift in Sources */,
 				825E9A2C109291322461741A /* TestEmailView.swift in Sources */,
 				98D5EE595D14742780A47B81 /* ThisWeekMatchupsCard.swift in Sources */,

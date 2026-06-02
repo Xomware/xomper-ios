@@ -34,11 +34,16 @@ final class TestEmailStore {
     var selectedRecipient: TestEmailRecipient?
 
     /// Two-way bound by the report picker. `nil` until the admin
-    /// taps a row.
+    /// taps a row. Only relevant for AI Review kinds.
     var selectedReport: AIReport?
+
+    /// Two-way bound by the kind picker. Defaults to the AI Review
+    /// weekly recap — the most common test target.
+    var selectedKind: TestEmailKind = .aiReviewWeekly
 
     private(set) var isSending = false
     private(set) var lastResult: TestEmailResponse?
+    private(set) var lastTemplateResult: TestEmailTemplateResponse?
     private(set) var lastError: String?
 
     /// Receipts list — last few notification-log rows whose template
@@ -110,19 +115,29 @@ final class TestEmailStore {
 
     // MARK: - Send
 
-    /// Send the currently-selected report to the currently-selected
-    /// recipient. No-op when either picker is nil. On success, stores
-    /// the response in `lastResult` and refreshes the receipts list
-    /// so the row appears under the button.
+    /// Dispatch on `selectedKind`: AI Review variants reuse the
+    /// existing stored-report endpoint; everything else hits the new
+    /// template endpoint with fixture data. No-op when prerequisites
+    /// aren't met (no recipient picked, or AI Review kind without a
+    /// resolved report).
     func sendTest(sleeperUserId: String) async {
         guard let recipient = selectedRecipient else { return }
-        guard let report = selectedReport else { return }
+        guard !isSending else { return }
 
-        await sendTest(
-            report: report,
-            recipient: recipient,
-            sleeperUserId: sleeperUserId
-        )
+        if selectedKind.isAIReview {
+            guard let report = selectedReport else { return }
+            await sendTest(
+                report: report,
+                recipient: recipient,
+                sleeperUserId: sleeperUserId
+            )
+        } else {
+            await sendTemplate(
+                kind: selectedKind,
+                recipient: recipient,
+                sleeperUserId: sleeperUserId
+            )
+        }
     }
 
     /// Explicit-args overload used by tests and any future call site
@@ -137,6 +152,7 @@ final class TestEmailStore {
         isSending = true
         lastError = nil
         lastResult = nil
+        lastTemplateResult = nil
         defer { isSending = false }
 
         do {
@@ -154,10 +170,39 @@ final class TestEmailStore {
         }
     }
 
+    /// Send a sample of a non-AI-Review template. Composes from
+    /// fixture data on the backend, so no stored report is needed.
+    func sendTemplate(
+        kind: TestEmailKind,
+        recipient: TestEmailRecipient,
+        sleeperUserId: String
+    ) async {
+        guard !isSending else { return }
+        isSending = true
+        lastError = nil
+        lastResult = nil
+        lastTemplateResult = nil
+        defer { isSending = false }
+
+        do {
+            let response = try await apiClient.sendTestEmailTemplate(
+                kind: kind.wireValue,
+                recipientSleeperUserId: recipient.userId
+            )
+            lastTemplateResult = response
+            if !sleeperUserId.isEmpty {
+                await loadRecentSends(sleeperUserId: sleeperUserId)
+            }
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
     /// Clear toast/result state — call when navigating away or
     /// before kicking off a fresh send.
     func reset() {
         lastResult = nil
+        lastTemplateResult = nil
         lastError = nil
     }
 }
