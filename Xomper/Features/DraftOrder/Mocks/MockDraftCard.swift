@@ -97,13 +97,21 @@ struct MockDraftCard: View {
 
             tableHeader
 
-            LazyVStack(alignment: .leading, spacing: XomperTheme.Spacing.xxs) {
-                ForEach(result.picks) { pick in
-                    EngineMockedPickRow(
-                        pick: pick,
-                        isMine: !pick.userId.isEmpty && pick.userId == myUserId,
-                        showsPersonalityChip: result.mode == .mixed
-                    )
+            // Grouped by round so the wall of 60 picks scans like the
+            // Live tab. Each round gets its own section header and a
+            // visual gap before the next round starts.
+            LazyVStack(alignment: .leading, spacing: XomperTheme.Spacing.sm) {
+                ForEach(picksByRound, id: \.round) { group in
+                    VStack(alignment: .leading, spacing: XomperTheme.Spacing.xxs) {
+                        roundSectionHeader(group.round)
+                        ForEach(group.picks) { pick in
+                            EngineMockedPickRow(
+                                pick: pick,
+                                isMine: !pick.userId.isEmpty && pick.userId == myUserId,
+                                showsPersonalityChip: result.mode == .mixed
+                            )
+                        }
+                    }
                 }
             }
 
@@ -131,6 +139,30 @@ struct MockDraftCard: View {
         .textCase(.uppercase)
         .tracking(0.5)
         .padding(.vertical, XomperTheme.Spacing.xxs)
+    }
+
+    /// Picks grouped into rounds, ascending. Built once per render
+    /// from `result.picks` (which is already in pick-order).
+    private var picksByRound: [(round: Int, picks: [EngineMockedPick])] {
+        let grouped = Dictionary(grouping: result.picks, by: { $0.round })
+        return grouped
+            .sorted { $0.key < $1.key }
+            .map { (round: $0.key, picks: $0.value.sorted { $0.pickNo < $1.pickNo }) }
+    }
+
+    private func roundSectionHeader(_ round: Int) -> some View {
+        HStack(spacing: XomperTheme.Spacing.xs) {
+            Text("Round \(round)")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(XomperColors.championGold)
+                .textCase(.uppercase)
+                .tracking(0.5)
+            Rectangle()
+                .fill(XomperColors.championGold.opacity(0.3))
+                .frame(height: 1)
+        }
+        .padding(.top, XomperTheme.Spacing.xs)
+        .padding(.bottom, 2)
     }
 
     private var footer: some View {
