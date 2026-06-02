@@ -24,31 +24,31 @@ struct DrawerView: View {
     /// Drawer sections (top-to-bottom). `Settings` is pinned separately to the
     /// bottom of the panel and is not in this list. `Admin` is appended at
     /// runtime when `isAdmin == true`.
+    /// Drawer is grouped into 4 sections (down from 6) plus pinned
+    /// Settings + optional Admin. Items kept stable so existing routes
+    /// and deep links don't break — this is purely a regrouping.
+    ///
+    /// - Play:    landing, standings, matchups, playoffs
+    /// - Team:    myTeam, taxiSquad, teamAnalyzer
+    /// - History: draftHistory, matchupHistory, worldCup, aiReview, archive
+    /// - League:  rulebook, scoring, leagueSettings, payouts, ruleProposals, draftOrder
     private var sections: [TraySection] {
         var out: [TraySection] = [
             TraySection(
-                title: "Home",
-                entries: [.landing]
+                title: "Play",
+                entries: [.landing, .standings, .matchups, .playoffs]
             ),
             TraySection(
-                title: "Compete",
-                entries: [.standings, .matchups, .playoffs]
-            ),
-            TraySection(
-                title: "History",
-                entries: [.draftHistory, .matchupHistory, .worldCup]
-            ),
-            TraySection(
-                title: "Roster",
+                title: "Team",
                 entries: [.myTeam, .taxiSquad, .teamAnalyzer]
             ),
             TraySection(
-                title: "League",
-                entries: [.payouts, .aiReview, .rulebook, .scoring, .leagueSettings, .ruleProposals, .draftOrder]
+                title: "History",
+                entries: [.draftHistory, .matchupHistory, .worldCup, .aiReview, .archive]
             ),
             TraySection(
-                title: "Archive",
-                entries: [.archive]
+                title: "League",
+                entries: [.rulebook, .scoring, .leagueSettings, .payouts, .ruleProposals, .draftOrder]
             ),
         ]
         if isAdmin {

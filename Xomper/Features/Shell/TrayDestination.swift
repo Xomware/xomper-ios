@@ -3,13 +3,11 @@ import Foundation
 /// Top-level navigation targets reachable from the slide-out drawer.
 /// `currentDestination` on `NavigationStore` is always one of these.
 ///
-/// Cases are grouped logically by the drawer sections:
-/// - Home:     landing
-/// - Compete:  standings, matchups, playoffs
-/// - History:  draftHistory, matchupHistory, worldCup
-/// - Roster:   myTeam, taxiSquad
-/// - Rules:    rulebook, scoring, leagueSettings, ruleProposals
-/// - Archive:  archive (hubs past standings + past matchups + past drafts)
+/// Cases are grouped logically by the drawer sections (see DrawerView):
+/// - Play:    landing, standings, matchups, playoffs
+/// - Team:    myTeam, taxiSquad, teamAnalyzer
+/// - History: draftHistory, matchupHistory, worldCup, aiReview, archive
+/// - League:  rulebook, scoring, leagueSettings, payouts, ruleProposals, draftOrder
 /// - Profile/Settings are surfaced via the profile card and pinned footer.
 enum TrayDestination: Hashable {
     case landing
