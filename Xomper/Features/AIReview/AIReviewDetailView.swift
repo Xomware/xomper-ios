@@ -87,15 +87,17 @@ struct AIReviewDetailView: View {
     /// to a plain Text if the markdown is malformed.
     private var renderedMarkdown: some View {
         Group {
+            let reflowed = MarkdownReflow.paragraphs(report.bodyMarkdown)
             if let attributed = try? AttributedString(
-                markdown: report.bodyMarkdown,
+                markdown: reflowed,
                 options: AttributedString.MarkdownParsingOptions(
                     interpretedSyntax: .full
                 )
             ) {
                 Text(attributed)
+                    .lineSpacing(4)
             } else {
-                Text(report.bodyMarkdown)
+                Text(reflowed)
             }
         }
     }

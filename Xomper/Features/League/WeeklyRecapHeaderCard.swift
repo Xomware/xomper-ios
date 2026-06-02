@@ -81,15 +81,17 @@ struct WeeklyRecapHeaderCard: View {
     /// AI-generated body always renders, even on parse failure.
     @ViewBuilder
     private var renderedMarkdown: some View {
+        let reflowed = MarkdownReflow.paragraphs(report.bodyMarkdown)
         if let attributed = try? AttributedString(
-            markdown: report.bodyMarkdown,
+            markdown: reflowed,
             options: AttributedString.MarkdownParsingOptions(
                 interpretedSyntax: .full
             )
         ) {
             Text(attributed)
+                .lineSpacing(4)
         } else {
-            Text(report.bodyMarkdown)
+            Text(reflowed)
         }
     }
 }

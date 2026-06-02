@@ -24,14 +24,19 @@ struct DrawerView: View {
     /// Drawer sections (top-to-bottom). `Settings` is pinned separately to the
     /// bottom of the panel and is not in this list. `Admin` is appended at
     /// runtime when `isAdmin == true`.
-    /// Drawer is grouped into 4 sections (down from 6) plus pinned
-    /// Settings + optional Admin. Items kept stable so existing routes
-    /// and deep links don't break — this is purely a regrouping.
+    /// Drawer sections plus pinned Settings + optional Admin.
     ///
     /// - Play:    landing, standings, matchups, playoffs
     /// - Team:    myTeam, taxiSquad, teamAnalyzer
-    /// - History: draftHistory, matchupHistory, worldCup, aiReview, archive
+    /// - History: draftHistory, matchupHistory, worldCup
     /// - League:  rulebook, scoring, leagueSettings, payouts, ruleProposals, draftOrder
+    /// - Admin:   aiReview (full archive), admin (only when isAdmin)
+    ///
+    /// `aiReview` is admin-only because it's the long-form archive
+    /// surface; regular users get AI content via the Landing card and
+    /// the inline recap on `DraftRecapView` / `MatchupsView`.
+    /// `archive` is dropped — its sub-destinations are reachable via
+    /// each season's per-tab past-history flow.
     private var sections: [TraySection] {
         var out: [TraySection] = [
             TraySection(
@@ -44,7 +49,7 @@ struct DrawerView: View {
             ),
             TraySection(
                 title: "History",
-                entries: [.draftHistory, .matchupHistory, .worldCup, .aiReview, .archive]
+                entries: [.draftHistory, .matchupHistory, .worldCup]
             ),
             TraySection(
                 title: "League",
@@ -52,7 +57,7 @@ struct DrawerView: View {
             ),
         ]
         if isAdmin {
-            out.append(TraySection(title: "Admin", entries: [.admin]))
+            out.append(TraySection(title: "Admin", entries: [.aiReview, .admin]))
         }
         return out
     }
