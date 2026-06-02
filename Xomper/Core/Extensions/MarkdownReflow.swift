@@ -25,28 +25,42 @@ enum MarkdownReflow {
 
         var out = raw
 
-        // 1. Detach a leading title from the body. The AI emits a bold
-        //    or plain header glued to the first sentence — e.g.
-        //    "2025 Rookie Draft RecapThe 2025 class…" or
-        //    "Week 17 Recap — 2025 — Championship + Final Standings🏆 CHAMPIONSHIP:…"
-        //    Look for a transition from a "Recap"/"Standings"-y token
-        //    directly into a capital letter or emoji.
+        // 1. Detach a leading title that's glued to the first sentence
+        //    (e.g. "2025 Rookie Draft RecapThe 2025 class…").
         out = out.replacingOccurrences(
-            of: #"(Recap|Standings|Summary)([A-Z🏆🥇🥈🥉⚡️])"#,
+            of: #"(Recap|Standings|Summary|Review)([A-Z🏆🥇🥈🥉⚡️])"#,
             with: "$1\n\n$2",
             options: .regularExpression
         )
 
-        // 2. Break before any bold section header followed by an em-dash
+        // 2. Pull every markdown heading onto its own line with
+        //    blank-line padding. AI prompts now ask for ##/### per
+        //    section but legacy stored content often jams the heading
+        //    inline with the previous paragraph.
+        out = out.replacingOccurrences(
+            of: #"\s*(#{1,3}\s+[^\n]+)"#,
+            with: "\n\n$1\n\n",
+            options: .regularExpression
+        )
+
+        // 3. Break before any bold section header followed by an em-dash
         //    intro, e.g. "**ktatich (Kyle)** — Picks 1.02…".
-        //    Allow a leading period to absorb the previous sentence end.
         out = out.replacingOccurrences(
             of: #"(?<=[\.\!\?\)])\s*(\*\*[^*]+\*\*\s*—)"#,
             with: "\n\n$1",
             options: .regularExpression
         )
 
-        // 3. Break before "Round N" / "Week N" / "Final ... standings"
+        // 4. Break before a NON-bold manager-style header pattern:
+        //    "Week 4.cfolk (Connor Folk) — Picks 1.01" lacks bold but
+        //    the `(<word>)\s*—\s*Picks?` shape is unambiguous.
+        out = out.replacingOccurrences(
+            of: #"(?<=[\.\!\?])([A-Za-z][A-Za-z0-9_]*\s*\([^)]+\)\s*—\s*Picks?\b)"#,
+            with: "\n\n$1",
+            options: .regularExpression
+        )
+
+        // 5. Break before "Round N" / "Week N" / "Final ... standings"
         //    when glued to a prior word.
         out = out.replacingOccurrences(
             of: #"(?<=[a-z\)\.])(\s*)((?:Round|Week)\s+\d+|Final[^.\n]{0,40}?standings)"#,
@@ -54,7 +68,17 @@ enum MarkdownReflow {
             options: .regularExpression
         )
 
-        // 4. Break before pick numbers that hug prior text:
+        // 6. Break before "Game by Game" / "Around the League" /
+        //    "Winner & Loser" / "Team-by-Team" / "Winners & Losers"
+        //    section markers even without a heading hash, so weekly
+        //    recaps that didn't emit a proper `##` still scan.
+        out = out.replacingOccurrences(
+            of: #"(?<=[a-z\)\.])(\s*)((?:Game by Game|Around the League|Winners? (?:& |and )Loser|Team-by-Team|Final 20\d\d standings)\b)"#,
+            with: "\n\n$2",
+            options: .regularExpression
+        )
+
+        // 7. Break before pick stems that hug prior text:
         //    "Connor's a hero.Pat Bryant 4.01" -> two paragraphs.
         out = out.replacingOccurrences(
             of: #"(?<=[\.\!\?])(?=[A-Z][a-zA-Z' ]+\s\d+\.\d{2}\b)"#,
@@ -62,14 +86,15 @@ enum MarkdownReflow {
             options: .regularExpression
         )
 
-        // 5. Normalize whitespace — collapse 3+ newlines and trim
-        //    trailing whitespace on each line so SwiftUI's
+        // 8. Normalize whitespace — collapse 3+ newlines and strip
+        //    leading whitespace on the result so SwiftUI's
         //    AttributedString(markdown:) sees clean input.
         out = out.replacingOccurrences(
             of: #"\n{3,}"#,
             with: "\n\n",
             options: .regularExpression
         )
+        out = out.trimmingCharacters(in: .whitespacesAndNewlines)
 
         return out
     }
