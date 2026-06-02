@@ -58,6 +58,8 @@ struct TestEmailView: View {
 
                 if let result = store.lastResult {
                     successToast(result)
+                } else if let templateResult = store.lastTemplateResult {
+                    templateSuccessToast(templateResult)
                 } else if let error = store.lastError {
                     errorToast(error)
                 }
@@ -79,14 +81,18 @@ struct TestEmailView: View {
                 Text("Test Email")
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(XomperColors.championGold)
-                Text("Send an existing AI Review report to one whitelisted user. Doesn't touch broadcast state.")
+                Text("Preview any email type against a single whitelisted user. AI Review kinds use a stored report; everything else uses fixture data.")
                     .font(.caption)
                     .foregroundStyle(XomperColors.textSecondary)
             }
 
+            kindPicker
+
             recipientPicker
 
-            reportPicker
+            if store.selectedKind.isAIReview {
+                reportPicker
+            }
         }
         .padding(XomperTheme.Spacing.md)
         .background(XomperColors.bgCard)
@@ -96,6 +102,49 @@ struct TestEmailView: View {
                 .strokeBorder(XomperColors.championGold.opacity(0.3), lineWidth: 1)
         )
         .padding(.horizontal, XomperTheme.Spacing.md)
+    }
+
+    // MARK: - Kind picker
+
+    private var kindPicker: some View {
+        VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
+            Text("Email type")
+                .font(.caption.weight(.bold))
+                .textCase(.uppercase)
+                .tracking(0.5)
+                .foregroundStyle(XomperColors.textMuted)
+
+            Menu {
+                ForEach(TestEmailKind.allCases) { kind in
+                    Button {
+                        store.selectedKind = kind
+                        store.reset()
+                    } label: {
+                        Label(kind.displayName, systemImage: kind.systemImage)
+                    }
+                }
+            } label: {
+                HStack {
+                    Image(systemName: store.selectedKind.systemImage)
+                        .font(.caption)
+                        .foregroundStyle(XomperColors.championGold)
+                    Text(store.selectedKind.displayName)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(XomperColors.textPrimary)
+                        .lineLimit(1)
+                    Spacer()
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(XomperColors.textMuted)
+                }
+                .padding(.horizontal, XomperTheme.Spacing.sm)
+                .padding(.vertical, XomperTheme.Spacing.xs)
+                .frame(minHeight: XomperTheme.minTouchTarget)
+                .background(XomperColors.bgDark)
+                .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
+            }
+            .disabled(store.isSending)
+        }
     }
 
     private var recipientPicker: some View {
@@ -259,7 +308,11 @@ struct TestEmailView: View {
     }
 
     private var canSend: Bool {
-        store.selectedRecipient != nil && store.selectedReport != nil && !store.isSending
+        guard !store.isSending, store.selectedRecipient != nil else { return false }
+        if store.selectedKind.isAIReview {
+            return store.selectedReport != nil
+        }
+        return true
     }
 
     // MARK: - Toasts
@@ -278,6 +331,33 @@ struct TestEmailView: View {
             Text("\(result.reportType) · \(result.reportPeriod) · template: \(result.template)")
                 .font(.caption2)
                 .foregroundStyle(XomperColors.textSecondary)
+        }
+        .padding(XomperTheme.Spacing.sm)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(XomperColors.bgCard)
+        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
+        .overlay(
+            RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md)
+                .strokeBorder(XomperColors.successGreen.opacity(0.5), lineWidth: 1)
+        )
+        .padding(.horizontal, XomperTheme.Spacing.md)
+    }
+
+    private func templateSuccessToast(_ result: TestEmailTemplateResponse) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("✓ Sent to \(result.recipientEmail)")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(XomperColors.successGreen)
+            if let messageId = result.messageId, !messageId.isEmpty {
+                Text("SES message: \(messageId)")
+                    .font(.caption2)
+                    .foregroundStyle(XomperColors.textMuted)
+                    .lineLimit(1)
+            }
+            Text("\(result.kind) · \(result.subject)")
+                .font(.caption2)
+                .foregroundStyle(XomperColors.textSecondary)
+                .lineLimit(2)
         }
         .padding(XomperTheme.Spacing.sm)
         .frame(maxWidth: .infinity, alignment: .leading)

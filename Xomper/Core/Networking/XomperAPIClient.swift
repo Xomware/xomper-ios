@@ -15,6 +15,7 @@ protocol XomperAPIClientProtocol: Sendable {
     func adminTestSend(sleeperUserId: String, email: String?, kind: String, channels: [String]) async throws -> AdminTestSendResponse
     func fetchTestEmailRecipients() async throws -> [TestEmailRecipient]
     func sendTestEmail(recipientSleeperUserId: String, reportId: String) async throws -> TestEmailResponse
+    func sendTestEmailTemplate(kind: String, recipientSleeperUserId: String) async throws -> TestEmailTemplateResponse
 
     // AI Review
     func fetchLatestAIReport(type: AIReportType) async throws -> AIReport?
@@ -308,6 +309,27 @@ struct TestEmailResponse: Codable, Sendable {
         case template
         case reportType = "report_type"
         case reportPeriod = "report_period"
+    }
+}
+
+/// Response from `POST /admin/email-test-template`. Mirrors
+/// `TestEmailResponse` but uses `kind` instead of report_type/period
+/// because the template path doesn't reference a stored report.
+struct TestEmailTemplateResponse: Codable, Sendable {
+    let kind: String
+    let recipientEmail: String
+    let recipientUserId: String
+    let messageId: String?
+    let sentAt: String
+    let subject: String
+
+    enum CodingKeys: String, CodingKey {
+        case kind
+        case recipientEmail = "recipient_email"
+        case recipientUserId = "recipient_user_id"
+        case messageId = "message_id"
+        case sentAt = "sent_at"
+        case subject
     }
 }
 
@@ -832,6 +854,23 @@ final class XomperAPIClient: XomperAPIClientProtocol {
             "report_id": reportId,
         ]
         return try await postDecoding("/admin/email-test", body: body)
+    }
+
+    /// Send a sample non-AI-Review email template to a single
+    /// whitelisted user. Used by the Test Email screen's kind picker
+    /// to preview transactional + cron emails (weekly_recap,
+    /// lineup_not_set, rule_*, taxi_*) with fixture data. The
+    /// production crons gate on NFL `season_type`, so this is the
+    /// only way to preview them in the offseason.
+    func sendTestEmailTemplate(
+        kind: String,
+        recipientSleeperUserId: String
+    ) async throws -> TestEmailTemplateResponse {
+        let body: [String: Any] = [
+            "kind": kind,
+            "recipient_sleeper_user_id": recipientSleeperUserId,
+        ]
+        return try await postDecoding("/admin/email-test-template", body: body)
     }
 
     // MARK: - AI Review
