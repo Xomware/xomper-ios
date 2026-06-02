@@ -16,6 +16,9 @@ struct LiveDraftView: View {
     var userStore: UserStore
     var nflStateStore: NflStateStore
 
+    /// Drives the live countdown in the header. SwiftUI's
+    /// `TimelineView(.periodic:)` re-evaluates every interval so we
+    /// don't need a manual Timer.
     var body: some View {
         Group {
             if historyStore.isLoadingUpcoming && historyStore.upcomingDraft == nil {
@@ -56,16 +59,21 @@ struct LiveDraftView: View {
             VStack(alignment: .leading, spacing: XomperTheme.Spacing.md) {
                 liveHeaderCard(draft: draft, totalPicks: totalPicks, firstPick: firstPick)
 
-                sectionHeader("Round 1 order (\(slots.count) slots)")
-                ForEach(slots, id: \.self) { slot in
-                    let team = teamsBySlot[slot]
-                    let isMine = team?.userId != nil && team?.userId == myUserId
-                    liveRow(
-                        slot: slot,
-                        team: team,
-                        isMine: isMine,
-                        pickDate: pickDate(firstPick: firstPick, pickNo: slot)
-                    )
+                ForEach(1...rounds, id: \.self) { round in
+                    sectionHeader("Round \(round)")
+                    ForEach(slots, id: \.self) { slot in
+                        let pickNo = (round - 1) * slots.count + slot
+                        let team = teamsBySlot[slot]
+                        let isMine = team?.userId != nil && team?.userId == myUserId
+                        liveRow(
+                            round: round,
+                            slot: slot,
+                            pickNo: pickNo,
+                            team: team,
+                            isMine: isMine,
+                            pickDate: pickDate(firstPick: firstPick, pickNo: pickNo)
+                        )
+                    }
                 }
             }
             .padding(.horizontal, XomperTheme.Spacing.md)
@@ -92,6 +100,11 @@ struct LiveDraftView: View {
                 Text("Starts \(formatted(firstPick))")
                     .font(.caption)
                     .foregroundStyle(XomperColors.textSecondary)
+                // Live countdown — re-evaluates every second via
+                // TimelineView so we don't manage our own Timer.
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    countdownLine(target: firstPick, now: context.date)
+                }
             } else {
                 Text("Slot order is locked. No start time set in Sleeper yet.")
                     .font(.caption)
@@ -115,12 +128,44 @@ struct LiveDraftView: View {
         )
     }
 
-    private func liveRow(slot: Int, team: UpcomingDraftTeam?, isMine: Bool, pickDate: Date?) -> some View {
+    /// "Starts in 34d 5h 12m 09s" / "Drafting now" once `target` passes.
+    @ViewBuilder
+    private func countdownLine(target: Date, now: Date) -> some View {
+        let remaining = target.timeIntervalSince(now)
+        if remaining <= 0 {
+            Text("Draft is live")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(XomperColors.championGold)
+                .monospacedDigit()
+        } else {
+            Text(formatRemaining(remaining))
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(XomperColors.championGold)
+                .monospacedDigit()
+        }
+    }
+
+    private func formatRemaining(_ seconds: TimeInterval) -> String {
+        let total = Int(seconds)
+        let days = total / 86400
+        let hours = (total % 86400) / 3600
+        let minutes = (total % 3600) / 60
+        let secs = total % 60
+        if days > 0 {
+            return String(format: "%dd %02dh %02dm %02ds until first pick", days, hours, minutes, secs)
+        } else if hours > 0 {
+            return String(format: "%dh %02dm %02ds until first pick", hours, minutes, secs)
+        } else {
+            return String(format: "%dm %02ds until first pick", minutes, secs)
+        }
+    }
+
+    private func liveRow(round: Int, slot: Int, pickNo: Int, team: UpcomingDraftTeam?, isMine: Bool, pickDate: Date?) -> some View {
         HStack(spacing: XomperTheme.Spacing.md) {
-            Text("\(slot)")
+            Text(String(format: "%d.%02d", round, slot))
                 .font(.title3.weight(.bold))
                 .foregroundStyle(isMine ? XomperColors.championGold : XomperColors.textSecondary)
-                .frame(width: 36, alignment: .leading)
+                .frame(width: 52, alignment: .leading)
                 .monospacedDigit()
 
             VStack(alignment: .leading, spacing: 2) {
@@ -129,12 +174,12 @@ struct LiveDraftView: View {
                     .foregroundStyle(XomperColors.textPrimary)
                     .lineLimit(1)
                 if let pickDate {
-                    Text("Pick #\(slot) · ~\(formattedShort(pickDate))")
+                    Text("Pick #\(pickNo) · ~\(formattedShort(pickDate))")
                         .font(.caption2)
                         .foregroundStyle(XomperColors.textMuted)
                         .monospacedDigit()
                 } else {
-                    Text("Pick #\(slot)")
+                    Text("Pick #\(pickNo)")
                         .font(.caption2)
                         .foregroundStyle(XomperColors.textMuted)
                         .monospacedDigit()
