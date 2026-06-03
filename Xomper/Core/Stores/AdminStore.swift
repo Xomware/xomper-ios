@@ -81,6 +81,19 @@ final class AdminStore {
     /// Driven by the override toggle + stepper on the weekly card.
     var weeklyWeekOverride: Int?
 
+    // MARK: - Phase 2 Week Preview trigger
+
+    /// Latest week-preview row, mirrors weeklyLatest.
+    private(set) var weekPreviewLatest: AIReport?
+    private(set) var isTriggeringWeekPreview = false
+    private(set) var weekPreviewError: Error?
+    private(set) var weekPreviewResult: AIReviewTriggerResponse?
+    var weekPreviewDryRun: Bool = true
+    /// When non-nil the trigger request includes an explicit `week`;
+    /// when nil the backend resolves the upcoming week from
+    /// `nfl_state.week`.
+    var weekPreviewWeekOverride: Int?
+
     // MARK: - F2 Email Previews
 
     /// In-memory store of rendered email previews per report type.
@@ -318,6 +331,55 @@ final class AdminStore {
         }
     }
 
+    // MARK: - Phase 2 Week Preview trigger
+
+    /// Fire the Wednesday Week Preview pipeline. Same shape as
+    /// `triggerWeekly` — optional week override, dry-run flag, force
+    /// flag. Updates `weekPreviewResult` + `weekPreviewError`. Reloads
+    /// `weekPreviewLatest` so the button label flips to "Regenerate
+    /// (force)" once a row exists for the resolved period.
+    @discardableResult
+    func triggerWeekPreview(
+        week: Int?,
+        dryRun: Bool,
+        force: Bool
+    ) async throws -> AIReviewTriggerResponse {
+        isTriggeringWeekPreview = true
+        weekPreviewError = nil
+        weekPreviewResult = nil
+        defer { isTriggeringWeekPreview = false }
+
+        do {
+            let response = try await apiClient.triggerWeekPreviewAIReview(
+                week: week,
+                dryRun: dryRun,
+                force: force
+            )
+            weekPreviewResult = response
+            if let previews = response.previews {
+                lastPreviewsByType[.weekPreview] = previews
+            }
+            await loadWeekPreviewLatest()
+            return response
+        } catch {
+            weekPreviewError = error
+            throw error
+        }
+    }
+
+    /// Refresh the most-recent week-preview row from
+    /// `/ai-reports/latest`. Idempotent — silent on failure (network
+    /// glitches surface as "no row" UX which is correct).
+    func loadWeekPreviewLatest() async {
+        do {
+            weekPreviewLatest = try await apiClient.fetchLatestAIReport(type: .weekPreview)
+        } catch {
+            // Silent — the trigger card surfaces errors via
+            // `weekPreviewError`; latest-row staleness isn't worth
+            // surfacing on its own.
+        }
+    }
+
     // MARK: - F2 Previews
 
     /// Drops the in-memory preview set for one report type. Used by
@@ -335,10 +397,11 @@ final class AdminStore {
     /// the call site.
     func latest(for reportType: AIReportType) -> AIReport? {
         switch reportType {
-        case .postDraft: return postDraftLatest
-        case .preseason: return preseasonLatest
-        case .weekly:    return weeklyLatest
-        case .mock:      return nil
+        case .postDraft:   return postDraftLatest
+        case .preseason:   return preseasonLatest
+        case .weekly:      return weeklyLatest
+        case .weekPreview: return weekPreviewLatest
+        case .mock:        return nil
         }
     }
 
@@ -367,10 +430,11 @@ final class AdminStore {
         // Refresh the affected latest so trigger card + preview view
         // pick up the flag change without a manual re-fetch.
         switch report.reportType {
-        case .postDraft: await loadPostDraftLatest()
-        case .preseason: await loadPreseasonLatest()
-        case .weekly:    await loadWeeklyLatest()
-        case .mock:      break
+        case .postDraft:   await loadPostDraftLatest()
+        case .preseason:   await loadPreseasonLatest()
+        case .weekly:      await loadWeeklyLatest()
+        case .weekPreview: await loadWeekPreviewLatest()
+        case .mock:        break
         }
         return response.metadata
     }

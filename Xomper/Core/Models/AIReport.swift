@@ -226,25 +226,28 @@ enum AIReportType: String, Codable, Sendable, CaseIterable, Hashable {
     case postDraft = "postDraft"
     case preseason = "preseason"
     case weekly = "weekly"
+    case weekPreview = "weekPreview"
     case mock = "mock"
 
     /// Display name used in chips and titles.
     var displayName: String {
         switch self {
-        case .postDraft: "Post-Draft"
-        case .preseason: "Preseason"
-        case .weekly:    "Weekly"
-        case .mock:      "Mock Draft"
+        case .postDraft:   "Post-Draft"
+        case .preseason:   "Preseason"
+        case .weekly:      "Weekly"
+        case .weekPreview: "Week Preview"
+        case .mock:        "Mock Draft"
         }
     }
 
     /// SF Symbol used as the chip glyph.
     var systemImage: String {
         switch self {
-        case .postDraft: "list.clipboard.fill"
-        case .preseason: "calendar"
-        case .weekly:    "sparkles"
-        case .mock:      "wand.and.stars"
+        case .postDraft:   "list.clipboard.fill"
+        case .preseason:   "calendar"
+        case .weekly:      "sparkles"
+        case .weekPreview: "calendar.badge.clock"
+        case .mock:        "wand.and.stars"
         }
     }
 
@@ -253,10 +256,11 @@ enum AIReportType: String, Codable, Sendable, CaseIterable, Hashable {
     /// per the F0 plan.
     var accentColor: Color {
         switch self {
-        case .postDraft: XomperColors.championGold
-        case .preseason: XomperColors.successGreen
-        case .weekly:    XomperColors.championGold
-        case .mock:      XomperColors.championGold
+        case .postDraft:   XomperColors.championGold
+        case .preseason:   XomperColors.successGreen
+        case .weekly:      XomperColors.championGold
+        case .weekPreview: XomperColors.errorRed
+        case .mock:        XomperColors.championGold
         }
     }
 }

@@ -25,6 +25,7 @@ protocol XomperAPIClientProtocol: Sendable {
     func triggerPostDraftAIReview(dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse
     func triggerPreseasonAIReview(dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse
     func triggerWeeklyAIReview(week: Int?, dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse
+    func triggerWeekPreviewAIReview(week: Int?, dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse
 
     // Admin: report metadata flags (F3)
     func setReportFlag(
@@ -1022,6 +1023,22 @@ final class XomperAPIClient: XomperAPIClientProtocol {
         let payload = WeeklyTriggerRequest(week: week, dryRun: dryRun, force: force)
         return try await postEncodableDecoding(
             "/admin/ai-review-weekly-trigger",
+            body: payload
+        )
+    }
+
+    /// Fire the Wednesday Week Preview newsletter pipeline manually.
+    /// Reuses the same wire shape as the weekly trigger — `week`
+    /// override + dryRun + force.
+    /// Backend route: `/admin/ai-review-week-preview-trigger`.
+    func triggerWeekPreviewAIReview(
+        week: Int?,
+        dryRun: Bool,
+        force: Bool
+    ) async throws -> AIReviewTriggerResponse {
+        let payload = WeeklyTriggerRequest(week: week, dryRun: dryRun, force: force)
+        return try await postEncodableDecoding(
+            "/admin/ai-review-week-preview-trigger",
             body: payload
         )
     }

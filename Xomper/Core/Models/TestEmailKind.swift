@@ -19,6 +19,7 @@ enum TestEmailKind: String, CaseIterable, Identifiable, Hashable {
     case aiReviewPreseason
     case aiReviewWeekly
     case weeklyRecap
+    case weekPreview
     case lineupNotSet
     case ruleProposed
     case ruleAccepted
@@ -59,6 +60,7 @@ enum TestEmailKind: String, CaseIterable, Identifiable, Hashable {
         case .aiReviewPreseason:  "ai_review_preseason"
         case .aiReviewWeekly:     "ai_review_weekly"
         case .weeklyRecap:        "weekly_recap"
+        case .weekPreview:        "week_preview"
         case .lineupNotSet:       "lineup_not_set"
         case .ruleProposed:       "rule_proposed"
         case .ruleAccepted:       "rule_accepted"
@@ -74,6 +76,7 @@ enum TestEmailKind: String, CaseIterable, Identifiable, Hashable {
         case .aiReviewPreseason:  "AI Review — Preseason"
         case .aiReviewWeekly:     "AI Review — Weekly Recap"
         case .weeklyRecap:        "Weekly Recap (non-AI)"
+        case .weekPreview:        "Week Preview (Wed newsletter)"
         case .lineupNotSet:       "Lineup Not Set"
         case .ruleProposed:       "Rule Proposed"
         case .ruleAccepted:       "Rule Accepted"
@@ -89,6 +92,8 @@ enum TestEmailKind: String, CaseIterable, Identifiable, Hashable {
             "sparkles"
         case .weeklyRecap, .lineupNotSet:
             "calendar.badge.exclamationmark"
+        case .weekPreview:
+            "calendar.badge.clock"
         case .ruleProposed, .ruleAccepted, .ruleDenied:
             "checkmark.bubble.fill"
         case .taxiStealLeague, .taxiStealOwner:

@@ -40,12 +40,14 @@ struct AIReviewSubScreen: View {
                 await store.loadPostDraftLatest()
                 await store.loadPreseasonLatest()
                 await store.loadWeeklyLatest()
+                await store.loadWeekPreviewLatest()
             }
             .refreshable {
                 await store.refresh(sleeperUserId: callerSleeperId)
                 await store.loadPostDraftLatest()
                 await store.loadPreseasonLatest()
                 await store.loadWeeklyLatest()
+                await store.loadWeekPreviewLatest()
             }
     }
 
@@ -67,6 +69,8 @@ struct AIReviewSubScreen: View {
                 preseasonTriggerCard
 
                 weeklyTriggerCard
+
+                weekPreviewTriggerCard
 
                 testSenderCard
 
@@ -573,6 +577,179 @@ struct AIReviewSubScreen: View {
             )
         } catch {
             // Error already surfaced via store.weeklyError.
+        }
+    }
+
+    // MARK: - Phase 2 Week Preview trigger
+
+    private var weekPreviewTriggerCard: some View {
+        VStack(alignment: .leading, spacing: XomperTheme.Spacing.sm) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Week Preview (Wed newsletter)")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(XomperColors.errorRed)
+                Text(weekPreviewStatusLine)
+                    .font(.caption)
+                    .foregroundStyle(XomperColors.textSecondary)
+            }
+
+            Toggle(isOn: $store.weekPreviewDryRun) {
+                Text("Dry run (admin-only delivery)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(XomperColors.textPrimary)
+            }
+            .toggleStyle(.switch)
+            .tint(XomperColors.errorRed)
+            .disabled(store.isTriggeringWeekPreview)
+
+            Toggle(isOn: weekPreviewOverrideEnabled) {
+                Text("Override week (default = upcoming)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(XomperColors.textPrimary)
+            }
+            .toggleStyle(.switch)
+            .tint(XomperColors.errorRed)
+            .disabled(store.isTriggeringWeekPreview)
+
+            if store.weekPreviewWeekOverride != nil {
+                Stepper(value: weekPreviewWeekBinding, in: 1...18) {
+                    HStack(spacing: XomperTheme.Spacing.xs) {
+                        Text("Week")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(XomperColors.textPrimary)
+                        Text("\(store.weekPreviewWeekOverride ?? 1)")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(XomperColors.errorRed)
+                            .monospacedDigit()
+                    }
+                }
+                .disabled(store.isTriggeringWeekPreview)
+            }
+
+            HStack(spacing: XomperTheme.Spacing.sm) {
+                Button {
+                    Task { await triggerWeekPreview(force: false) }
+                } label: {
+                    HStack(spacing: XomperTheme.Spacing.xs) {
+                        if store.isTriggeringWeekPreview {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                                .tint(XomperColors.bgDark)
+                        } else {
+                            Image(systemName: "calendar.badge.clock")
+                                .font(.caption2)
+                        }
+                        Text(weekPreviewPrimaryButtonLabel)
+                            .font(.caption.weight(.semibold))
+                    }
+                    .foregroundStyle(XomperColors.bgDark)
+                    .padding(.horizontal, XomperTheme.Spacing.sm)
+                    .padding(.vertical, XomperTheme.Spacing.xs)
+                    .frame(minHeight: 32)
+                    .background(XomperColors.errorRed)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.pressableCard)
+                .disabled(store.isTriggeringWeekPreview)
+
+                if store.weekPreviewLatest != nil {
+                    Button {
+                        Task { await triggerWeekPreview(force: true) }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.caption2)
+                            Text("Regenerate (force)")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .foregroundStyle(XomperColors.errorRed)
+                        .padding(.horizontal, XomperTheme.Spacing.sm)
+                        .padding(.vertical, XomperTheme.Spacing.xs)
+                        .frame(minHeight: 32)
+                        .overlay(
+                            Capsule()
+                                .strokeBorder(XomperColors.errorRed.opacity(0.6), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.pressableCard)
+                    .disabled(store.isTriggeringWeekPreview)
+                }
+
+                Spacer(minLength: 0)
+            }
+
+            if let result = store.weekPreviewResult {
+                Text(weekPreviewResultLine(result))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(XomperColors.successGreen)
+            } else if let error = store.weekPreviewError {
+                Text("✗ \(error.localizedDescription)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(XomperColors.errorRed)
+            }
+        }
+        .padding(XomperTheme.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(XomperColors.bgCard)
+        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
+        .overlay(
+            RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg)
+                .strokeBorder(XomperColors.errorRed.opacity(0.3), lineWidth: 1)
+        )
+    }
+
+    private var weekPreviewOverrideEnabled: Binding<Bool> {
+        Binding(
+            get: { store.weekPreviewWeekOverride != nil },
+            set: { newValue in
+                if newValue {
+                    if store.weekPreviewWeekOverride == nil {
+                        store.weekPreviewWeekOverride = 1
+                    }
+                } else {
+                    store.weekPreviewWeekOverride = nil
+                }
+            }
+        )
+    }
+
+    private var weekPreviewWeekBinding: Binding<Int> {
+        Binding(
+            get: { store.weekPreviewWeekOverride ?? 1 },
+            set: { store.weekPreviewWeekOverride = $0 }
+        )
+    }
+
+    private var weekPreviewStatusLine: String {
+        if let latest = store.weekPreviewLatest {
+            return "Last preview: \(latest.period) · \(formattedShortDate(latest.createdAt))"
+        }
+        return "No week-preview row yet — fires Wed 9am ET in production."
+    }
+
+    private var weekPreviewPrimaryButtonLabel: String {
+        if store.isTriggeringWeekPreview {
+            return "Firing…"
+        }
+        return store.weekPreviewLatest == nil ? "Generate" : "Regenerate"
+    }
+
+    private func weekPreviewResultLine(_ result: AIReviewTriggerResponse) -> String {
+        if result.dryRun {
+            return "✓ Dry run complete — delivered to admin only."
+        }
+        return "✓ Broadcast complete — \(result.deliveryCount) \(result.deliveryCount == 1 ? "email" : "emails") sent."
+    }
+
+    private func triggerWeekPreview(force: Bool) async {
+        do {
+            _ = try await store.triggerWeekPreview(
+                week: store.weekPreviewWeekOverride,
+                dryRun: store.weekPreviewDryRun,
+                force: force
+            )
+        } catch {
+            // Error already surfaced via store.weekPreviewError.
         }
     }
 
