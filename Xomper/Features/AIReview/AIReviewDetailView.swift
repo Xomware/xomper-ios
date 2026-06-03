@@ -37,7 +37,7 @@ struct AIReviewDetailView: View {
                     .monospacedDigit()
             }
 
-            Text(report.period)
+            Text(AIReportType.formattedPeriod(report.period))
                 .font(.title2.weight(.bold))
                 .foregroundStyle(XomperColors.textPrimary)
         }
@@ -82,24 +82,10 @@ struct AIReviewDetailView: View {
         .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
     }
 
-    /// Native iOS 17 `AttributedString(markdown:)` with full
-    /// interpreted syntax (headings, lists, bold, links). Falls back
-    /// to a plain Text if the markdown is malformed.
+    /// Hand-styled markdown renderer (blocks-based, mirrors email
+    /// styling). See `StyledMarkdownView`.
     private var renderedMarkdown: some View {
-        Group {
-            let reflowed = MarkdownReflow.paragraphs(report.bodyMarkdown)
-            if let attributed = try? AttributedString(
-                markdown: reflowed,
-                options: AttributedString.MarkdownParsingOptions(
-                    interpretedSyntax: .full
-                )
-            ) {
-                Text(attributed)
-                    .lineSpacing(4)
-            } else {
-                Text(reflowed)
-            }
-        }
+        StyledMarkdownView(markdown: report.bodyMarkdown)
     }
 
     // MARK: - Footer

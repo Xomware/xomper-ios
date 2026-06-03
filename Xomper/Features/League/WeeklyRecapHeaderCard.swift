@@ -63,7 +63,7 @@ struct WeeklyRecapHeaderCard: View {
                 .background(XomperColors.championGold)
                 .clipShape(Capsule())
 
-            Text(report.period)
+            Text(AIReportType.formattedPeriod(report.period))
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(XomperColors.championGold)
                 .monospacedDigit()
@@ -75,24 +75,8 @@ struct WeeklyRecapHeaderCard: View {
 
     // MARK: - Markdown
 
-    /// iOS 17 `AttributedString(markdown:)` with full interpreted
-    /// syntax (headings, lists, bold). Matches `DraftRecapView`. Falls
-    /// back to plain text if the markdown is malformed so the
-    /// AI-generated body always renders, even on parse failure.
-    @ViewBuilder
     private var renderedMarkdown: some View {
-        let reflowed = MarkdownReflow.paragraphs(report.bodyMarkdown)
-        if let attributed = try? AttributedString(
-            markdown: reflowed,
-            options: AttributedString.MarkdownParsingOptions(
-                interpretedSyntax: .full
-            )
-        ) {
-            Text(attributed)
-                .lineSpacing(4)
-        } else {
-            Text(reflowed)
-        }
+        StyledMarkdownView(markdown: report.bodyMarkdown)
     }
 }
 

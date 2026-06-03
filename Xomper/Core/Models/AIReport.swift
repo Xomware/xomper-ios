@@ -263,6 +263,19 @@ enum AIReportType: String, Codable, Sendable, CaseIterable, Hashable {
         case .mock:        XomperColors.championGold
         }
     }
+
+    /// Pretty-print a stored `period` string. Weekly periods come in
+    /// as `2025W17` — render them as `Week 17 — 2025` so the inline
+    /// recap headers are readable instead of looking like a SKU.
+    /// Other types just return the period unchanged (post-draft is
+    /// already a clean year like "2025").
+    static func formattedPeriod(_ period: String) -> String {
+        guard let wRange = period.range(of: "W") else { return period }
+        let season = String(period[period.startIndex..<wRange.lowerBound])
+        let weekRaw = String(period[wRange.upperBound...])
+        guard let week = Int(weekRaw), !season.isEmpty else { return period }
+        return "Week \(week) — \(season)"
+    }
 }
 
 // MARK: - Trigger Response

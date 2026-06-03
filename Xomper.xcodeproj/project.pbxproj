@@ -16,6 +16,7 @@
 		08251EFB3181B634553CDCE1 /* TaxiSquadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57940AEB84889A20016648F2 /* TaxiSquadView.swift */; };
 		087C52AE54EBC054E36E696B /* CronSettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B9527EA5CA26FE5197FCF5 /* CronSettingsStore.swift */; };
 		0905D6C3E336782530E5F4B4 /* LogLevel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99981051F598B42534DE81CB /* LogLevel.swift */; };
+		095CA7262F4A1EE9C03CEBF1 /* StyledMarkdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E41FCF228AB87F9E3417ECB6 /* StyledMarkdownView.swift */; };
 		0A87A5226863819FF3884F6C /* AnnouncementsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DCF4387BA57375E04A8940B /* AnnouncementsCard.swift */; };
 		0C2B77E0A46ECE55AE8CE46F /* DivisionBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B670A3A0762D22FB3202E1E /* DivisionBadge.swift */; };
 		10F252D05E75C513A5780FD8 /* EngineMockedPick.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16CD7928EAED8A9ADA1C683B /* EngineMockedPick.swift */; };
@@ -397,6 +398,7 @@
 		E1A497DF9DD9066BD24A1E19 /* TraySection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TraySection.swift; sourceTree = "<group>"; };
 		E1E5A60EE78F668F02CF63C0 /* NflState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NflState.swift; sourceTree = "<group>"; };
 		E257076F7FE641947D1DC978 /* AdminView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminView.swift; sourceTree = "<group>"; };
+		E41FCF228AB87F9E3417ECB6 /* StyledMarkdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyledMarkdownView.swift; sourceTree = "<group>"; };
 		E6A47FD1CF3BE7AE0B940DEC /* StandingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingsView.swift; sourceTree = "<group>"; };
 		E70E04168BDBA7D3372BB605 /* TrayDestination.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrayDestination.swift; sourceTree = "<group>"; };
 		E767CD5492176E84C2092B0F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -805,6 +807,7 @@
 				669A80C2A9F46A0C4612388C /* Double+Formatting.swift */,
 				6504EE31A645398C41BC2ED1 /* EnvironmentValues+Season.swift */,
 				D24B1B312AA1DD24D8453822 /* MarkdownReflow.swift */,
+				E41FCF228AB87F9E3417ECB6 /* StyledMarkdownView.swift */,
 				F2452A5AEC270BE14CC085E1 /* URL+Sleeper.swift */,
 			);
 			path = Extensions;
@@ -1189,6 +1192,7 @@
 				B48B9F6061A67CFC74A096CC /* StandingsStore.swift in Sources */,
 				7607DB7C775FCCC3B7C3377B /* StandingsTeam.swift in Sources */,
 				98F895FBCECB23325658339C /* StandingsView.swift in Sources */,
+				095CA7262F4A1EE9C03CEBF1 /* StyledMarkdownView.swift in Sources */,
 				BDD14CA33B905F7A31910B1D /* SupabaseManager.swift in Sources */,
 				F783C9073E40497F1D4BA48D /* TablesSubScreenView.swift in Sources */,
 				1D74425C19EE5C00589214C3 /* TaxiSquadPlayer.swift in Sources */,
