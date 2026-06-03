@@ -62,10 +62,11 @@ struct AIReviewPreviewView: View {
 
     private var isTriggerInFlight: Bool {
         switch reportType {
-        case .postDraft: return adminStore.isTriggeringPostDraft
-        case .preseason: return adminStore.isTriggeringPreseason
-        case .weekly:    return adminStore.isTriggeringWeekly
-        case .mock:      return false
+        case .postDraft:   return adminStore.isTriggeringPostDraft
+        case .preseason:   return adminStore.isTriggeringPreseason
+        case .weekly:      return adminStore.isTriggeringWeekly
+        case .weekPreview: return adminStore.isTriggeringWeekPreview
+        case .mock:        return false
         }
     }
 
@@ -315,6 +316,12 @@ struct AIReviewPreviewView: View {
             case .weekly:
                 _ = try await adminStore.triggerWeekly(
                     week: adminStore.weeklyWeekOverride,
+                    dryRun: false,
+                    force: true
+                )
+            case .weekPreview:
+                _ = try await adminStore.triggerWeekPreview(
+                    week: adminStore.weekPreviewWeekOverride,
                     dryRun: false,
                     force: true
                 )
