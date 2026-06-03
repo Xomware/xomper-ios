@@ -97,7 +97,7 @@ struct DraftRecapView: View {
     private func headerCard(_ report: AIReport) -> some View {
         VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
             HStack(spacing: XomperTheme.Spacing.xs) {
-                Text("RECAP")
+                Text("DRAFT RECAP")
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(XomperColors.bgDark)
                     .padding(.horizontal, XomperTheme.Spacing.xs)
@@ -107,6 +107,7 @@ struct DraftRecapView: View {
                 Text(report.period)
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(XomperColors.championGold)
+                    .monospacedDigit()
                 Spacer()
                 Text(formattedDate(report.createdAt))
                     .font(.caption2.weight(.semibold))
@@ -141,20 +142,8 @@ struct DraftRecapView: View {
     /// iOS 17 `AttributedString(markdown:)` with full interpreted
     /// syntax (headings, lists, bold). Falls back to plain text if
     /// the markdown is malformed.
-    @ViewBuilder
     private func renderedMarkdown(_ report: AIReport) -> some View {
-        let reflowed = MarkdownReflow.paragraphs(report.bodyMarkdown)
-        if let attributed = try? AttributedString(
-            markdown: reflowed,
-            options: AttributedString.MarkdownParsingOptions(
-                interpretedSyntax: .full
-            )
-        ) {
-            Text(attributed)
-                .lineSpacing(4)
-        } else {
-            Text(reflowed)
-        }
+        StyledMarkdownView(markdown: report.bodyMarkdown)
     }
 
     // MARK: - Helpers

@@ -26,30 +26,26 @@ struct DrawerView: View {
     /// runtime when `isAdmin == true`.
     /// Drawer sections plus pinned Settings + optional Admin.
     ///
-    /// - Play:    landing, standings, matchups, playoffs
+    /// - Play:    landing, standings, matchups, playoffs, draftHistory, worldCup
     /// - Team:    myTeam, taxiSquad, teamAnalyzer
-    /// - History: draftHistory, matchupHistory, worldCup
     /// - League:  rulebook, scoring, leagueSettings, payouts, ruleProposals, draftOrder
     /// - Admin:   aiReview (full archive), admin (only when isAdmin)
     ///
-    /// `aiReview` is admin-only because it's the long-form archive
-    /// surface; regular users get AI content via the Landing card and
-    /// the inline recap on `DraftRecapView` / `MatchupsView`.
-    /// `archive` is dropped — its sub-destinations are reachable via
-    /// each season's per-tab past-history flow.
+    /// The old "History" section was dropped — `matchupHistory` is
+    /// already reachable from `MatchupsView` (per-season chip), so a
+    /// dedicated tray entry was redundant. Draft + World Cup moved
+    /// into Play since both are active surfaces, not archive flows.
+    /// `archive` was already dropped — its sub-destinations are
+    /// reachable via each season's per-tab past-history flow.
     private var sections: [TraySection] {
         var out: [TraySection] = [
             TraySection(
                 title: "Play",
-                entries: [.landing, .standings, .matchups, .playoffs]
+                entries: [.landing, .standings, .matchups, .playoffs, .draftHistory, .worldCup]
             ),
             TraySection(
                 title: "Team",
                 entries: [.myTeam, .taxiSquad, .teamAnalyzer]
-            ),
-            TraySection(
-                title: "History",
-                entries: [.draftHistory, .matchupHistory, .worldCup]
             ),
             TraySection(
                 title: "League",
