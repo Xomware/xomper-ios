@@ -6,9 +6,10 @@ import SwiftUI
 /// AI-generated weekly content — the per-matchup blurbs that sit under
 /// each matchup card stay in place as a secondary detail surface.
 ///
-/// Collapsible via `DisclosureGroup` (default expanded) so users can
-/// hide a long recap after reading without scrolling past it on every
-/// expand.
+/// Collapsible via `DisclosureGroup` (default collapsed) so the
+/// expanded-week view doesn't drop a wall of recap markdown above
+/// the actual matchup cards — the cards are what most users came
+/// for. Tap to reveal the full recap.
 ///
 /// Visual treatment mirrors `DraftRecapView.headerCard` +
 /// `bodyCard` rolled into a single card: gold "WEEKLY RECAP" pill +
@@ -18,7 +19,7 @@ import SwiftUI
 struct WeeklyRecapHeaderCard: View {
     let report: AIReport
 
-    @State private var isExpanded: Bool = true
+    @State private var isExpanded: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
