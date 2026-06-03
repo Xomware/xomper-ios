@@ -55,6 +55,11 @@ struct MainShell: View {
     /// public-read array the Landing card observes — saves a refetch
     /// after a successful save.
     @State private var announcementsStore = AnnouncementsStore()
+    /// Owns the Trade Analyzer's builder state so the My Team Trades
+    /// tab can preload a `RecommendedTrade` before the user lands on
+    /// the Analyzer screen. Lives at the shell so the preload survives
+    /// tray destination switches.
+    @State private var tradeController = TradeAnalyzerController()
 
     // MARK: - Body
 
@@ -229,7 +234,8 @@ struct MainShell: View {
                     leagueStore: leagueStore,
                     playerStore: playerStore,
                     authStore: authStore,
-                    valuesStore: valuesStore
+                    valuesStore: valuesStore,
+                    tradeController: tradeController
                 )
 
             case .payouts:
