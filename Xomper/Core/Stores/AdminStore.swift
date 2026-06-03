@@ -93,6 +93,10 @@ final class AdminStore {
     /// when nil the backend resolves the upcoming week from
     /// `nfl_state.week`.
     var weekPreviewWeekOverride: Int?
+    /// When > 0, the trigger walks previous_league_id N times AND
+    /// bypasses the season_type gate. Lets admin fire the live
+    /// pipeline against last year's data while in offseason.
+    var weekPreviewSeasonsBack: Int = 0
 
     // MARK: - F2 Email Previews
 
@@ -342,7 +346,8 @@ final class AdminStore {
     func triggerWeekPreview(
         week: Int?,
         dryRun: Bool,
-        force: Bool
+        force: Bool,
+        seasonsBack: Int? = nil
     ) async throws -> AIReviewTriggerResponse {
         isTriggeringWeekPreview = true
         weekPreviewError = nil
@@ -353,7 +358,8 @@ final class AdminStore {
             let response = try await apiClient.triggerWeekPreviewAIReview(
                 week: week,
                 dryRun: dryRun,
-                force: force
+                force: force,
+                seasonsBack: seasonsBack
             )
             weekPreviewResult = response
             if let previews = response.previews {

@@ -602,6 +602,15 @@ struct AIReviewSubScreen: View {
             .tint(XomperColors.errorRed)
             .disabled(store.isTriggeringWeekPreview)
 
+            Toggle(isOn: weekPreviewLastSeasonBinding) {
+                Text("Use last season's data (offseason preview)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(XomperColors.textPrimary)
+            }
+            .toggleStyle(.switch)
+            .tint(XomperColors.errorRed)
+            .disabled(store.isTriggeringWeekPreview)
+
             Toggle(isOn: weekPreviewOverrideEnabled) {
                 Text("Override week (default = upcoming)")
                     .font(.caption.weight(.semibold))
@@ -720,6 +729,18 @@ struct AIReviewSubScreen: View {
         )
     }
 
+    /// One-step "use last season" toggle that maps onto
+    /// `seasonsBack`. 0 = current, 1 = last. Multi-season backfill
+    /// isn't needed yet — easy to extend later.
+    private var weekPreviewLastSeasonBinding: Binding<Bool> {
+        Binding(
+            get: { store.weekPreviewSeasonsBack > 0 },
+            set: { newValue in
+                store.weekPreviewSeasonsBack = newValue ? 1 : 0
+            }
+        )
+    }
+
     private var weekPreviewStatusLine: String {
         if let latest = store.weekPreviewLatest {
             return "Last preview: \(latest.period) · \(formattedShortDate(latest.createdAt))"
@@ -743,10 +764,15 @@ struct AIReviewSubScreen: View {
 
     private func triggerWeekPreview(force: Bool) async {
         do {
+            // Send seasons_back only when > 0 so a clean current-season
+            // call leaves the key omitted entirely (backend default
+            // path is sturdier that way).
+            let sb: Int? = store.weekPreviewSeasonsBack > 0 ? store.weekPreviewSeasonsBack : nil
             _ = try await store.triggerWeekPreview(
                 week: store.weekPreviewWeekOverride,
                 dryRun: store.weekPreviewDryRun,
-                force: force
+                force: force,
+                seasonsBack: sb
             )
         } catch {
             // Error already surfaced via store.weekPreviewError.
