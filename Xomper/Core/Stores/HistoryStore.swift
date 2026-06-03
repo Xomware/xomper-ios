@@ -35,6 +35,14 @@ final class HistoryStore {
     /// cells light up as picks come in.
     private(set) var upcomingPicks: [DraftPick] = []
 
+    /// Traded picks for the home league (filtered to the upcoming
+    /// season at the call site). Sourced from Sleeper's
+    /// `/league/{id}/traded_picks` — each row records the original
+    /// roster owner plus the current owner after any chain of trades.
+    /// Used by Live + upcoming-draft views to override the slot→team
+    /// mapping per round so the board reflects who actually picks.
+    private(set) var upcomingTradedPicks: [TradedPick] = []
+
     // MARK: - Derived
 
     var availableMatchupSeasons: [String] {
@@ -489,16 +497,23 @@ final class HistoryStore {
                 upcomingLeague = nil
                 upcomingRosters = []
                 upcomingUsers = []
+                upcomingTradedPicks = []
                 return
             }
 
-            async let draftsTask = apiClient.fetchDrafts(league.leagueId)
-            async let usersTask = apiClient.fetchLeagueUsers(league.leagueId)
+            async let draftsTask  = apiClient.fetchDrafts(league.leagueId)
+            async let usersTask   = apiClient.fetchLeagueUsers(league.leagueId)
             async let rostersTask = apiClient.fetchLeagueRosters(league.leagueId)
+            // Traded picks come from the league endpoint (Sleeper
+            // groups by league, not by draft). Soft-fail: leagues
+            // with no trades return [], and a transient error here
+            // shouldn't block the rest of the board from rendering.
+            async let tradedTask  = (try? apiClient.fetchTradedPicks(league.leagueId)) ?? []
 
-            let drafts = try await draftsTask
-            let users = try await usersTask
-            let rosters = try await rostersTask
+            let drafts        = try await draftsTask
+            let users         = try await usersTask
+            let rosters       = try await rostersTask
+            let tradedPicks   = await tradedTask
 
             // Most leagues have one draft per season; if there are
             // multiple, prefer drafting > pre_draft > complete to
@@ -508,10 +523,11 @@ final class HistoryStore {
                 (priority[$0.status] ?? 99) < (priority[$1.status] ?? 99)
             }
 
-            upcomingLeague = league
-            upcomingUsers = users
-            upcomingRosters = rosters
-            upcomingDraft = sortedDrafts.first
+            upcomingLeague       = league
+            upcomingUsers        = users
+            upcomingRosters      = rosters
+            upcomingDraft        = sortedDrafts.first
+            upcomingTradedPicks  = tradedPicks
         } catch {
             upcomingError = error
         }
@@ -530,6 +546,7 @@ final class HistoryStore {
         upcomingLeague = nil
         upcomingRosters = []
         upcomingUsers = []
+        upcomingTradedPicks = []
         upcomingError = nil
     }
 
