@@ -351,7 +351,13 @@ struct MainShell: View {
                 team: team,
                 roster: roster,
                 league: league,
-                playerStore: playerStore
+                playerStore: playerStore,
+                leagueStore: leagueStore,
+                valuesStore: valuesStore,
+                authStore: authStore,
+                navStore: navStore,
+                router: router,
+                tradeController: tradeController
             )
         } else {
             EmptyStateView(
@@ -413,7 +419,13 @@ struct MainShell: View {
                         team: team,
                         roster: roster,
                         league: league,
-                        playerStore: playerStore
+                        playerStore: playerStore,
+                        leagueStore: leagueStore,
+                        valuesStore: valuesStore,
+                        authStore: authStore,
+                        navStore: navStore,
+                        router: router,
+                        tradeController: tradeController
                     )
                 } else {
                     EmptyStateView(icon: "person.3.fill", title: "Team Not Found", message: nil)

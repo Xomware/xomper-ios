@@ -5,9 +5,22 @@ struct TeamView: View {
     let roster: Roster
     let league: League
     let playerStore: PlayerStore
+    /// Shared stores added to power the Strengths + Trades tabs and
+    /// the Quick Hitters strip. Quick Hitters needs dynasty values
+    /// for the totalValue tile; Trades tab needs the controller to
+    /// preload a recommendation before deep-linking into the Analyzer.
+    let leagueStore: LeagueStore
+    let valuesStore: PlayerValuesStore
+    let authStore: AuthStore
+    let navStore: NavigationStore
+    let router: AppRouter
+    let tradeController: TradeAnalyzerController
 
     @State private var selectedPlayer: Player?
     @State private var isRefreshing = false
+    /// Active sub-section. Defaults to `.roster` — it's the
+    /// highest-traffic surface and matches today's behavior.
+    @State private var activeSection: TeamSection = .roster
 
     private var rosterPositions: [String] {
         league.rosterPositions ?? []
@@ -22,45 +35,44 @@ struct TeamView: View {
             VStack(spacing: XomperTheme.Spacing.lg) {
                 teamHeader
 
-                if !hasPlayers && (playerStore.isLoading || isRefreshing) {
-                    LoadingView(message: "Loading players...")
-                        .frame(height: 200)
-                } else if !hasPlayers {
-                    VStack(spacing: XomperTheme.Spacing.md) {
-                        EmptyStateView(
-                            icon: "arrow.clockwise",
-                            title: "Players Not Loaded",
-                            message: "Player data hasn't loaded yet."
-                        )
-                        Button {
-                            Task { await refreshRoster() }
-                        } label: {
-                            Label("Retry", systemImage: "arrow.clockwise")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(XomperColors.bgDark)
-                                .padding(.horizontal, XomperTheme.Spacing.lg)
-                                .padding(.vertical, XomperTheme.Spacing.sm)
-                                .background(XomperColors.championGold)
-                                .clipShape(Capsule())
+                // Quick Hitters surfaces six at-a-glance stats above
+                // the section picker. Hidden until both player data
+                // and dynasty values are loaded — otherwise tiles
+                // would show "0" placeholders.
+                if hasPlayers, valuesStore.hasValues {
+                    QuickHittersStrip(
+                        data: quickHittersData(),
+                        onTapStrength: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                activeSection = .strengths
+                            }
                         }
-                        .accessibilityLabel("Retry loading players")
-                    }
-                } else {
-                    startersSection
-                    benchSection
-                    taxiSection
-                    irSection
+                    )
+                }
+
+                sectionPicker
+
+                switch activeSection {
+                case .roster:
+                    rosterContent
+                case .strengths:
+                    strengthsContent
+                case .trades:
+                    tradesContent
                 }
             }
             .padding(.horizontal, XomperTheme.Spacing.md)
             .padding(.bottom, XomperTheme.Spacing.xl)
         }
         .refreshable {
-            await refreshRoster()
+            await refreshAll()
         }
         .task {
             if !hasPlayers {
                 await playerStore.loadPlayers()
+            }
+            if !valuesStore.hasValues {
+                await valuesStore.loadValues()
             }
         }
         .background(XomperColors.bgDark)
@@ -69,6 +81,146 @@ struct TeamView: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
+    }
+
+    // MARK: - Section picker
+
+    private var sectionPicker: some View {
+        Picker("Section", selection: $activeSection) {
+            ForEach(TeamSection.allCases) { section in
+                Text(section.label).tag(section)
+            }
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal, XomperTheme.Spacing.xs)
+    }
+
+    // MARK: - Roster section content
+
+    @ViewBuilder
+    private var rosterContent: some View {
+        if !hasPlayers && (playerStore.isLoading || isRefreshing) {
+            LoadingView(message: "Loading players...")
+                .frame(height: 200)
+        } else if !hasPlayers {
+            VStack(spacing: XomperTheme.Spacing.md) {
+                EmptyStateView(
+                    icon: "arrow.clockwise",
+                    title: "Players Not Loaded",
+                    message: "Player data hasn't loaded yet."
+                )
+                Button {
+                    Task { await refreshAll() }
+                } label: {
+                    Label("Retry", systemImage: "arrow.clockwise")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(XomperColors.bgDark)
+                        .padding(.horizontal, XomperTheme.Spacing.lg)
+                        .padding(.vertical, XomperTheme.Spacing.sm)
+                        .background(XomperColors.championGold)
+                        .clipShape(Capsule())
+                }
+                .accessibilityLabel("Retry loading players")
+            }
+        } else {
+            startersSection
+            benchSection
+            taxiSection
+            irSection
+        }
+    }
+
+    // MARK: - Strengths section content
+
+    @ViewBuilder
+    private var strengthsContent: some View {
+        if !valuesStore.hasValues && valuesStore.isLoading {
+            LoadingView(message: "Loading player values…")
+                .frame(height: 200)
+        } else if let my = myAnalysis() {
+            VStack(spacing: XomperTheme.Spacing.lg) {
+                HexagonChartView(
+                    primary: my.hexAxes,
+                    comparison: nil,
+                    leagueAverage: leagueAverages(),
+                    axisMaxes: axisMaxes()
+                )
+                .frame(maxWidth: .infinity)
+
+                PositionBreakdownCard(
+                    my: my,
+                    opp: nil,
+                    averages: leagueAverages(),
+                    maxes: axisMaxes()
+                )
+            }
+        } else {
+            EmptyStateView(
+                icon: "chart.pie",
+                title: "Strengths Unavailable",
+                message: "Couldn't compute your team's strength profile yet. Pull to refresh."
+            )
+        }
+    }
+
+    // MARK: - Trades section content
+
+    @ViewBuilder
+    private var tradesContent: some View {
+        if !valuesStore.hasValues && valuesStore.isLoading {
+            LoadingView(message: "Loading player values…")
+                .frame(height: 200)
+        } else if let my = myAnalysis() {
+            let recs = RecommendedTradeBuilder.recommend(
+                myAnalysis: my,
+                analyses: allAnalyses(),
+                rosters: leagueStore.myLeagueRosters,
+                playerStore: playerStore,
+                valuesStore: valuesStore
+            )
+            if recs.isEmpty {
+                EmptyStateView(
+                    icon: "arrow.left.arrow.right.circle",
+                    title: "No Recommendations",
+                    message: "We didn't find any fair-value swaps that improve your weak positions right now. Check back after your next move."
+                )
+            } else {
+                VStack(spacing: XomperTheme.Spacing.md) {
+                    Text("Tap a recommendation to open it in the Trade Analyzer.")
+                        .font(.caption)
+                        .foregroundStyle(XomperColors.textMuted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, XomperTheme.Spacing.xs)
+
+                    ForEach(recs) { rec in
+                        Button {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            tradeController.preload(rec)
+                            navStore.select(.teamAnalyzer, router: router)
+                        } label: {
+                            RecommendedTradeCard(rec)
+                        }
+                        .buttonStyle(.pressableCard)
+                    }
+                }
+            }
+        } else {
+            EmptyStateView(
+                icon: "arrow.left.arrow.right.circle",
+                title: "Trades Unavailable",
+                message: "Couldn't compute trade recommendations yet. Pull to refresh."
+            )
+        }
+    }
+
+    // MARK: - Refresh
+
+    private func refreshAll() async {
+        isRefreshing = true
+        defer { isRefreshing = false }
+        async let players: () = playerStore.loadPlayers()
+        async let values:  () = valuesStore.loadValues(forceRefresh: true)
+        _ = await (players, values)
     }
 }
 
@@ -309,13 +461,172 @@ private extension TeamView {
     }
 }
 
-// MARK: - Refresh
+// MARK: - Analyses + Quick Hitters builders
 
 private extension TeamView {
-    func refreshRoster() async {
-        isRefreshing = true
-        await playerStore.loadPlayers()
-        isRefreshing = false
+
+    /// Build per-team analyses once. Cheap enough to re-run per body
+    /// invocation — matches `TeamAnalyzerView.content`'s pattern.
+    /// Returns an empty array when prerequisites haven't loaded.
+    func allAnalyses() -> [TeamAnalysis] {
+        guard !leagueStore.myLeagueRosters.isEmpty, valuesStore.hasValues else {
+            return []
+        }
+        return TeamAnalysisBuilder.build(
+            rosters: leagueStore.myLeagueRosters,
+            users: leagueStore.myLeagueUsers,
+            playerStore: playerStore,
+            valuesStore: valuesStore
+        )
+    }
+
+    /// My team's analysis. Falls back to the first analysis if the
+    /// signed-in user isn't owner of any roster (shouldn't happen in
+    /// the home league, but defensive).
+    func myAnalysis() -> TeamAnalysis? {
+        let analyses = allAnalyses()
+        guard let myUserId = authStore.sleeperUserId else { return analyses.first }
+        return analyses.first { $0.userId == myUserId } ?? analyses.first
+    }
+
+    func axisMaxes() -> [String: Int] {
+        TeamAnalysisBuilder.axisMaxes(allAnalyses())
+    }
+
+    func leagueAverages() -> [TeamAnalysis.HexAxis] {
+        TeamAnalysisBuilder.leagueAverageAxes(allAnalyses())
+    }
+
+    /// Builds the Quick Hitters payload from `team`, the cached
+    /// analyses, and `leagueStore.myLeagueRosters`. Safe to call when
+    /// analyses are empty — the strength tiles fall back to a "—"
+    /// placeholder.
+    func quickHittersData() -> QuickHittersData {
+        let analyses = allAnalyses()
+        let mine = analyses.first { $0.userId == authStore.sleeperUserId } ?? analyses.first
+        let averages = TeamAnalysisBuilder.leagueAverageAxes(analyses)
+
+        // Record + streak. The streak tile coloring matches the
+        // existing teamHeader's `streakBadge`.
+        let recordStr: String
+        if team.ties > 0 {
+            recordStr = "\(team.wins)-\(team.losses)-\(team.ties)"
+        } else {
+            recordStr = "\(team.wins)-\(team.losses)"
+        }
+        let streakLabel = team.streak.displayString
+        let streakAccent: Color? = {
+            switch team.streak.type {
+            case .win:  return XomperColors.successGreen
+            case .loss: return XomperColors.errorRed
+            case .none: return nil
+            }
+        }()
+
+        // League rank ordinal.
+        let rank = team.leagueRank
+        let rankStr = "\(rank)\(ordinalSuffix(rank))"
+        let isTop3 = rank > 0 && rank <= 3
+
+        // Dynasty total + delta vs league mean.
+        let total = mine?.totalValue ?? 0
+        let totalDisplay = formatThousands(total)
+        let totalDelta: Int? = {
+            guard !analyses.isEmpty else { return nil }
+            let mean = analyses.map(\.totalValue).reduce(0, +) / max(analyses.count, 1)
+            return total - mean
+        }()
+
+        // Season FPTS straight from standings.
+        let fptsDisplay = formatFpts(team.fpts)
+
+        // Best / worst axis by ratio to league average.
+        let (bestLabel, weakestLabel) = bestAndWeakest(
+            for: mine?.hexAxes ?? [],
+            averages: averages
+        )
+
+        return QuickHittersData(
+            record: recordStr,
+            streakLabel: streakLabel,
+            streakAccent: streakAccent,
+            rankDisplay: rankStr,
+            rankIsTop3: isTop3,
+            totalValueDisplay: totalDisplay,
+            totalValueDelta: totalDelta,
+            fptsDisplay: fptsDisplay,
+            bestPosition: bestLabel,
+            weakestPosition: weakestLabel
+        )
+    }
+
+    /// Compute the axis labels with the highest / lowest ratio of
+    /// `axis.value` to the league average. Falls back to "—" when
+    /// the data isn't ready.
+    func bestAndWeakest(
+        for axes: [TeamAnalysis.HexAxis],
+        averages: [TeamAnalysis.HexAxis]
+    ) -> (best: String, weakest: String) {
+        guard !axes.isEmpty, !averages.isEmpty else {
+            return ("—", "—")
+        }
+        let avgByLabel: [String: Int] = Dictionary(
+            uniqueKeysWithValues: averages.map { ($0.label, $0.value) }
+        )
+        var bestLabel = axes[0].label
+        var weakestLabel = axes[0].label
+        var bestRatio: Double = -.infinity
+        var weakestRatio: Double = .infinity
+        for axis in axes {
+            let avg = max(avgByLabel[axis.label] ?? 0, 1)
+            let ratio = Double(axis.value) / Double(avg)
+            if ratio > bestRatio {
+                bestRatio = ratio
+                bestLabel = axis.label
+            }
+            if ratio < weakestRatio {
+                weakestRatio = ratio
+                weakestLabel = axis.label
+            }
+        }
+        return (bestLabel, weakestLabel)
+    }
+
+    func formatThousands(_ value: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.groupingSeparator = ","
+        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
+    }
+
+    func formatFpts(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 1
+        formatter.maximumFractionDigits = 1
+        formatter.groupingSeparator = ","
+        return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.1f", value)
+    }
+}
+
+// MARK: - Section enum
+
+/// Three top-level tabs inside My Team. Roster leads (highest-traffic
+/// surface); Strengths and Trades follow in dependency order
+/// (Strengths reads the data Trades acts on).
+enum TeamSection: String, CaseIterable, Identifiable, Hashable {
+    case roster
+    case strengths
+    case trades
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .roster:    "Roster"
+        case .strengths: "Strengths"
+        case .trades:    "Trades"
+        }
     }
 }
 
@@ -522,7 +833,13 @@ struct PlayerRow: View {
             rosterPositions: ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX", "SUPER_FLEX", "BN", "BN", "BN", "BN", "BN", "IR"],
             metadata: nil
         ),
-        playerStore: store
+        playerStore: store,
+        leagueStore: LeagueStore(),
+        valuesStore: PlayerValuesStore(),
+        authStore: AuthStore(),
+        navStore: NavigationStore(),
+        router: AppRouter(),
+        tradeController: TradeAnalyzerController()
     )
     .preferredColorScheme(.dark)
 }
