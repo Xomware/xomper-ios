@@ -89,6 +89,8 @@ struct DraftHistoryView: View {
                 case .recap:
                     DraftRecapView(
                         aiReviewStore: aiReviewStore,
+                        historyStore: historyStore,
+                        playerValuesStore: playerValuesStore,
                         year: currentSeason
                     )
                 case .picks:
