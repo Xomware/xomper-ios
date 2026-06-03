@@ -96,6 +96,71 @@ enum MarkdownReflow {
         )
         out = out.trimmingCharacters(in: .whitespacesAndNewlines)
 
+        // 9. Within-paragraph reflow — Claude often emits 5+ sentence
+        //    runs without `\n\n` between them. Even after the section
+        //    headers are detached above, the body is still a wall of
+        //    text. Split each paragraph that exceeds ~260 chars at the
+        //    sentence boundary closest to the midpoint. Repeats until
+        //    no chunk is too long, capped at 2 splits per paragraph to
+        //    avoid pathological cases.
+        out = out
+            .components(separatedBy: "\n\n")
+            .map { splitLongParagraph($0, maxLen: 260, maxSplits: 2) }
+            .joined(separator: "\n\n")
+
+        return out
+    }
+
+    /// Recursively split `paragraph` at the sentence boundary closest
+    /// to its midpoint until every chunk is under `maxLen`, or until
+    /// `maxSplits` have happened. Skips lines that start with a
+    /// markdown token (#, >, **bold header**) — those are headers, not
+    /// prose, and shouldn't be sliced.
+    private static func splitLongParagraph(_ paragraph: String, maxLen: Int, maxSplits: Int) -> String {
+        let trimmed = paragraph.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Don't touch heading-like blocks.
+        if trimmed.hasPrefix("#") || trimmed.hasPrefix(">") { return paragraph }
+        if trimmed.count <= maxLen || maxSplits == 0 { return paragraph }
+
+        // Find every sentence boundary: period/exclamation/question
+        // followed by a space + capital letter. Boundary index is the
+        // position AFTER the punctuation+space, where the next
+        // sentence begins.
+        let boundaries = sentenceBoundaries(in: trimmed)
+        guard !boundaries.isEmpty else { return paragraph }
+
+        // Pick the boundary closest to the midpoint so the two halves
+        // are roughly balanced.
+        let mid = trimmed.count / 2
+        let best = boundaries.min(by: { abs($0 - mid) < abs($1 - mid) })!
+        let splitAt = trimmed.index(trimmed.startIndex, offsetBy: best)
+        let left  = String(trimmed[trimmed.startIndex..<splitAt]).trimmingCharacters(in: .whitespaces)
+        let right = String(trimmed[splitAt...]).trimmingCharacters(in: .whitespaces)
+
+        // Recurse on the right half so very long paragraphs still
+        // settle in 2 splits total.
+        let rightSplit = splitLongParagraph(right, maxLen: maxLen, maxSplits: maxSplits - 1)
+        return left + "\n\n" + rightSplit
+    }
+
+    /// Indices (in `Int` offsets) of the start of every sentence after
+    /// the first one. A sentence boundary is `.`/`!`/`?` followed by a
+    /// single space and an uppercase letter. Returns offsets pointing
+    /// AT the uppercase letter so the slice keeps it on the right
+    /// half.
+    private static func sentenceBoundaries(in text: String) -> [Int] {
+        var out: [Int] = []
+        let chars = Array(text)
+        var i = 0
+        while i < chars.count - 2 {
+            let c = chars[i]
+            if c == "." || c == "!" || c == "?" {
+                if chars[i + 1] == " ", chars[i + 2].isUppercase {
+                    out.append(i + 2)
+                }
+            }
+            i += 1
+        }
         return out
     }
 }
