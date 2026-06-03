@@ -54,31 +54,176 @@ struct LiveDraftView: View {
         let totalPicks = slots.count * rounds
         let firstPick = liveStartDate(draft: draft)
         let myUserId = userStore.myUser?.userId
+        // Coordinate -> pick lookup, populated from polling. Keyed by
+        // "round.slot" because Swift tuples don't conform to Hashable.
+        let picksByCell: [String: DraftPick] = Dictionary(
+            uniqueKeysWithValues: historyStore.upcomingPicks.map { pick in
+                ("\(pick.round).\(pick.draftSlot)", pick)
+            }
+        )
 
         return ScrollView {
             VStack(alignment: .leading, spacing: XomperTheme.Spacing.md) {
                 liveHeaderCard(draft: draft, totalPicks: totalPicks, firstPick: firstPick)
 
-                ForEach(1...rounds, id: \.self) { round in
-                    sectionHeader("Round \(round)")
-                    ForEach(slots, id: \.self) { slot in
-                        let pickNo = (round - 1) * slots.count + slot
-                        let team = teamsBySlot[slot]
-                        let isMine = team?.userId != nil && team?.userId == myUserId
-                        liveRow(
-                            round: round,
-                            slot: slot,
-                            pickNo: pickNo,
-                            team: team,
-                            isMine: isMine,
-                            pickDate: pickDate(firstPick: firstPick, pickNo: pickNo)
-                        )
-                    }
-                }
+                liveBoard(
+                    rounds: rounds,
+                    slots: slots,
+                    teamsBySlot: teamsBySlot,
+                    picksByCell: picksByCell,
+                    myUserId: myUserId
+                )
             }
             .padding(.horizontal, XomperTheme.Spacing.md)
             .padding(.vertical, XomperTheme.Spacing.sm)
         }
+        .task(id: draft.draftId) {
+            // Initial picks fetch + lightweight polling while the draft
+            // is live. Polls every 5s when `drafting`, every 30s when
+            // `pre_draft` (rare order changes), pauses when complete.
+            await historyStore.refreshUpcomingPicks()
+            while !Task.isCancelled {
+                let interval: UInt64
+                switch (draft.status ?? "").lowercased() {
+                case "drafting":  interval = 5_000_000_000   // 5s
+                case "pre_draft": interval = 30_000_000_000  // 30s
+                default:          return                      // complete — stop polling
+                }
+                try? await Task.sleep(nanoseconds: interval)
+                if Task.isCancelled { break }
+                await historyStore.refreshUpcomingPicks()
+            }
+        }
+    }
+
+    // MARK: - Board grid
+
+    private func liveBoard(
+        rounds: Int,
+        slots: [Int],
+        teamsBySlot: [Int: UpcomingDraftTeam],
+        picksByCell: [String: DraftPick],
+        myUserId: String?
+    ) -> some View {
+        let cellWidth: CGFloat = 92
+        let cellHeight: CGFloat = 70
+        return ScrollView([.horizontal, .vertical], showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 6) {
+                // Column header — slot number + team name.
+                HStack(spacing: 6) {
+                    Text("R")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(XomperColors.textMuted)
+                        .frame(width: 22)
+                    ForEach(slots, id: \.self) { slot in
+                        let team = teamsBySlot[slot]
+                        let isMine = team?.userId != nil && team?.userId == myUserId
+                        VStack(spacing: 1) {
+                            Text("\(slot)")
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(isMine ? XomperColors.championGold : XomperColors.textMuted)
+                            Text(team?.teamName ?? "—")
+                                .font(.caption2)
+                                .foregroundStyle(isMine ? XomperColors.championGold : XomperColors.textSecondary)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
+                        .frame(width: cellWidth, alignment: .center)
+                    }
+                }
+
+                ForEach(1...rounds, id: \.self) { round in
+                    HStack(spacing: 6) {
+                        Text("\(round)")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(XomperColors.championGold)
+                            .frame(width: 22)
+                        ForEach(slots, id: \.self) { slot in
+                            let team = teamsBySlot[slot]
+                            let isMine = team?.userId != nil && team?.userId == myUserId
+                            liveBoardCell(
+                                round: round,
+                                slot: slot,
+                                team: team,
+                                pick: picksByCell["\(round).\(slot)"],
+                                isMine: isMine,
+                                width: cellWidth,
+                                height: cellHeight
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func liveBoardCell(
+        round: Int,
+        slot: Int,
+        team: UpcomingDraftTeam?,
+        pick: DraftPick?,
+        isMine: Bool,
+        width: CGFloat,
+        height: CGFloat
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            if let pick {
+                let first = pick.metadata?.firstName ?? ""
+                let last = pick.metadata?.lastName ?? ""
+                let name = [first, last].filter { !$0.isEmpty }.joined(separator: " ")
+                Text(name.isEmpty ? "Picked" : name)
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(XomperColors.textPrimary)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.7)
+                HStack(spacing: 4) {
+                    if let pos = pick.metadata?.position {
+                        Text(pos)
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(XomperColors.bgDark)
+                            .padding(.horizontal, 4)
+                            .background(XomperColors.successGreen)
+                            .clipShape(Capsule())
+                    }
+                    if let nfl = pick.metadata?.team {
+                        Text(nfl)
+                            .font(.caption2)
+                            .foregroundStyle(XomperColors.textSecondary)
+                    }
+                }
+            } else {
+                Text(team?.teamName ?? "Slot \(slot)")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(XomperColors.textSecondary)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.7)
+                Spacer(minLength: 0)
+                Text(String(format: "%d.%02d", round, slot))
+                    .font(.caption2)
+                    .foregroundStyle(XomperColors.textMuted)
+                    .monospacedDigit()
+            }
+            if isMine && pick == nil {
+                Text("YOU")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(XomperColors.bgDark)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 1)
+                    .background(XomperColors.championGold)
+                    .clipShape(Capsule())
+            }
+        }
+        .padding(6)
+        .frame(width: width, height: height, alignment: .topLeading)
+        .background(pick == nil ? XomperColors.bgCard : XomperColors.bgCard.opacity(0.6))
+        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
+        .overlay(
+            RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md)
+                .strokeBorder(
+                    isMine ? XomperColors.championGold.opacity(0.5) : Color.clear,
+                    lineWidth: 1
+                )
+        )
     }
 
     private func liveHeaderCard(draft: Draft, totalPicks: Int, firstPick: Date?) -> some View {

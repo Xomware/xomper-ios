@@ -29,6 +29,12 @@ final class HistoryStore {
     private(set) var isLoadingUpcoming = false
     private(set) var upcomingError: Error?
 
+    /// Live picks for the upcoming/in-progress draft. Empty until the
+    /// draft actually starts (status moves from `pre_draft` to
+    /// `drafting`). Refreshed by the polling task on the Live tab so
+    /// cells light up as picks come in.
+    private(set) var upcomingPicks: [DraftPick] = []
+
     // MARK: - Derived
 
     var availableMatchupSeasons: [String] {
@@ -783,6 +789,20 @@ final class HistoryStore {
         }
 
         return records
+    }
+
+    /// Refresh `upcomingPicks` from Sleeper. Cheap to call from a
+    /// polling loop because Sleeper's draft-picks endpoint is small
+    /// (one row per pick, ~60 rows total). Silent on error so a flaky
+    /// fetch during a busy draft doesn't spam the UI.
+    func refreshUpcomingPicks() async {
+        guard let draftId = upcomingDraft?.draftId else { return }
+        do {
+            let picks = try await apiClient.fetchDraftPicks(draftId)
+            upcomingPicks = picks
+        } catch {
+            // Polling failure — leave the existing picks in place.
+        }
     }
 }
 
