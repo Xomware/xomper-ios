@@ -16,6 +16,16 @@ struct LiveDraftView: View {
     var userStore: UserStore
     var nflStateStore: NflStateStore
 
+    /// View toggle — rounds list (default) vs the column-per-team
+    /// draft board grid (PR #129). Reuses `DraftViewMode` so the live
+    /// view feels like a sibling of past drafts.
+    @State private var viewMode: DraftViewMode = .rounds
+
+    /// True when the user has tapped "My Picks" — list mode filters
+    /// down to slots owned by `userStore.myUser`, board mode dims
+    /// other columns instead of hiding them (keeps the spatial layout).
+    @State private var myPicksOnly: Bool = false
+
     /// Drives the live countdown in the header. SwiftUI's
     /// `TimelineView(.periodic:)` re-evaluates every interval so we
     /// don't need a manual Timer.
@@ -62,20 +72,36 @@ struct LiveDraftView: View {
             }
         )
 
-        return ScrollView {
-            VStack(alignment: .leading, spacing: XomperTheme.Spacing.md) {
-                liveHeaderCard(draft: draft, totalPicks: totalPicks, firstPick: firstPick)
+        return VStack(spacing: 0) {
+            controlsBar
 
-                liveBoard(
-                    rounds: rounds,
-                    slots: slots,
-                    teamsBySlot: teamsBySlot,
-                    picksByCell: picksByCell,
-                    myUserId: myUserId
-                )
+            ScrollView {
+                VStack(alignment: .leading, spacing: XomperTheme.Spacing.md) {
+                    liveHeaderCard(draft: draft, totalPicks: totalPicks, firstPick: firstPick)
+
+                    switch viewMode {
+                    case .rounds:
+                        liveRoundsList(
+                            rounds: rounds,
+                            slots: slots,
+                            teamsBySlot: teamsBySlot,
+                            picksByCell: picksByCell,
+                            firstPick: firstPick,
+                            myUserId: myUserId
+                        )
+                    case .board:
+                        liveBoard(
+                            rounds: rounds,
+                            slots: slots,
+                            teamsBySlot: teamsBySlot,
+                            picksByCell: picksByCell,
+                            myUserId: myUserId
+                        )
+                    }
+                }
+                .padding(.horizontal, XomperTheme.Spacing.md)
+                .padding(.vertical, XomperTheme.Spacing.sm)
             }
-            .padding(.horizontal, XomperTheme.Spacing.md)
-            .padding(.vertical, XomperTheme.Spacing.sm)
         }
         .task(id: draft.draftId) {
             // Initial picks fetch + lightweight polling while the draft
@@ -94,6 +120,197 @@ struct LiveDraftView: View {
                 await historyStore.refreshUpcomingPicks()
             }
         }
+    }
+
+    // MARK: - Controls bar
+
+    private var controlsBar: some View {
+        HStack(spacing: XomperTheme.Spacing.sm) {
+            filterChip(label: "All Picks", selected: !myPicksOnly) { myPicksOnly = false }
+            filterChip(label: "My Picks",  selected:  myPicksOnly) { myPicksOnly = true  }
+
+            Spacer()
+
+            viewModeToggle
+        }
+        .padding(.horizontal, XomperTheme.Spacing.md)
+        .padding(.vertical, XomperTheme.Spacing.sm)
+        .background(XomperColors.bgDark)
+    }
+
+    private func filterChip(label: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            action()
+        }) {
+            Text(label)
+                .font(.caption.weight(selected ? .bold : .regular))
+                .foregroundStyle(selected ? XomperColors.bgDark : XomperColors.textSecondary)
+                .padding(.horizontal, XomperTheme.Spacing.sm)
+                .padding(.vertical, 6)
+                .background(selected ? XomperColors.championGold : XomperColors.bgCard)
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var viewModeToggle: some View {
+        HStack(spacing: 0) {
+            ForEach(DraftViewMode.allCases) { mode in
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    viewMode = mode
+                }) {
+                    Image(systemName: mode.systemImage)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(viewMode == mode ? XomperColors.bgDark : XomperColors.textSecondary)
+                        .frame(width: 36, height: 28)
+                        .background(viewMode == mode ? XomperColors.championGold : Color.clear)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(mode.label)
+            }
+        }
+        .background(XomperColors.bgCard)
+        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.sm))
+    }
+
+    // MARK: - Rounds list
+
+    private func liveRoundsList(
+        rounds: Int,
+        slots: [Int],
+        teamsBySlot: [Int: UpcomingDraftTeam],
+        picksByCell: [String: DraftPick],
+        firstPick: Date?,
+        myUserId: String?
+    ) -> some View {
+        VStack(spacing: XomperTheme.Spacing.md) {
+            ForEach(1...rounds, id: \.self) { round in
+                let rowSlots = visibleSlots(for: round, slots: slots, teamsBySlot: teamsBySlot, myUserId: myUserId)
+                if !rowSlots.isEmpty {
+                    VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
+                        sectionHeader("Round \(round)")
+                        ForEach(rowSlots, id: \.self) { slot in
+                            let pickNo = (round - 1) * slots.count + slot
+                            let team = teamsBySlot[slot]
+                            let isMine = team?.userId != nil && team?.userId == myUserId
+                            let pick = picksByCell["\(round).\(slot)"]
+                            liveRichRow(
+                                round: round,
+                                slot: slot,
+                                pickNo: pickNo,
+                                team: team,
+                                pick: pick,
+                                isMine: isMine,
+                                pickDate: pickDate(firstPick: firstPick, pickNo: pickNo)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Filters slots to "mine only" when the toggle is on, otherwise
+    /// returns the full slot list. Used by the rounds-list mode.
+    private func visibleSlots(
+        for round: Int,
+        slots: [Int],
+        teamsBySlot: [Int: UpcomingDraftTeam],
+        myUserId: String?
+    ) -> [Int] {
+        guard myPicksOnly, let myUserId else { return slots }
+        return slots.filter { teamsBySlot[$0]?.userId == myUserId }
+    }
+
+    /// Single row that flips from "empty slot waiting" to "pick made"
+    /// when the live polling lands a pick for this (round, slot).
+    private func liveRichRow(
+        round: Int,
+        slot: Int,
+        pickNo: Int,
+        team: UpcomingDraftTeam?,
+        pick: DraftPick?,
+        isMine: Bool,
+        pickDate: Date?
+    ) -> some View {
+        HStack(spacing: XomperTheme.Spacing.md) {
+            Text(String(format: "%d.%02d", round, slot))
+                .font(.title3.weight(.bold))
+                .foregroundStyle(isMine ? XomperColors.championGold : XomperColors.textSecondary)
+                .frame(width: 52, alignment: .leading)
+                .monospacedDigit()
+
+            VStack(alignment: .leading, spacing: 2) {
+                if let pick {
+                    let first = pick.metadata?.firstName ?? ""
+                    let last  = pick.metadata?.lastName  ?? ""
+                    let name  = [first, last].filter { !$0.isEmpty }.joined(separator: " ")
+                    Text(name.isEmpty ? "Pick made" : name)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(XomperColors.textPrimary)
+                        .lineLimit(1)
+                    HStack(spacing: XomperTheme.Spacing.xs) {
+                        if let pos = pick.metadata?.position {
+                            Text(pos)
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(XomperColors.bgDark)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(XomperColors.successGreen)
+                                .clipShape(Capsule())
+                        }
+                        if let nfl = pick.metadata?.team {
+                            Text(nfl)
+                                .font(.caption2)
+                                .foregroundStyle(XomperColors.textMuted)
+                        }
+                        Text("· \(team?.teamName ?? "Slot \(slot)")")
+                            .font(.caption2)
+                            .foregroundStyle(XomperColors.textMuted)
+                            .lineLimit(1)
+                    }
+                } else {
+                    Text(team?.teamName ?? "Slot \(slot)")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(XomperColors.textPrimary)
+                        .lineLimit(1)
+                    if let pickDate {
+                        Text("Pick #\(pickNo) · ~\(formattedShort(pickDate))")
+                            .font(.caption2)
+                            .foregroundStyle(XomperColors.textMuted)
+                            .monospacedDigit()
+                    } else {
+                        Text("Pick #\(pickNo)")
+                            .font(.caption2)
+                            .foregroundStyle(XomperColors.textMuted)
+                            .monospacedDigit()
+                    }
+                }
+            }
+
+            Spacer()
+
+            if isMine {
+                Text("YOU")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(XomperColors.bgDark)
+                    .padding(.horizontal, XomperTheme.Spacing.xs)
+                    .background(XomperColors.championGold)
+                    .clipShape(Capsule())
+            }
+        }
+        .padding(XomperTheme.Spacing.md)
+        .background(XomperColors.bgCard)
+        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
+        .overlay(
+            RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg)
+                .strokeBorder(
+                    isMine ? XomperColors.championGold.opacity(0.4) : Color.clear,
+                    lineWidth: 1
+                )
+        )
     }
 
     // MARK: - Board grid
@@ -224,6 +441,11 @@ struct LiveDraftView: View {
                     lineWidth: 1
                 )
         )
+        // Dim non-mine cells when the user has flipped on My Picks.
+        // Board view doesn't hide other slots (the spatial layout is
+        // half the point), but the dim keeps focus on the user's
+        // column without breaking the grid.
+        .opacity(myPicksOnly && !isMine ? 0.25 : 1.0)
     }
 
     private func liveHeaderCard(draft: Draft, totalPicks: Int, firstPick: Date?) -> some View {
