@@ -152,7 +152,16 @@ struct AIReport: Decodable, Identifiable, Sendable, Hashable {
     /// Human-friendly title for cards and detail headers.
     /// e.g. "Post-Draft Recap — 2026" / "Week 4 Recap — 2026W04".
     var displayTitle: String {
-        "\(reportType.displayName) — \(period)"
+        let formatted = AIReportType.formattedPeriod(period)
+        switch reportType {
+        case .weekly, .weekPreview:
+            // Type already conveyed by the chip on every surface that
+            // renders this title; "Week 17 — 2025" stands on its own
+            // and avoids the redundant "Weekly — Week 17 — 2025".
+            return formatted
+        default:
+            return "\(reportType.displayName) — \(formatted)"
+        }
     }
 
     // MARK: - F3 Metadata flags
