@@ -26,9 +26,12 @@ struct HeadlineAIReportCard: View {
     private func reportCard(report: AIReport) -> some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            // Switch tray to AI Review, then push detail. The two
-            // happen inside the same navStore animation envelope.
-            navStore.select(.aiReview, router: router)
+            // Push the detail on the current router without switching
+            // the tray destination. Back from the detail lands on
+            // wherever the user tapped from (Landing in the hero
+            // case) — previously we'd swap to .aiReview first, which
+            // dropped the user on the AI Review hub on back, surprising
+            // people who tapped a card on Home.
             router.navigate(to: .aiReportDetail(reportId: report.id))
         } label: {
             VStack(alignment: .leading, spacing: XomperTheme.Spacing.sm) {
