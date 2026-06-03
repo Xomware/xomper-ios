@@ -173,7 +173,7 @@ struct TeamAnalyzerView: View {
                         excludingRosterId: my.rosterId
                     )
 
-                    breakdownGrid(
+                    PositionBreakdownCard(
                         my: my,
                         opp: comparison,
                         averages: leagueAverages,
@@ -292,94 +292,10 @@ struct TeamAnalyzerView: View {
         .padding(.horizontal, XomperTheme.Spacing.md)
     }
 
-    // MARK: - Breakdown grid
+    // MARK: - League tab
 
-    private func breakdownGrid(
-        my: TeamAnalysis,
-        opp: TeamAnalysis?,
-        averages: [TeamAnalysis.HexAxis],
-        maxes: [String: Int]
-    ) -> some View {
-        VStack(spacing: XomperTheme.Spacing.xs) {
-            ForEach(Array(my.hexAxes.enumerated()), id: \.offset) { idx, axis in
-                let oppValue = opp?.hexAxes[idx].value
-                let avgValue = idx < averages.count ? averages[idx].value : 0
-                breakdownRow(
-                    label: axis.label,
-                    myValue: axis.value,
-                    oppValue: oppValue,
-                    avgValue: avgValue,
-                    leagueMax: maxes[axis.label] ?? axis.value
-                )
-            }
-            Divider().background(XomperColors.surfaceLight.opacity(0.4))
-            HStack {
-                Text("Total roster value")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(XomperColors.textSecondary)
-                Spacer()
-                Text("\(my.totalValue)")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(XomperColors.championGold)
-                    .monospacedDigit()
-                if let opp {
-                    Text("vs \(opp.totalValue)")
-                        .font(.subheadline)
-                        .foregroundStyle(.cyan)
-                        .monospacedDigit()
-                }
-            }
-        }
-        .padding(XomperTheme.Spacing.md)
-        .background(XomperColors.bgCard)
-        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
-        .padding(.horizontal, XomperTheme.Spacing.md)
-    }
-
-    private func breakdownRow(
-        label: String,
-        myValue: Int,
-        oppValue: Int?,
-        avgValue: Int,
-        leagueMax: Int
-    ) -> some View {
-        HStack(spacing: XomperTheme.Spacing.sm) {
-            Text(label)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(XomperColors.textPrimary)
-                .frame(width: 60, alignment: .leading)
-
-            ProgressView(
-                value: leagueMax > 0 ? Double(myValue) / Double(leagueMax) : 0
-            )
-            .tint(XomperColors.championGold)
-            .frame(maxWidth: .infinity)
-
-            Text("\(myValue)")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(deltaColor(myValue: myValue, avgValue: avgValue))
-                .monospacedDigit()
-                .frame(width: 50, alignment: .trailing)
-
-            if let oppValue {
-                Text("\(oppValue)")
-                    .font(.caption)
-                    .foregroundStyle(.cyan)
-                    .monospacedDigit()
-                    .frame(width: 50, alignment: .trailing)
-            } else {
-                Text("\(avgValue)")
-                    .font(.caption)
-                    .foregroundStyle(.gray)
-                    .monospacedDigit()
-                    .frame(width: 50, alignment: .trailing)
-            }
-        }
-    }
-
-    /// Color my-team's value gold when above league average and red
-    /// when significantly below — a glance-readable health check on
-    /// position depth without needing to do the math.
+    /// Color a value gold when above league average and red when
+    /// significantly below — used by the League tab axis cells.
     private func deltaColor(myValue: Int, avgValue: Int) -> Color {
         guard avgValue > 0 else { return XomperColors.textPrimary }
         let ratio = Double(myValue) / Double(avgValue)
@@ -387,8 +303,6 @@ struct TeamAnalyzerView: View {
         if ratio <= 0.85 { return XomperColors.errorRed }
         return XomperColors.textPrimary
     }
-
-    // MARK: - League tab
 
     private func leagueTab(
         analyses: [TeamAnalysis],
@@ -1263,7 +1177,7 @@ extension TeamAnalyzerView {
                         tradeSideAPickNames = []
                         tradeSideBPickNames = []
                     } label: {
-                        recommendedTradeRow(rec)
+                        RecommendedTradeCard(rec)
                     }
                     .buttonStyle(.pressableCard)
                     .padding(.horizontal, XomperTheme.Spacing.md)
@@ -1272,71 +1186,8 @@ extension TeamAnalyzerView {
         }
     }
 
-    private func recommendedTradeRow(_ rec: RecommendedTrade) -> some View {
-        VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
-            HStack(spacing: XomperTheme.Spacing.sm) {
-                Text(rec.partnerTeamName)
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(XomperColors.textPrimary)
-                    .lineLimit(1)
-                Spacer()
-                Text(String(format: "%.0f%% gap", rec.percentGap * 100))
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(XomperColors.bgDark)
-                    .padding(.horizontal, XomperTheme.Spacing.xs)
-                    .background(XomperColors.successGreen)
-                    .clipShape(Capsule())
-            }
-
-            HStack(alignment: .top, spacing: XomperTheme.Spacing.sm) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Give")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(XomperColors.textMuted)
-                        .textCase(.uppercase)
-                    Text(rec.give.name)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(XomperColors.textPrimary)
-                        .lineLimit(1)
-                    Text("\(rec.give.position) · \(rec.give.value)")
-                        .font(.caption2)
-                        .foregroundStyle(XomperColors.textMuted)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                Image(systemName: "arrow.left.arrow.right")
-                    .foregroundStyle(XomperColors.textMuted)
-                    .padding(.top, 12)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Receive")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(XomperColors.championGold)
-                        .textCase(.uppercase)
-                    Text(rec.receive.name)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(XomperColors.textPrimary)
-                        .lineLimit(1)
-                    Text("\(rec.receive.position) · \(rec.receive.value)")
-                        .font(.caption2)
-                        .foregroundStyle(XomperColors.textMuted)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            Text("Tap to load into the builder above.")
-                .font(.caption2)
-                .foregroundStyle(XomperColors.textMuted)
-        }
-        .padding(XomperTheme.Spacing.md)
-        .background(XomperColors.bgCard)
-        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
-        .overlay(
-            RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg)
-                .strokeBorder(XomperColors.championGold.opacity(0.3), lineWidth: 1)
-        )
-    }
 }
+
 
 // MARK: - Trade picker context
 
