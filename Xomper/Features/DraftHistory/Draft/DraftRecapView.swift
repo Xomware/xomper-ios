@@ -23,7 +23,23 @@ import SwiftUI
 /// `force: true`.
 struct DraftRecapView: View {
     var aiReviewStore: AIReviewStore
+    var historyStore: HistoryStore
+    var playerValuesStore: PlayerValuesStore
     let year: String
+
+    /// Lazily computed grades for `year`. Filters
+    /// `historyStore.draftHistory` to the year's picks then delegates
+    /// to `DraftGradeCalculator`. Empty when picks haven't loaded yet
+    /// or no FantasyCalc values are available — the card is silently
+    /// absent in that case.
+    private var grades: [DraftGrade] {
+        let picks = historyStore.draftHistory.filter { $0.season == year }
+        guard !picks.isEmpty else { return [] }
+        return Array(DraftGradeCalculator.grade(
+            picks: picks,
+            playerValues: playerValuesStore
+        ).values)
+    }
 
     var body: some View {
         Group {
@@ -87,6 +103,9 @@ struct DraftRecapView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: XomperTheme.Spacing.md) {
                 headerCard(report)
+                if !grades.isEmpty {
+                    DraftGradesCard(grades: grades)
+                }
                 bodyCard(report)
             }
             .padding(.horizontal, XomperTheme.Spacing.md)
