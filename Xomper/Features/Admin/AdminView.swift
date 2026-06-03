@@ -74,6 +74,13 @@ struct AdminView: View {
                     )
                 }
 
+                AdminMenuRow(
+                    icon: "tray.full",
+                    title: "Email Archive",
+                    subtitle: "View every send. Resend to a typed-in address.",
+                    action: { router.navigate(to: .adminEmailArchive) }
+                )
+
                 if Config.AdminFlags.showTables {
                     AdminMenuRow(
                         icon: "tablecells",

@@ -27,6 +27,11 @@ protocol XomperAPIClientProtocol: Sendable {
     func triggerWeeklyAIReview(week: Int?, dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse
     func triggerWeekPreviewAIReview(week: Int?, dryRun: Bool, force: Bool, seasonsBack: Int?) async throws -> AIReviewTriggerResponse
 
+    // Email Archive (Phase 3)
+    func fetchEmailArchive(limit: Int, cursor: String?, recipient: String?, template: String?) async throws -> EmailArchiveListResponse
+    func fetchEmailArchiveDetail(id: String) async throws -> EmailArchiveEntry
+    func resendArchivedEmail(id: String, toEmail: String) async throws -> ResendEmailResponse
+
     // Admin: report metadata flags (F3)
     func setReportFlag(
         leagueId: String,
@@ -346,6 +351,70 @@ struct TestEmailTemplateResponse: Codable, Sendable {
         case sentAt = "sent_at"
         case subject
     }
+}
+
+// MARK: - Email Archive (Phase 3)
+
+/// Wraps `GET /admin/emails-list`. Backend returns paginated metadata
+/// (HTML/text bodies omitted) plus a `next_cursor` for the next page.
+struct EmailArchiveListResponse: Decodable, Sendable {
+    let rows: [EmailArchiveEntry]
+    let nextCursor: String?
+
+    enum CodingKeys: String, CodingKey {
+        case rows
+        case nextCursor = "next_cursor"
+    }
+}
+
+/// One row from `email_archive`. Used for both the list (where
+/// htmlBody/textBody are nil) and the detail fetch (where they're
+/// populated). All fields are leniently decoded because the table
+/// schema is mostly nullable.
+struct EmailArchiveEntry: Decodable, Identifiable, Sendable, Hashable {
+    let id: String
+    let sentAt: String
+    let template: String?
+    let subject: String
+    let recipientEmail: String
+    let messageId: String?
+    let htmlBody: String?
+    let textBody: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case sentAt = "sent_at"
+        case template
+        case subject
+        case recipientEmail = "recipient_email"
+        case messageId = "message_id"
+        case htmlBody = "html_body"
+        case textBody = "text_body"
+    }
+}
+
+/// Response from `POST /admin/emails-resend`.
+struct ResendEmailResponse: Decodable, Sendable {
+    let sourceId: String
+    let recipientEmail: String
+    let subject: String
+    let template: String?
+    let messageId: String?
+    let sentAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case sourceId = "source_id"
+        case recipientEmail = "recipient_email"
+        case subject
+        case template
+        case messageId = "message_id"
+        case sentAt = "sent_at"
+    }
+}
+
+/// Wrapper for `GET /admin/emails-detail` — backend nests the row.
+private struct EmailArchiveDetailEnvelope: Decodable, Sendable {
+    let row: EmailArchiveEntry
 }
 
 // MARK: - Admin Tables + Audit (F4)
@@ -869,6 +938,46 @@ final class XomperAPIClient: XomperAPIClientProtocol {
             "report_id": reportId,
         ]
         return try await postDecoding("/admin/email-test", body: body)
+    }
+
+    // MARK: - Email Archive (Phase 3)
+
+    func fetchEmailArchive(
+        limit: Int,
+        cursor: String?,
+        recipient: String?,
+        template: String?
+    ) async throws -> EmailArchiveListResponse {
+        var items: [URLQueryItem] = [URLQueryItem(name: "limit", value: String(limit))]
+        if let cursor, !cursor.isEmpty {
+            items.append(URLQueryItem(name: "cursor", value: cursor))
+        }
+        if let recipient, !recipient.isEmpty {
+            items.append(URLQueryItem(name: "recipient", value: recipient))
+        }
+        if let template, !template.isEmpty {
+            items.append(URLQueryItem(name: "template", value: template))
+        }
+        return try await get("/admin/emails-list", queryItems: items)
+    }
+
+    func fetchEmailArchiveDetail(id: String) async throws -> EmailArchiveEntry {
+        let response: EmailArchiveDetailEnvelope = try await get(
+            "/admin/emails-detail",
+            queryItems: [URLQueryItem(name: "id", value: id)]
+        )
+        return response.row
+    }
+
+    func resendArchivedEmail(
+        id: String,
+        toEmail: String
+    ) async throws -> ResendEmailResponse {
+        let body: [String: Any] = [
+            "id": id,
+            "to_email": toEmail,
+        ]
+        return try await postDecoding("/admin/emails-resend", body: body)
     }
 
     /// Send a sample non-AI-Review email template to a single
