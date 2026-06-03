@@ -64,6 +64,14 @@ struct LiveDraftView: View {
         let totalPicks = slots.count * rounds
         let firstPick = liveStartDate(draft: draft)
         let myUserId = userStore.myUser?.userId
+        // Per-round override map: applies Sleeper's `traded_picks` to
+        // each (round, slot) so a 2.05 traded from Reese to Luke
+        // shows Luke in that cell, while Reese still owns 1.05 / 3.05.
+        let teamsByRound = liveTeamsBySlotByRound(
+            draft: draft,
+            teamsBySlot: teamsBySlot,
+            rounds: rounds
+        )
         // Coordinate -> pick lookup, populated from polling. Keyed by
         // "round.slot" because Swift tuples don't conform to Hashable.
         let picksByCell: [String: DraftPick] = Dictionary(
@@ -85,6 +93,7 @@ struct LiveDraftView: View {
                             rounds: rounds,
                             slots: slots,
                             teamsBySlot: teamsBySlot,
+                            teamsByRound: teamsByRound,
                             picksByCell: picksByCell,
                             firstPick: firstPick,
                             myUserId: myUserId
@@ -94,6 +103,7 @@ struct LiveDraftView: View {
                             rounds: rounds,
                             slots: slots,
                             teamsBySlot: teamsBySlot,
+                            teamsByRound: teamsByRound,
                             picksByCell: picksByCell,
                             myUserId: myUserId
                         )
@@ -181,19 +191,21 @@ struct LiveDraftView: View {
         rounds: Int,
         slots: [Int],
         teamsBySlot: [Int: UpcomingDraftTeam],
+        teamsByRound: [Int: [Int: UpcomingDraftTeam]],
         picksByCell: [String: DraftPick],
         firstPick: Date?,
         myUserId: String?
     ) -> some View {
         VStack(spacing: XomperTheme.Spacing.md) {
             ForEach(1...rounds, id: \.self) { round in
-                let rowSlots = visibleSlots(for: round, slots: slots, teamsBySlot: teamsBySlot, myUserId: myUserId)
+                let perRound = teamsByRound[round] ?? teamsBySlot
+                let rowSlots = visibleSlots(for: round, slots: slots, teamsByRound: teamsByRound, teamsBySlot: teamsBySlot, myUserId: myUserId)
                 if !rowSlots.isEmpty {
                     VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
                         sectionHeader("Round \(round)")
                         ForEach(rowSlots, id: \.self) { slot in
                             let pickNo = (round - 1) * slots.count + slot
-                            let team = teamsBySlot[slot]
+                            let team = perRound[slot]
                             let isMine = team?.userId != nil && team?.userId == myUserId
                             let pick = picksByCell["\(round).\(slot)"]
                             liveRichRow(
@@ -213,15 +225,19 @@ struct LiveDraftView: View {
     }
 
     /// Filters slots to "mine only" when the toggle is on, otherwise
-    /// returns the full slot list. Used by the rounds-list mode.
+    /// returns the full slot list. Used by the rounds-list mode. Uses
+    /// `teamsByRound[round]` so traded picks register as mine even
+    /// when the slot's original owner isn't me.
     private func visibleSlots(
         for round: Int,
         slots: [Int],
+        teamsByRound: [Int: [Int: UpcomingDraftTeam]],
         teamsBySlot: [Int: UpcomingDraftTeam],
         myUserId: String?
     ) -> [Int] {
         guard myPicksOnly, let myUserId else { return slots }
-        return slots.filter { teamsBySlot[$0]?.userId == myUserId }
+        let perRound = teamsByRound[round] ?? teamsBySlot
+        return slots.filter { perRound[$0]?.userId == myUserId }
     }
 
     /// Single row that flips from "empty slot waiting" to "pick made"
@@ -319,6 +335,7 @@ struct LiveDraftView: View {
         rounds: Int,
         slots: [Int],
         teamsBySlot: [Int: UpcomingDraftTeam],
+        teamsByRound: [Int: [Int: UpcomingDraftTeam]],
         picksByCell: [String: DraftPick],
         myUserId: String?
     ) -> some View {
@@ -350,13 +367,14 @@ struct LiveDraftView: View {
                 }
 
                 ForEach(1...rounds, id: \.self) { round in
+                    let perRound = teamsByRound[round] ?? teamsBySlot
                     HStack(spacing: 6) {
                         Text("\(round)")
                             .font(.caption.weight(.bold))
                             .foregroundStyle(XomperColors.championGold)
                             .frame(width: 22)
                         ForEach(slots, id: \.self) { slot in
-                            let team = teamsBySlot[slot]
+                            let team = perRound[slot]
                             let isMine = team?.userId != nil && team?.userId == myUserId
                             liveBoardCell(
                                 round: round,
@@ -608,6 +626,64 @@ struct LiveDraftView: View {
             }
         }
         return bySlot
+    }
+
+    /// Expands the slot→team map across every round, swapping in the
+    /// new owner for any (round, originalRoster) that's been traded.
+    /// Sleeper's `traded_picks` records the chain in a flat list keyed
+    /// by the ORIGINAL roster (not slot); we map slot → originalRoster
+    /// via `upcomingRosters`, then walk `upcomingTradedPicks` to find
+    /// the current owner for each round. Untraded picks fall through
+    /// to the base `teamsBySlot` mapping.
+    private func liveTeamsBySlotByRound(
+        draft: Draft,
+        teamsBySlot: [Int: UpcomingDraftTeam],
+        rounds: Int
+    ) -> [Int: [Int: UpcomingDraftTeam]] {
+        // userId -> team (for assembling the override entry).
+        var teamByUser: [String: UpcomingDraftTeam] = [:]
+        for user in historyStore.upcomingUsers {
+            guard let userId = user.userId else { continue }
+            teamByUser[userId] = UpcomingDraftTeam(
+                userId: userId,
+                teamName: user.teamName ?? user.resolvedDisplayName,
+                avatarId: user.avatar
+            )
+        }
+        // ownerId (the Sleeper roster ownerId is a userId string) -> rosterId
+        // and the inverse so we can hop slot → roster → user.
+        var rosterIdByUserId: [String: Int] = [:]
+        var userIdByRosterId: [Int: String] = [:]
+        for roster in historyStore.upcomingRosters {
+            guard let ownerId = roster.ownerId else { continue }
+            rosterIdByUserId[ownerId] = roster.rosterId
+            userIdByRosterId[roster.rosterId] = ownerId
+        }
+        // Trade lookup keyed by "round.originalRosterId" -> current ownerId roster.
+        let season = draft.season
+        var tradesByRoundAndRoster: [String: Int] = [:]
+        for tp in historyStore.upcomingTradedPicks where tp.season == season {
+            tradesByRoundAndRoster["\(tp.round).\(tp.rosterId)"] = tp.ownerId
+        }
+
+        var out: [Int: [Int: UpcomingDraftTeam]] = [:]
+        for round in 1...max(rounds, 1) {
+            var row: [Int: UpcomingDraftTeam] = [:]
+            for (slot, originalTeam) in teamsBySlot {
+                // Slot's original-owner roster, used to look up trades.
+                let originalRoster = rosterIdByUserId[originalTeam.userId]
+                if let origRoster = originalRoster,
+                   let newOwnerRoster = tradesByRoundAndRoster["\(round).\(origRoster)"],
+                   let newOwnerUserId = userIdByRosterId[newOwnerRoster],
+                   let newOwnerTeam = teamByUser[newOwnerUserId] {
+                    row[slot] = newOwnerTeam
+                } else {
+                    row[slot] = originalTeam
+                }
+            }
+            out[round] = row
+        }
+        return out
     }
 
     private func liveSlots(draft: Draft, teamsBySlot: [Int: UpcomingDraftTeam]) -> [Int] {
