@@ -26,14 +26,13 @@ struct TeamAnalyzerView: View {
     @State private var activeTab: AnalyzerTab = .compare
     @State private var comparisonRosterId: Int?
 
-    // Trade-builder state. Lives at the parent so the proposal
-    // survives tab switches; the user can hop to Compare / League
-    // mid-build and come back to the same trade.
-    @State private var tradePartnerRosterId: Int?
-    @State private var tradeSideAPlayerIds: [String] = []
-    @State private var tradeSideBPlayerIds: [String] = []
-    @State private var tradeSideAPickNames: [String] = []
-    @State private var tradeSideBPickNames: [String] = []
+    /// Trade-builder state lives on a shared `TradeAnalyzerController`
+    /// so the My Team Trades tab can preload a recommendation before
+    /// the user lands on this screen. The proposal also survives tab
+    /// switches inside this view because the controller outlives any
+    /// single body invocation.
+    let tradeController: TradeAnalyzerController
+
     @State private var showSidePicker: TradeSidePickerContext?
 
     var body: some View {
@@ -509,7 +508,7 @@ extension TeamAnalyzerView {
         my: TeamAnalysis,
         analyses: [TeamAnalysis]
     ) -> some View {
-        let partner = analyses.first { $0.rosterId == tradePartnerRosterId }
+        let partner = analyses.first { $0.rosterId == tradeController.tradePartnerRosterId }
         let trade = currentTrade(my: my, partner: partner)
         let evaluation = TradeEvaluator.evaluate(trade, valuesStore: valuesStore)
         let suggestions = TradeEvaluator.suggestBalance(
@@ -532,8 +531,8 @@ extension TeamAnalyzerView {
                     tradeSideCard(
                         sideLabel: "You give",
                         teamName: my.teamName,
-                        playerIds: tradeSideAPlayerIds,
-                        pickNames: tradeSideAPickNames,
+                        playerIds: tradeController.tradeSideAPlayerIds,
+                        pickNames: tradeController.tradeSideAPickNames,
                         sideValue: evaluation.sideAValue,
                         addPlayerAction: {
                             showSidePicker = TradeSidePickerContext(
@@ -552,10 +551,10 @@ extension TeamAnalyzerView {
                             )
                         },
                         removePlayerAction: { pid in
-                            tradeSideAPlayerIds.removeAll { $0 == pid }
+                            tradeController.tradeSideAPlayerIds.removeAll { $0 == pid }
                         },
                         removePickAction: { name in
-                            tradeSideAPickNames.removeAll { $0 == name }
+                            tradeController.tradeSideAPickNames.removeAll { $0 == name }
                         }
                     )
 
@@ -563,8 +562,8 @@ extension TeamAnalyzerView {
                         tradeSideCard(
                             sideLabel: "You receive",
                             teamName: partner.teamName,
-                            playerIds: tradeSideBPlayerIds,
-                            pickNames: tradeSideBPickNames,
+                            playerIds: tradeController.tradeSideBPlayerIds,
+                            pickNames: tradeController.tradeSideBPickNames,
                             sideValue: evaluation.sideBValue,
                             addPlayerAction: {
                                 showSidePicker = TradeSidePickerContext(
@@ -583,10 +582,10 @@ extension TeamAnalyzerView {
                                 )
                             },
                             removePlayerAction: { pid in
-                                tradeSideBPlayerIds.removeAll { $0 == pid }
+                                tradeController.tradeSideBPlayerIds.removeAll { $0 == pid }
                             },
                             removePickAction: { name in
-                                tradeSideBPickNames.removeAll { $0 == name }
+                                tradeController.tradeSideBPickNames.removeAll { $0 == name }
                             }
                         )
                     }
@@ -600,10 +599,10 @@ extension TeamAnalyzerView {
 
                     if !trade.isEmpty {
                         Button(role: .destructive) {
-                            tradeSideAPlayerIds = []
-                            tradeSideBPlayerIds = []
-                            tradeSideAPickNames = []
-                            tradeSideBPickNames = []
+                            tradeController.tradeSideAPlayerIds = []
+                            tradeController.tradeSideBPlayerIds = []
+                            tradeController.tradeSideAPickNames = []
+                            tradeController.tradeSideBPickNames = []
                         } label: {
                             Text("Clear trade")
                                 .font(.caption.weight(.semibold))
@@ -630,14 +629,14 @@ extension TeamAnalyzerView {
             sideA: TradeSide(
                 rosterId: my.rosterId,
                 teamName: my.teamName,
-                playerIds: tradeSideAPlayerIds,
-                pickNames: tradeSideAPickNames
+                playerIds: tradeController.tradeSideAPlayerIds,
+                pickNames: tradeController.tradeSideAPickNames
             ),
             sideB: TradeSide(
                 rosterId: partner?.rosterId ?? 0,
                 teamName: partner?.teamName ?? "",
-                playerIds: tradeSideBPlayerIds,
-                pickNames: tradeSideBPickNames
+                playerIds: tradeController.tradeSideBPlayerIds,
+                pickNames: tradeController.tradeSideBPickNames
             )
         )
     }
@@ -670,7 +669,7 @@ extension TeamAnalyzerView {
         let candidates = analyses
             .filter { $0.rosterId != my.rosterId }
             .sorted { $0.totalValue > $1.totalValue }
-        let selectedName = candidates.first { $0.rosterId == tradePartnerRosterId }?.teamName
+        let selectedName = candidates.first { $0.rosterId == tradeController.tradePartnerRosterId }?.teamName
 
         return HStack(spacing: XomperTheme.Spacing.sm) {
             Text("Trade partner")
@@ -679,16 +678,16 @@ extension TeamAnalyzerView {
 
             Menu {
                 Button("None") {
-                    tradePartnerRosterId = nil
-                    tradeSideBPlayerIds = []
+                    tradeController.tradePartnerRosterId = nil
+                    tradeController.tradeSideBPlayerIds = []
                 }
                 Divider()
                 ForEach(candidates, id: \.rosterId) { team in
                     Button {
-                        if tradePartnerRosterId != team.rosterId {
-                            tradeSideBPlayerIds = []
+                        if tradeController.tradePartnerRosterId != team.rosterId {
+                            tradeController.tradeSideBPlayerIds = []
                         }
-                        tradePartnerRosterId = team.rosterId
+                        tradeController.tradePartnerRosterId = team.rosterId
                     } label: {
                         HStack {
                             Text(team.teamName)
@@ -940,12 +939,12 @@ extension TeamAnalyzerView {
                 Button {
                     switch evaluation.verdict {
                     case .sideAWins:
-                        if !tradeSideBPlayerIds.contains(suggestion.playerId) {
-                            tradeSideBPlayerIds.append(suggestion.playerId)
+                        if !tradeController.tradeSideBPlayerIds.contains(suggestion.playerId) {
+                            tradeController.tradeSideBPlayerIds.append(suggestion.playerId)
                         }
                     case .sideBWins:
-                        if !tradeSideAPlayerIds.contains(suggestion.playerId) {
-                            tradeSideAPlayerIds.append(suggestion.playerId)
+                        if !tradeController.tradeSideAPlayerIds.contains(suggestion.playerId) {
+                            tradeController.tradeSideAPlayerIds.append(suggestion.playerId)
                         }
                     default:
                         break
@@ -1004,8 +1003,8 @@ extension TeamAnalyzerView {
     private func tradePlayerSelectionList(context: TradeSidePickerContext) -> some View {
         let alreadyPicked: Set<String> = {
             switch context.side {
-            case .a: return Set(tradeSideAPlayerIds)
-            case .b: return Set(tradeSideBPlayerIds)
+            case .a: return Set(tradeController.tradeSideAPlayerIds)
+            case .b: return Set(tradeController.tradeSideBPlayerIds)
             }
         }()
         let roster = leagueStore.myLeagueRosters.first { $0.rosterId == context.rosterId }
@@ -1029,8 +1028,8 @@ extension TeamAnalyzerView {
                 ForEach(players) { entry in
                     Button {
                         switch context.side {
-                        case .a: tradeSideAPlayerIds.append(entry.playerId)
-                        case .b: tradeSideBPlayerIds.append(entry.playerId)
+                        case .a: tradeController.tradeSideAPlayerIds.append(entry.playerId)
+                        case .b: tradeController.tradeSideBPlayerIds.append(entry.playerId)
                         }
                         showSidePicker = nil
                     } label: {
@@ -1057,8 +1056,8 @@ extension TeamAnalyzerView {
     private func tradePickSelectionList(context: TradeSidePickerContext) -> some View {
         let alreadyPicked: Set<String> = {
             switch context.side {
-            case .a: return Set(tradeSideAPickNames)
-            case .b: return Set(tradeSideBPickNames)
+            case .a: return Set(tradeController.tradeSideAPickNames)
+            case .b: return Set(tradeController.tradeSideBPickNames)
             }
         }()
         // Default to current + next 2 NFL years from the device clock —
@@ -1086,8 +1085,8 @@ extension TeamAnalyzerView {
                     ForEach(names, id: \.self) { name in
                         Button {
                             switch context.side {
-                            case .a: tradeSideAPickNames.append(name)
-                            case .b: tradeSideBPickNames.append(name)
+                            case .a: tradeController.tradeSideAPickNames.append(name)
+                            case .b: tradeController.tradeSideBPickNames.append(name)
                             }
                             showSidePicker = nil
                         } label: {
@@ -1170,12 +1169,10 @@ extension TeamAnalyzerView {
             } else {
                 ForEach(recs) { rec in
                     Button {
-                        // Load the recommendation into the builder.
-                        tradePartnerRosterId = rec.partnerRosterId
-                        tradeSideAPlayerIds = [rec.give.playerId]
-                        tradeSideBPlayerIds = [rec.receive.playerId]
-                        tradeSideAPickNames = []
-                        tradeSideBPickNames = []
+                        // Seed the builder with this recommendation.
+                        // Identical to the deep-link path the My Team
+                        // Trades tab uses — single source of truth.
+                        tradeController.preload(rec)
                     } label: {
                         RecommendedTradeCard(rec)
                     }
