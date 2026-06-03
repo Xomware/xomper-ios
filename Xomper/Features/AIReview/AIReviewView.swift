@@ -32,12 +32,16 @@ struct AIReviewView: View {
         authStore.whitelistedUser?.isAdmin == true
     }
 
-    /// Client-side defense-in-depth filter — the server already strips
-    /// `is_redacted == true` rows for non-admin callers. Admins see
-    /// the full list when `showRedacted` is on, otherwise they get
-    /// the same view as everyone else.
+    /// Client-side defense-in-depth filter:
+    /// - Mock-draft reports are admin-only — they're internal scratch
+    ///   reports that aren't meant for the league at large.
+    /// - Redacted reports are stripped server-side for non-admins;
+    ///   admins see them when `showRedacted` is on.
     private var visibleArchive: [AIReport] {
-        store.archive.filter { !$0.isRedacted || store.showRedacted }
+        store.archive.filter { report in
+            if report.reportType == .mock && !isAdmin { return false }
+            return !report.isRedacted || store.showRedacted
+        }
     }
 
     var body: some View {
