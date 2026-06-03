@@ -39,6 +39,8 @@ struct LandingView: View {
     var nflStateStore: NflStateStore
     var aiReviewStore: AIReviewStore
     var announcementsStore: AnnouncementsStore
+    var historyStore: HistoryStore
+    var userStore: UserStore
     var navStore: NavigationStore
     var router: AppRouter
 
@@ -49,6 +51,15 @@ struct LandingView: View {
             VStack(spacing: XomperTheme.Spacing.md) {
                 HeadlineAIReportCard(
                     store: aiReviewStore,
+                    navStore: navStore,
+                    router: router
+                )
+
+                UpcomingDraftCountdownCard(
+                    historyStore: historyStore,
+                    leagueStore: leagueStore,
+                    nflStateStore: nflStateStore,
+                    userStore: userStore,
                     navStore: navStore,
                     router: router
                 )
@@ -111,6 +122,8 @@ struct LandingView: View {
             nflStateStore: NflStateStore(),
             aiReviewStore: AIReviewStore(),
             announcementsStore: AnnouncementsStore(),
+            historyStore: HistoryStore(),
+            userStore: UserStore(),
             navStore: NavigationStore(),
             router: AppRouter()
         )

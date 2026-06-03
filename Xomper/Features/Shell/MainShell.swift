@@ -156,6 +156,8 @@ struct MainShell: View {
                     nflStateStore: nflStateStore,
                     aiReviewStore: aiReviewStore,
                     announcementsStore: announcementsStore,
+                    historyStore: historyStore,
+                    userStore: userStore,
                     navStore: navStore,
                     router: router
                 )

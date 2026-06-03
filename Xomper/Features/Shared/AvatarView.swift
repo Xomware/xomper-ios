@@ -5,11 +5,15 @@ struct AvatarView: View {
     var size: CGFloat = XomperTheme.AvatarSize.md
     var isTeam: Bool = false
 
+    /// Sleeper exposes both `/avatars/<id>` (full) and `/avatars/thumbs/<id>`
+    /// (~80px). For the xl profile avatar use the full asset so it
+    /// doesn't render pixelated.
     private var imageURL: URL? {
         guard let avatarID, !avatarID.isEmpty else { return nil }
-
-        let baseURL = "https://sleepercdn.com/avatars/thumbs"
-        return URL(string: "\(baseURL)/\(avatarID)")
+        let path = size >= XomperTheme.AvatarSize.lg
+            ? "https://sleepercdn.com/avatars/\(avatarID)"
+            : "https://sleepercdn.com/avatars/thumbs/\(avatarID)"
+        return URL(string: path)
     }
 
     var body: some View {
@@ -30,6 +34,11 @@ struct AvatarView: View {
                         fallbackIcon
                     }
                 }
+                // Force the AsyncImage state machine to reset when the
+                // URL changes from nil (pre-bootstrap) to a real URL.
+                // Without this, SwiftUI sometimes holds onto the empty
+                // phase and the avatar never appears.
+                .id(imageURL)
             } else {
                 fallbackIcon
             }
