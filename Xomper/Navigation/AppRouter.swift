@@ -68,6 +68,14 @@ enum AppRoute: Hashable {
     /// sub-screen (per-lambda kill switch + test-mode toggles).
     case adminCronSettings
 
+    /// Pushed from `AdminView`'s menu — opens the Email Archive list
+    /// (every successful SES send is archived; admin can view + resend).
+    case adminEmailArchive
+
+    /// Pushed from `EmailArchiveListView` — full detail for one row
+    /// with HTML preview + resend form.
+    case adminEmailArchiveDetail(id: String)
+
     /// Pushed from `AdminView`'s menu — opens the Announcements
     /// admin list (all rows including inactive + expired).
     case adminAnnouncements
