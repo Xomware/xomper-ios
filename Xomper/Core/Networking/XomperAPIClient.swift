@@ -25,7 +25,7 @@ protocol XomperAPIClientProtocol: Sendable {
     func triggerPostDraftAIReview(dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse
     func triggerPreseasonAIReview(dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse
     func triggerWeeklyAIReview(week: Int?, dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse
-    func triggerWeekPreviewAIReview(week: Int?, dryRun: Bool, force: Bool) async throws -> AIReviewTriggerResponse
+    func triggerWeekPreviewAIReview(week: Int?, dryRun: Bool, force: Bool, seasonsBack: Int?) async throws -> AIReviewTriggerResponse
 
     // Admin: report metadata flags (F3)
     func setReportFlag(
@@ -135,11 +135,24 @@ struct WeeklyTriggerRequest: Encodable, Sendable {
     let week: Int?
     let dryRun: Bool
     let force: Bool
+    /// Walk previous_league_id N times from the active league.
+    /// 0 = current season. Useful for backfill / offseason previews
+    /// against last year's data. `encodeIfPresent` so `nil` omits the
+    /// key entirely (backend treats absent as 0).
+    let seasonsBack: Int?
 
     enum CodingKeys: String, CodingKey {
         case week
         case dryRun = "dry_run"
         case force
+        case seasonsBack = "seasons_back"
+    }
+
+    init(week: Int?, dryRun: Bool, force: Bool, seasonsBack: Int? = nil) {
+        self.week = week
+        self.dryRun = dryRun
+        self.force = force
+        self.seasonsBack = seasonsBack
     }
 
     func encode(to encoder: Encoder) throws {
@@ -147,6 +160,7 @@ struct WeeklyTriggerRequest: Encodable, Sendable {
         try container.encodeIfPresent(week, forKey: .week)
         try container.encode(dryRun, forKey: .dryRun)
         try container.encode(force, forKey: .force)
+        try container.encodeIfPresent(seasonsBack, forKey: .seasonsBack)
     }
 }
 
@@ -1034,9 +1048,15 @@ final class XomperAPIClient: XomperAPIClientProtocol {
     func triggerWeekPreviewAIReview(
         week: Int?,
         dryRun: Bool,
-        force: Bool
+        force: Bool,
+        seasonsBack: Int?
     ) async throws -> AIReviewTriggerResponse {
-        let payload = WeeklyTriggerRequest(week: week, dryRun: dryRun, force: force)
+        let payload = WeeklyTriggerRequest(
+            week: week,
+            dryRun: dryRun,
+            force: force,
+            seasonsBack: seasonsBack
+        )
         return try await postEncodableDecoding(
             "/admin/ai-review-week-preview-trigger",
             body: payload

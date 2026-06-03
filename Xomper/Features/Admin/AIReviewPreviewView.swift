@@ -323,7 +323,8 @@ struct AIReviewPreviewView: View {
                 _ = try await adminStore.triggerWeekPreview(
                     week: adminStore.weekPreviewWeekOverride,
                     dryRun: false,
-                    force: true
+                    force: true,
+                    seasonsBack: adminStore.weekPreviewSeasonsBack > 0 ? adminStore.weekPreviewSeasonsBack : nil
                 )
             case .mock:
                 broadcastError = "Mock drafts can't be broadcast from this screen."
