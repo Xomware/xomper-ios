@@ -24,6 +24,7 @@
 		11EFE5DD5C1D6DE5056597BB /* PlayerPointsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D36829F2AD0FD089788B9CE1 /* PlayerPointsStore.swift */; };
 		133F58C70F4FA02676079E9A /* RulesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FDC8A9B02A2BFD83398D04F /* RulesStore.swift */; };
 		143F0C4F56D88430BDC07B2A /* SeasonPickerBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD5AF5657020E1DBB5CB8886 /* SeasonPickerBar.swift */; };
+		14C05C401FBE86429AB1CD7E /* XomperAPIClientProtocol+TestStubs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C12289B5D74747C89E09283 /* XomperAPIClientProtocol+TestStubs.swift */; };
 		16F47DD114B2470F88D007A5 /* MatchupsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8521885A7FF4C6910DFBF549 /* MatchupsView.swift */; };
 		1720E856ACCE0189331605F2 /* AdminStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7839DD9CF0968986F91A58DB /* AdminStore.swift */; };
 		189F79187B5D4D5686909B2F /* AIReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A95FE8DD123C85CA39DAE13 /* AIReport.swift */; };
@@ -64,6 +65,7 @@
 		42F9C81AF6338A720FE0BC12 /* ArchiveNavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37E65C159F2C84E48B61A9A8 /* ArchiveNavigationTests.swift */; };
 		4358973CB450667407A22310 /* DraftGrade.swift in Sources */ = {isa = PBXBuildFile; fileRef = C30266A2CB62F694EB45ACEA /* DraftGrade.swift */; };
 		440A44095AD70A8D3D273EEE /* StandingsScrollBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF1A7B1219575171DA3ABAB7 /* StandingsScrollBar.swift */; };
+		45B77984A7DC400395826FE6 /* MarkdownBulletRenderingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B08409B47A56CAD2EAB776C /* MarkdownBulletRenderingTests.swift */; };
 		4A321187068EEBA8C4E75EFE /* PayoutProjection.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E3BE36BCEA1A7722157C37 /* PayoutProjection.swift */; };
 		4AFF52CDFE011C65E819946A /* EmailArchiveListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52633D7C9BB49C28288B36A6 /* EmailArchiveListView.swift */; };
 		4B629DB100C96EB68A6A9A41 /* SearchResults.swift in Sources */ = {isa = PBXBuildFile; fileRef = 323F422F2D0E1C2BA5D46C0A /* SearchResults.swift */; };
@@ -241,6 +243,7 @@
 		19CAA19890E461D00B644AA0 /* EmailArchiveDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailArchiveDetailView.swift; sourceTree = "<group>"; };
 		1A884A785F461C755979D421 /* AnnouncementsStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnnouncementsStoreTests.swift; sourceTree = "<group>"; };
 		1AD376EFB7AD4A192FAB3E8F /* RecordBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordBadge.swift; sourceTree = "<group>"; };
+		1B08409B47A56CAD2EAB776C /* MarkdownBulletRenderingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownBulletRenderingTests.swift; sourceTree = "<group>"; };
 		1D61FC118C0250CA87BDF647 /* ReportFlagTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportFlagTests.swift; sourceTree = "<group>"; };
 		1D6C6489A04EC9CA00FFBD0F /* StandingsOffseasonCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingsOffseasonCard.swift; sourceTree = "<group>"; };
 		1FBB5433786555EDDBC896C7 /* XomperTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XomperTheme.swift; sourceTree = "<group>"; };
@@ -252,6 +255,7 @@
 		273FF9D973C37FE35D0DB988 /* QuickHittersStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickHittersStrip.swift; sourceTree = "<group>"; };
 		2B670A3A0762D22FB3202E1E /* DivisionBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DivisionBadge.swift; sourceTree = "<group>"; };
 		2B6C68E1131F2BBBE625DEAF /* RuleProposalFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuleProposalFormView.swift; sourceTree = "<group>"; };
+		2C12289B5D74747C89E09283 /* XomperAPIClientProtocol+TestStubs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "XomperAPIClientProtocol+TestStubs.swift"; sourceTree = "<group>"; };
 		2DB0B979B62A1CF6EB80417F /* DraftRecapResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DraftRecapResolverTests.swift; sourceTree = "<group>"; };
 		2DBAC7CE2DC64237D218FAB8 /* AdminTablesStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminTablesStoreTests.swift; sourceTree = "<group>"; };
 		2DCF4387BA57375E04A8940B /* AnnouncementsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnnouncementsCard.swift; sourceTree = "<group>"; };
@@ -599,6 +603,7 @@
 				36E84A86BA7FCA57856BD476 /* LeagueAnnouncementDecoderTests.swift */,
 				82A98546D2F68452085EEC9C /* LogEventTests.swift */,
 				ED8C8F9BD9880370D65EDF0B /* LogsStoreTests.swift */,
+				1B08409B47A56CAD2EAB776C /* MarkdownBulletRenderingTests.swift */,
 				A951936FD34F712A8D8E66C0 /* MockDraftEngineTests.swift */,
 				7877A392F88F41B8D4979F23 /* MockDraftMetadataTests.swift */,
 				7589768F3AF9DB478D8E0419 /* MockDraftStoreFallbackTests.swift */,
@@ -606,6 +611,7 @@
 				1D61FC118C0250CA87BDF647 /* ReportFlagTests.swift */,
 				48F82C66C92981F7F8AB58CE /* SeededRNGTests.swift */,
 				BB79AE4EA78D33BDCD8565A8 /* TestEmailStoreTests.swift */,
+				B56844DA85C58D7C0203E412 /* Support */,
 			);
 			path = XomperTests;
 			sourceTree = "<group>";
@@ -776,6 +782,14 @@
 				E969C4A894017F9D0072CCFA /* WorldCup.swift */,
 			);
 			path = Models;
+			sourceTree = "<group>";
+		};
+		B56844DA85C58D7C0203E412 /* Support */ = {
+			isa = PBXGroup;
+			children = (
+				2C12289B5D74747C89E09283 /* XomperAPIClientProtocol+TestStubs.swift */,
+			);
+			path = Support;
 			sourceTree = "<group>";
 		};
 		CF0EB2B68A2AB44A16E88FB9 /* Shared */ = {
@@ -1065,6 +1079,7 @@
 				EC07E5ADB7CEF9AFDC9B152A /* LeagueAnnouncementDecoderTests.swift in Sources */,
 				31527A4E320270A464DBADDB /* LogEventTests.swift in Sources */,
 				7794B2E1BA5055ACFF150166 /* LogsStoreTests.swift in Sources */,
+				45B77984A7DC400395826FE6 /* MarkdownBulletRenderingTests.swift in Sources */,
 				2ECED2F6ACF5F762D1E1462F /* MockDraftEngineTests.swift in Sources */,
 				3403B87830513963A9D86F8F /* MockDraftMetadataTests.swift in Sources */,
 				4DA6A8F315E4AFF217B5C7F5 /* MockDraftStoreFallbackTests.swift in Sources */,
@@ -1072,6 +1087,7 @@
 				9FA30DE0724E90F9914ED3BA /* ReportFlagTests.swift in Sources */,
 				CC44774FC6B17057810140CF /* SeededRNGTests.swift in Sources */,
 				57E9FA9D90F0BF708A014023 /* TestEmailStoreTests.swift in Sources */,
+				14C05C401FBE86429AB1CD7E /* XomperAPIClientProtocol+TestStubs.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

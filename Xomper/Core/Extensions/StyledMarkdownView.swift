@@ -75,6 +75,21 @@ struct StyledMarkdownView: View {
             }
             .padding(.vertical, 8)
 
+        case .bullet(let text):
+            HStack(alignment: .top, spacing: 8) {
+                Text("•")
+                    .font(.body.weight(.bold))
+                    .foregroundStyle(XomperColors.championGold)
+                inlineText(text)
+                    .font(.body)
+                    .foregroundStyle(XomperColors.textPrimary)
+                    .lineSpacing(5)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+            }
+            .padding(.bottom, 8)
+
         case .paragraph(let text):
             inlineText(text)
                 .font(.body)
@@ -125,6 +140,7 @@ enum MarkdownBlock: Hashable {
     case h2(String)
     case h3(String)
     case quote(String)
+    case bullet(String)
     case paragraph(String)
 }
 
@@ -149,6 +165,13 @@ enum MarkdownBlockParser {
             }
             if trimmed.hasPrefix("> ") {
                 return .quote(String(trimmed.dropFirst(2)).trimmingCharacters(in: .whitespaces))
+            }
+            if trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") || trimmed.hasPrefix("• ") {
+                // Collapse any wrapped continuation lines within the
+                // bullet into a single spaced run, mirroring paragraph
+                // handling below.
+                let body = String(trimmed.dropFirst(2)).trimmingCharacters(in: .whitespaces)
+                return .bullet(body.replacingOccurrences(of: "\n", with: " "))
             }
             // Paragraph — collapse internal newlines into spaces so a
             // wrapped paragraph from the AI doesn't render with hard

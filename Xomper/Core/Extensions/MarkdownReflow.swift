@@ -86,6 +86,20 @@ enum MarkdownReflow {
             options: .regularExpression
         )
 
+        // 7b. Promote list items to their own blocks. Claude emits
+        //     "- 1.02 name — Player..." pick lines separated by single
+        //     newlines; the block parser would otherwise collapse them
+        //     into one run-on paragraph ("...in Madden. - 1.02 name...").
+        //     Detaching each marker onto a blank-line boundary lets the
+        //     parser render real, spaced bullets. Matches `-`, `*`, `•`
+        //     at a line start (optionally after the leading text of the
+        //     first bullet in a run).
+        out = out.replacingOccurrences(
+            of: #"[ \t]*\n[ \t]*([-*•])[ \t]+"#,
+            with: "\n\n- ",
+            options: .regularExpression
+        )
+
         // 8. Normalize whitespace — collapse 3+ newlines and strip
         //    leading whitespace on the result so SwiftUI's
         //    AttributedString(markdown:) sees clean input.
@@ -118,8 +132,9 @@ enum MarkdownReflow {
     /// prose, and shouldn't be sliced.
     private static func splitLongParagraph(_ paragraph: String, maxLen: Int, maxSplits: Int) -> String {
         let trimmed = paragraph.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Don't touch heading-like blocks.
+        // Don't touch heading-like or list-item blocks.
         if trimmed.hasPrefix("#") || trimmed.hasPrefix(">") { return paragraph }
+        if trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") || trimmed.hasPrefix("• ") { return paragraph }
         if trimmed.count <= maxLen || maxSplits == 0 { return paragraph }
 
         // Find every sentence boundary: period/exclamation/question
