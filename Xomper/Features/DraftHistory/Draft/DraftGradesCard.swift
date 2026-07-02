@@ -56,14 +56,20 @@ struct DraftGradesCard: View {
                     letterChip(grade.letter)
 
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(grade.teamName)
+                        // Most managers never set a custom team name, so
+                        // fall back to the manager handle for the primary
+                        // line and only show the secondary line when a
+                        // distinct team name exists.
+                        Text(grade.teamName.isEmpty ? grade.managerName : grade.teamName)
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(XomperColors.textPrimary)
                             .lineLimit(1)
-                        Text(grade.managerName)
-                            .font(.caption2)
-                            .foregroundStyle(XomperColors.textMuted)
-                            .lineLimit(1)
+                        if !grade.teamName.isEmpty {
+                            Text(grade.managerName)
+                                .font(.caption2)
+                                .foregroundStyle(XomperColors.textMuted)
+                                .lineLimit(1)
+                        }
                     }
 
                     Spacer()

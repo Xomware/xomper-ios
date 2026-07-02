@@ -185,19 +185,41 @@ final class LeagueStore {
 
         var chain: [League] = []
         var currentId: String? = leagueId
+        var truncated = false
 
         while let id = currentId {
             do {
-                let league = try await apiClient.fetchLeague(id)
+                // A single transient Sleeper failure on one hop would
+                // otherwise `break` and drop that season *and every older
+                // season* from the dynasty history — and the truncated
+                // chain gets cached below, so the gap persists until app
+                // relaunch. Retry once before giving up on the hop.
+                let league = try await fetchLeagueWithRetry(id)
                 chain.append(league)
                 currentId = league.previousLeagueId
             } catch {
+                truncated = true
                 break
             }
         }
 
-        leagueChainCache = chain
         leagueChain = chain
+        // Only cache a fully-walked chain. Caching a truncated result
+        // would freeze a transient gap (e.g. a missing prior season) in
+        // place until relaunch; leaving the cache empty lets the next
+        // load re-attempt the full walk.
+        leagueChainCache = truncated ? nil : chain
+    }
+
+    /// Fetch a single league, retrying once after a short backoff so a
+    /// transient network blip doesn't truncate the dynasty chain.
+    private func fetchLeagueWithRetry(_ id: String) async throws -> League {
+        do {
+            return try await apiClient.fetchLeague(id)
+        } catch {
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            return try await apiClient.fetchLeague(id)
+        }
     }
 
     // MARK: - Set Current League

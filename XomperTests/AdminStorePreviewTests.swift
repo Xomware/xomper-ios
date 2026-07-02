@@ -36,10 +36,11 @@ final class AdminStorePreviewTests: XCTestCase {
 
         let typeId: String
         switch reportType {
-        case .postDraft: typeId = "postDraft#2026"
-        case .preseason: typeId = "preseason#2026-PRESEASON"
-        case .weekly:    typeId = "weekly#2026W04"
-        case .mock:      typeId = "mock#test"
+        case .postDraft:   typeId = "postDraft#2026"
+        case .preseason:   typeId = "preseason#2026-PRESEASON"
+        case .weekly:      typeId = "weekly#2026W04"
+        case .weekPreview: typeId = "weekPreview#2026W04"
+        case .mock:        typeId = "mock#test"
         }
 
         let json = """

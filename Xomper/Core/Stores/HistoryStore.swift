@@ -579,9 +579,13 @@ final class HistoryStore {
             }
 
             for pick in picks {
-                // Resolve user from roster data
+                // Resolve user from roster data. Try the pick's own
+                // drafter first, then fall back to the roster's current
+                // owner (covers picks whose `picked_by` manager has since
+                // left the dynasty).
                 let roster = rosters.first { $0.rosterId == pick.rosterId }
-                let user = users.first { $0.userId == (pick.pickedBy ?? roster?.ownerId) }
+                let user = users.first { $0.userId == pick.pickedBy }
+                    ?? users.first { $0.userId == roster?.ownerId }
 
                 let playerName = [
                     pick.metadata?.firstName ?? "",
@@ -603,7 +607,10 @@ final class HistoryStore {
                     playerTeam: pick.metadata?.team ?? "",
                     pickedByUserId: pick.pickedBy ?? roster?.ownerId ?? "",
                     pickedByRosterId: pick.rosterId ?? 0,
-                    pickedByUsername: user?.username ?? "",
+                    // Sleeper's league-users endpoint returns `username`
+                    // as null — `display_name` is the real handle, so use
+                    // the model's resolved accessor.
+                    pickedByUsername: user?.resolvedDisplayName ?? "",
                     pickedByTeamName: user?.teamName ?? "",
                     isKeeper: pick.isKeeper ?? false
                 )
