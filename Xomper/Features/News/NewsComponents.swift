@@ -115,36 +115,6 @@ struct AssetRow: View {
     }
 }
 
-// MARK: - Filter chip
-
-/// Capsule filter chip — selected fills championGold, matching
-/// `SeasonPickerBar`. Used for type/team/date filters.
-struct NewsFilterChip: View {
-    let title: String
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            withAnimation(XomperTheme.defaultAnimation) { action() }
-        } label: {
-            Text(title)
-                .font(.subheadline)
-                .fontWeight(isSelected ? .semibold : .regular)
-                .foregroundStyle(isSelected ? XomperColors.deepNavy : XomperColors.textSecondary)
-                .padding(.horizontal, XomperTheme.Spacing.md)
-                .padding(.vertical, XomperTheme.Spacing.xs)
-                .frame(minHeight: 32)
-                .background(isSelected ? XomperColors.championGold : XomperColors.surfaceLight)
-                .clipShape(Capsule())
-        }
-        .buttonStyle(.pressableCard)
-        .accessibilityLabel(title)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
-}
-
 // MARK: - Helpers
 
 /// Abbreviated relative date ("2d", "3w") for card headers.

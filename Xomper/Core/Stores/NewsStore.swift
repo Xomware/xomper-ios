@@ -339,19 +339,7 @@ enum NewsBuilder {
     private static func summary(type: NewsType, sides: [NewsSide], grade: TradeGrade?) -> String {
         switch type {
         case .trade:
-            guard sides.count == 2 else { return "" }
-            var parts = sides.map { side -> String in
-                "\(side.teamName) received \(list(side.acquired))."
-            }
-            if let grade {
-                if grade.isFair {
-                    parts.append("An even swap — both hauls land within \(percent(grade.percentGap)) on dynasty value.")
-                } else if let winnerId = grade.winnerRosterId,
-                          let winner = sides.first(where: { $0.rosterId == winnerId }) {
-                    parts.append("\(winner.teamName) comes out ahead by \(percent(grade.percentGap)) in dynasty value.")
-                }
-            }
-            return parts.joined(separator: " ")
+            return tradeSummary(sides: sides, grade: grade)
 
         case .waiver:
             return moveSummary(sides.first, verb: "claimed off waivers")
@@ -359,6 +347,33 @@ enum NewsBuilder {
         case .freeAgent:
             return moveSummary(sides.first, verb: "signed")
         }
+    }
+
+    /// Multi-sentence trade write-up: each side's haul with its dynasty
+    /// value, then a verdict that names the winner, the letter grade, and
+    /// the point gap. Deterministic — no LLM.
+    private static func tradeSummary(sides: [NewsSide], grade: TradeGrade?) -> String {
+        guard sides.count == 2 else { return "" }
+
+        var parts = sides.map { side -> String in
+            var line = "\(side.teamName) landed \(list(side.acquired))"
+            if side.acquiredValue > 0 {
+                line += " (\(side.acquiredValue) in dynasty value)"
+            }
+            return line + "."
+        }
+
+        if let grade {
+            if grade.isFair {
+                parts.append("The board grades it a wash — both hauls land within \(percent(grade.percentGap)) on dynasty value, so each side walks away with a fair-market return.")
+            } else if let winnerId = grade.winnerRosterId,
+                      let winner = sides.first(where: { $0.rosterId == winnerId }),
+                      let loser = sides.first(where: { $0.rosterId != winnerId }) {
+                let letter = grade.letter(for: winnerId).rawValue
+                parts.append("\(winner.teamName) wins this one (\(letter)), clearing \(loser.teamName) by \(grade.differential) points of dynasty value — a \(percent(grade.percentGap)) edge.")
+            }
+        }
+        return parts.joined(separator: " ")
     }
 
     private static func moveSummary(_ side: NewsSide?, verb: String) -> String {
@@ -379,6 +394,19 @@ enum NewsBuilder {
                 sentence = "\(side.teamName) dropped \(dropped)."
             } else {
                 sentence += " In the corresponding move, \(side.teamName) dropped \(dropped)."
+            }
+        }
+
+        // Value-added context so a pickup isn't just a bare name — how
+        // much dynasty value the move nets the roster.
+        if side.acquiredValue > 0 || side.relinquishedValue > 0 {
+            let net = side.netValue
+            if net > 0 {
+                sentence += " Adds \(net) in dynasty value to the roster."
+            } else if net < 0 {
+                sentence += " Sheds \(abs(net)) in dynasty value."
+            } else {
+                sentence += " A value-neutral roster shuffle."
             }
         }
 
