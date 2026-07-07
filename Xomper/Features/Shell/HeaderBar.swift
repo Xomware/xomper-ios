@@ -19,6 +19,9 @@ struct HeaderBar: View {
     let avatarID: String?
     let seasonStore: SeasonStore
     let leagueName: String?
+    @Environment(NotificationStore.self) private var notificationStore
+
+    @State private var showNotificationCenter = false
 
     /// Destinations that opt into the season picker sub-row. Other
     /// destinations render only the 44pt wordmark row.
@@ -81,6 +84,34 @@ struct HeaderBar: View {
 
                 Spacer()
 
+                // Notifications bell
+                Button {
+                    let generator = UIImpactFeedbackGenerator(style: .light)
+                    generator.impactOccurred()
+                    showNotificationCenter = true
+                } label: {
+                    ZStack(alignment: .topTrailing) {
+                        Image(systemName: "bell.fill")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(XomperColors.championGold)
+                            .frame(width: 44, height: 44)
+
+                        if notificationStore.unreadCount > 0 {
+                            Text(notificationStore.unreadCount > 99 ? "99+" : "\(notificationStore.unreadCount)")
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Color.red)
+                                .clipShape(Capsule())
+                                .offset(x: 8, y: 4)
+                        }
+                    }
+                }
+                .buttonStyle(.pressableCard)
+                .accessibilityLabel("Notifications")
+                .accessibilityHint("Opens notification center")
+
                 // Search.
                 Button {
                     let generator = UIImpactFeedbackGenerator(style: .light)
@@ -100,6 +131,11 @@ struct HeaderBar: View {
         }
         .padding(.horizontal, XomperTheme.Spacing.sm)
         .frame(height: 44)
+        .sheet(isPresented: $showNotificationCenter) {
+            NotificationCenterView()
+                .environment(notificationStore)
+                .environment(PushNotificationManager.shared)
+        }
     }
 
     // MARK: - Sub-row visibility
