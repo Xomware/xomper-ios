@@ -14,6 +14,7 @@ enum TrayDestination: Hashable {
     case standings
     case matchups
     case playoffs
+    case news
     // Legacy name — the user-facing label is "Draft" and the
     // renderer is the post-F3 sub-tabbed `DraftHistoryView` (Live /
     // Mocks / Recap on the current season; Picks / Recap on past
@@ -46,6 +47,7 @@ enum TrayDestination: Hashable {
         case .standings:      "Standings"
         case .matchups:       "Matchups"
         case .playoffs:       "Playoffs"
+        case .news:           "News"
         case .draftHistory:   "Draft"
         case .matchupHistory: "Matchup History"
         case .worldCup:       "World Cup"
@@ -74,6 +76,7 @@ enum TrayDestination: Hashable {
         case .standings:      "list.number"
         case .matchups:       "sportscourt.fill"
         case .playoffs:       "trophy.fill"
+        case .news:           "newspaper.fill"
         case .draftHistory:   "list.clipboard.fill"
         case .matchupHistory: "clock.arrow.circlepath"
         case .worldCup:       "globe.americas.fill"

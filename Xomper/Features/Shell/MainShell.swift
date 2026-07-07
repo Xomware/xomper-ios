@@ -60,6 +60,10 @@ struct MainShell: View {
     /// the Analyzer screen. Lives at the shell so the preload survives
     /// tray destination switches.
     @State private var tradeController = TradeAnalyzerController()
+    /// #145: League News feed (trades + roster moves, graded locally).
+    /// Shared so the Landing preview card and the full News destination
+    /// read the same fetched-and-graded feed without refetching.
+    @State private var newsStore = NewsStore()
 
     // MARK: - Body
 
@@ -163,6 +167,9 @@ struct MainShell: View {
                     announcementsStore: announcementsStore,
                     historyStore: historyStore,
                     userStore: userStore,
+                    newsStore: newsStore,
+                    playerStore: playerStore,
+                    valuesStore: valuesStore,
                     navStore: navStore,
                     router: router
                 )
@@ -190,6 +197,14 @@ struct MainShell: View {
                     leagueStore: leagueStore,
                     historyStore: historyStore,
                     playerStore: playerStore
+                )
+
+            case .news:
+                NewsView(
+                    leagueStore: leagueStore,
+                    playerStore: playerStore,
+                    valuesStore: valuesStore,
+                    newsStore: newsStore
                 )
 
             case .draftHistory:
