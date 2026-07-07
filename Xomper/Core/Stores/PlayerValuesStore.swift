@@ -29,7 +29,7 @@ final class PlayerValuesStore {
     /// Closest publicly-available proxy for our league's TE-premium
     /// scoring; FantasyCalc doesn't expose a TE+ toggle in the URL but
     /// the values track close enough for relative team comparison.
-    private let endpoint = URL(string: "https://api.fantasycalc.com/values/current?isDynasty=true&numQbs=2&numTeams=12&ppr=1")!
+    private let endpoint = URL(string: "https://api.fantasycalc.com/values/current?isDynasty=true&numQbs=2&numTeams=12&ppr=1&limit=2000")!
 
     /// Fetch values from FantasyCalc unless they were loaded within
     /// the last 12 hours (values move slowly in dynasty — daily refresh
