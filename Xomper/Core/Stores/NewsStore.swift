@@ -309,11 +309,25 @@ enum NewsBuilder {
                 record.pickedByRosterId == pick.rosterId
             }
 
+            // For resolved picks, use the drafted player's current dynasty
+            // value instead of the generic pick value. This makes historical
+            // trade grades more accurate — a 2024 1st that became Caleb
+            // Williams should be valued at Caleb Williams' current value,
+            // not "2024 Mid 1st" which is now worthless.
+            let value: Int
+            if let playerId = draftedPlayer?.playerId {
+                let playerValue = valuesStore.value(for: playerId)
+                // Fall back to pick value if player not found (rare edge case)
+                value = playerValue > 0 ? playerValue : valuesStore.pickValue(for: PickValuation.fantasyCalcName(season: pick.season, round: pick.round))
+            } else {
+                value = valuesStore.pickValue(for: PickValuation.fantasyCalcName(season: pick.season, round: pick.round))
+            }
+
             return NewsAsset(
                 id: "pick-\(pick.season)-\(pick.round)-\(pick.rosterId)",
                 name: PickValuation.displayName(season: pick.season, round: pick.round),
                 position: "PICK",
-                value: valuesStore.pickValue(for: PickValuation.fantasyCalcName(season: pick.season, round: pick.round)),
+                value: value,
                 isPick: true,
                 resolvedPlayerId: draftedPlayer?.playerId,
                 resolvedPlayerName: draftedPlayer?.playerName,
