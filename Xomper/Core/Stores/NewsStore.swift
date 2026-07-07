@@ -79,12 +79,17 @@ final class NewsStore {
     /// Fetch + build the feed. Skips the network when the same league was
     /// loaded within the last 10 minutes and already has items, unless
     /// `forceRefresh` is set (pull-to-refresh).
+    ///
+    /// - Parameter draftHistory: Historical draft picks used to resolve
+    ///   who a traded pick eventually became (e.g. "2024 1st → Caleb Williams").
+    ///   Pass an empty array to skip resolution.
     func load(
         leagueId: String,
         rosters: [Roster],
         users: [SleeperUser],
         playerStore: PlayerStore,
         valuesStore: PlayerValuesStore,
+        draftHistory: [DraftHistoryRecord] = [],
         forceRefresh: Bool = false
     ) async {
         guard !isLoading else { return }
@@ -128,7 +133,8 @@ final class NewsStore {
                 rosters: rosters,
                 users: users,
                 playerStore: playerStore,
-                valuesStore: valuesStore
+                valuesStore: valuesStore,
+                draftHistory: draftHistory
             ) {
                 built.append(item)
                 seen.insert(entry.txn.transactionId)
@@ -204,7 +210,8 @@ enum NewsBuilder {
         rosters: [Roster],
         users: [SleeperUser],
         playerStore: PlayerStore,
-        valuesStore: PlayerValuesStore
+        valuesStore: PlayerValuesStore,
+        draftHistory: [DraftHistoryRecord] = []
     ) -> NewsItem? {
         // Only surface completed, recognized moves.
         guard t.status == nil || t.status == "complete" else { return nil }
@@ -217,9 +224,9 @@ enum NewsBuilder {
 
         let sides: [NewsSide] = rosterIds.map { rid in
             let acquired = playerAssets(from: t.adds, roster: rid, playerStore: playerStore, valuesStore: valuesStore)
-                + pickAssets(from: t.draftPicks, roster: rid, acquired: true, valuesStore: valuesStore)
+                + pickAssets(from: t.draftPicks, roster: rid, acquired: true, valuesStore: valuesStore, draftHistory: draftHistory)
             let relinquished = playerAssets(from: t.drops, roster: rid, playerStore: playerStore, valuesStore: valuesStore)
-                + pickAssets(from: t.draftPicks, roster: rid, acquired: false, valuesStore: valuesStore)
+                + pickAssets(from: t.draftPicks, roster: rid, acquired: false, valuesStore: valuesStore, draftHistory: draftHistory)
             return NewsSide(
                 rosterId: rid,
                 teamName: teamName(rid, rosters: rosters, users: users),
@@ -283,7 +290,8 @@ enum NewsBuilder {
         from picks: [TradedPick]?,
         roster rid: Int,
         acquired: Bool,
-        valuesStore: PlayerValuesStore
+        valuesStore: PlayerValuesStore,
+        draftHistory: [DraftHistoryRecord] = []
     ) -> [NewsAsset] {
         guard let picks else { return [] }
         return picks.compactMap { pick -> NewsAsset? in
@@ -291,12 +299,25 @@ enum NewsBuilder {
             guard pick.ownerId != pick.previousOwnerId else { return nil }
             let owns = acquired ? pick.ownerId == rid : pick.previousOwnerId == rid
             guard owns else { return nil }
+
+            // Look up who this pick became, if the draft has completed.
+            // Match by season + round + original roster (the rosterId on
+            // TradedPick is the *original* owner's roster).
+            let draftedPlayer = draftHistory.first { record in
+                record.season == pick.season &&
+                record.round == pick.round &&
+                record.pickedByRosterId == pick.rosterId
+            }
+
             return NewsAsset(
                 id: "pick-\(pick.season)-\(pick.round)-\(pick.rosterId)",
                 name: PickValuation.displayName(season: pick.season, round: pick.round),
                 position: "PICK",
                 value: valuesStore.pickValue(for: PickValuation.fantasyCalcName(season: pick.season, round: pick.round)),
-                isPick: true
+                isPick: true,
+                resolvedPlayerId: draftedPlayer?.playerId,
+                resolvedPlayerName: draftedPlayer?.playerName,
+                resolvedPlayerPosition: draftedPlayer?.playerPosition
             )
         }
         .sorted { $0.value > $1.value }

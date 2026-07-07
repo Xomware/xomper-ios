@@ -91,6 +91,7 @@ struct GradeBadge: View {
 // MARK: - Asset row
 
 /// One player/pick line: position tag + name + dynasty value.
+/// For resolved picks (draft completed), shows who the pick became.
 struct AssetRow: View {
     let asset: NewsAsset
 
@@ -100,10 +101,28 @@ struct AssetRow: View {
                 .font(.caption2.weight(.bold))
                 .foregroundStyle(asset.isPick ? XomperColors.steelBlue : XomperColors.textMuted)
                 .frame(width: 34, alignment: .leading)
-            Text(asset.name)
-                .font(.subheadline)
-                .foregroundStyle(XomperColors.textPrimary)
+
+            // For resolved picks, show "2024 1st → Caleb Williams"
+            if asset.isResolvedPick, let playerName = asset.resolvedPlayerName {
+                HStack(spacing: 4) {
+                    Text(asset.name)
+                        .font(.subheadline)
+                        .foregroundStyle(XomperColors.textPrimary)
+                    Text("→")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(XomperColors.textMuted)
+                    Text(playerName)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(XomperColors.championGold)
+                }
                 .lineLimit(1)
+            } else {
+                Text(asset.name)
+                    .font(.subheadline)
+                    .foregroundStyle(XomperColors.textPrimary)
+                    .lineLimit(1)
+            }
+
             Spacer(minLength: 4)
             if asset.value > 0 {
                 Text("\(asset.value)")

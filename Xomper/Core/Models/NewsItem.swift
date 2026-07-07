@@ -105,6 +105,41 @@ struct NewsAsset: Identifiable, Sendable, Hashable {
     /// Dynasty value. Picks are valued at the Mid tier per issue #145.
     let value: Int
     let isPick: Bool
+
+    // MARK: - Pick Resolution (for used picks)
+
+    /// For picks that have been used: the player who was drafted.
+    /// nil for future picks or non-pick assets.
+    let resolvedPlayerId: String?
+    /// For picks that have been used: player name, e.g. "Caleb Williams".
+    let resolvedPlayerName: String?
+    /// For picks that have been used: player position, e.g. "QB".
+    let resolvedPlayerPosition: String?
+
+    init(
+        id: String,
+        name: String,
+        position: String,
+        value: Int,
+        isPick: Bool,
+        resolvedPlayerId: String? = nil,
+        resolvedPlayerName: String? = nil,
+        resolvedPlayerPosition: String? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.position = position
+        self.value = value
+        self.isPick = isPick
+        self.resolvedPlayerId = resolvedPlayerId
+        self.resolvedPlayerName = resolvedPlayerName
+        self.resolvedPlayerPosition = resolvedPlayerPosition
+    }
+
+    /// True if this was a pick that has since been used in a draft.
+    var isResolvedPick: Bool {
+        isPick && resolvedPlayerId != nil
+    }
 }
 
 // MARK: - TradeGrade
