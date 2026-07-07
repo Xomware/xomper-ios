@@ -51,7 +51,15 @@ struct PlayerValue: Codable, Sendable {
         self.sleeperId = try? player?.decodeIfPresent(String.self, forKey: .sleeperId)
         self.position = try? player?.decodeIfPresent(String.self, forKey: .position)
         self.name = try? player?.decodeIfPresent(String.self, forKey: .name)
-        self.value = (try? c.decode(Int.self, forKey: .value)) ?? 0
+        if let i = try? c.decode(Int.self, forKey: .value) {
+            self.value = i
+        } else if let d = try? c.decode(Double.self, forKey: .value) {
+            self.value = Int(d.rounded())
+        } else if let s = try? c.decode(String.self, forKey: .value), let n = Double(s) {
+            self.value = Int(n.rounded())
+        } else {
+            self.value = 0
+        }
         self.overallRank = try? c.decodeIfPresent(Int.self, forKey: .overallRank)
         self.positionRank = try? c.decodeIfPresent(Int.self, forKey: .positionRank)
         self.trend30Day = try? c.decodeIfPresent(Int.self, forKey: .trend30Day)
