@@ -196,6 +196,7 @@
 		E1EA65A3788E9D5F4B2D45B8 /* SeededRNG.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B7697158FD11D7CF6F9045B /* SeededRNG.swift */; };
 		E2E0551B857C17254E9B789B /* AdminView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E257076F7FE641947D1DC978 /* AdminView.swift */; };
 		E2EC532916CAA2FBB779DB35 /* UserStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62948D0A455E7CE99B15CB75 /* UserStore.swift */; };
+		E38EEC7B1F19582B9975C236 /* TradeAnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF18A8E378205EEC0FC0F2AB /* TradeAnalysisView.swift */; };
 		E64E815819D87CED1DF5383F /* AIReviewPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE6B846E697A235684C8EBA4 /* AIReviewPreviewView.swift */; };
 		EC07E5ADB7CEF9AFDC9B152A /* LeagueAnnouncementDecoderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36E84A86BA7FCA57856BD476 /* LeagueAnnouncementDecoderTests.swift */; };
 		EDDACB3FFB20E468D9D9D67D /* HeaderBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1E7D0FD804723AC6A3E4298 /* HeaderBar.swift */; };
@@ -368,6 +369,7 @@
 		ACCFF9888476668EBE7AA0CC /* XomperTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = XomperTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		AD43D54AB620DABD559F8A40 /* CareerStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareerStats.swift; sourceTree = "<group>"; };
 		AE543CB2E49335ADD02E8000 /* Roster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Roster.swift; sourceTree = "<group>"; };
+		AF18A8E378205EEC0FC0F2AB /* TradeAnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TradeAnalysisView.swift; sourceTree = "<group>"; };
 		B04B5251715A37E924DF7CEF /* LiveDraftView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveDraftView.swift; sourceTree = "<group>"; };
 		B1358E97D2A18E9A5440D8CC /* AuditFeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuditFeedView.swift; sourceTree = "<group>"; };
 		B1B9527EA5CA26FE5197FCF5 /* CronSettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CronSettingsStore.swift; sourceTree = "<group>"; };
@@ -687,6 +689,7 @@
 			children = (
 				501B8FD2B915B3BD6568F42C /* HexagonChartView.swift */,
 				8098F78566BB324ACC70FB94 /* TeamAnalyzerView.swift */,
+				AF18A8E378205EEC0FC0F2AB /* TradeAnalysisView.swift */,
 			);
 			path = TeamAnalyzer;
 			sourceTree = "<group>";
@@ -1250,6 +1253,7 @@
 				EE987501F73209179D5CEEB4 /* TestEmailStore.swift in Sources */,
 				825E9A2C109291322461741A /* TestEmailView.swift in Sources */,
 				98D5EE595D14742780A47B81 /* ThisWeekMatchupsCard.swift in Sources */,
+				E38EEC7B1F19582B9975C236 /* TradeAnalysisView.swift in Sources */,
 				B7BD3E81860C8271FA1C068F /* TradeAnalyzerController.swift in Sources */,
 				57C17293587E8DBED9A14970 /* TradedPick.swift in Sources */,
 				78094B6DF90F54E0FA59898A /* TrayDestination.swift in Sources */,

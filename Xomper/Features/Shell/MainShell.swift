@@ -238,6 +238,13 @@ struct MainShell: View {
                     tradeController: tradeController
                 )
 
+            case .tradeAnalysis:
+                TradeAnalysisView(
+                    leagueStore: leagueStore,
+                    playerStore: playerStore,
+                    valuesStore: valuesStore
+                )
+
             case .payouts:
                 PayoutsView(
                     leagueStore: leagueStore,
