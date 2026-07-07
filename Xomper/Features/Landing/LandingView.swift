@@ -41,6 +41,9 @@ struct LandingView: View {
     var announcementsStore: AnnouncementsStore
     var historyStore: HistoryStore
     var userStore: UserStore
+    var newsStore: NewsStore
+    var playerStore: PlayerStore
+    var valuesStore: PlayerValuesStore
     var navStore: NavigationStore
     var router: AppRouter
 
@@ -65,6 +68,15 @@ struct LandingView: View {
                 )
 
                 AnnouncementsCard(store: announcementsStore)
+
+                NewsPreviewCard(
+                    newsStore: newsStore,
+                    leagueStore: leagueStore,
+                    playerStore: playerStore,
+                    valuesStore: valuesStore,
+                    navStore: navStore,
+                    router: router
+                )
 
                 StandingsScrollBar(
                     leagueStore: leagueStore,
@@ -110,7 +122,23 @@ struct LandingView: View {
         async let league:   () = leagueStore.loadMyLeague()
         async let ann:      () = announcementsStore.load(force: true)
         async let matchups: () = matchupsController.bumpAndWait()
-        _ = await (ai, nfl, league, ann, matchups)
+        async let news:     () = refreshNews()
+        _ = await (ai, nfl, league, ann, matchups, news)
+    }
+
+    /// Force-refresh the news feed on pull-to-refresh. Gated on rosters
+    /// so team-name resolution has its source data.
+    private func refreshNews() async {
+        guard !leagueStore.myLeagueRosters.isEmpty else { return }
+        await valuesStore.loadValues()
+        await newsStore.load(
+            leagueId: leagueStore.resolvedHomeLeagueId,
+            rosters: leagueStore.myLeagueRosters,
+            users: leagueStore.myLeagueUsers,
+            playerStore: playerStore,
+            valuesStore: valuesStore,
+            forceRefresh: true
+        )
     }
 }
 
@@ -124,6 +152,9 @@ struct LandingView: View {
             announcementsStore: AnnouncementsStore(),
             historyStore: HistoryStore(),
             userStore: UserStore(),
+            newsStore: NewsStore(),
+            playerStore: PlayerStore(),
+            valuesStore: PlayerValuesStore(),
             navStore: NavigationStore(),
             router: AppRouter()
         )
