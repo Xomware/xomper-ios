@@ -57,6 +57,7 @@ struct DraftRecapView: View {
         }
         .background(XomperColors.bgDark.ignoresSafeArea())
         .task(id: year) {
+            await playerValuesStore.loadValues()
             await ensureArchiveLoaded()
         }
         .refreshable {
