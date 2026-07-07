@@ -1,50 +1,33 @@
 import SwiftUI
 
-/// Feed card for a waiver claim or free-agent move (a single team adding
-/// and/or dropping players). No grade — moves aren't zero-sum trades —
-/// but FAAB spend is surfaced when present.
+/// Feed card for a waiver claim or free-agent move. Social-media-inspired
+/// design with clean visual hierarchy and engaging copy.
 struct MoveNewsCard: View {
     let item: NewsItem
 
     private var side: NewsSide? { item.sides.first }
 
+    /// Primary player being added (highest value)
+    private var primaryAdd: NewsAsset? {
+        side?.acquired.max { $0.value < $1.value }
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: XomperTheme.Spacing.sm) {
-            NewsCardHeader(item: item)
+        VStack(alignment: .leading, spacing: 0) {
+            // Top banner
+            headerBanner
 
-            Text(item.headline)
-                .font(.headline)
-                .foregroundStyle(XomperColors.textPrimary)
-                .lineLimit(1)
+            VStack(alignment: .leading, spacing: XomperTheme.Spacing.sm) {
+                // Engaging headline
+                headlineSection
 
-            if let side {
-                if !side.acquired.isEmpty {
-                    moveGroup(
-                        label: item.type == .waiver ? "Claimed" : "Added",
-                        assets: side.acquired,
-                        tint: XomperColors.successGreen,
-                        faab: side.faab
-                    )
-                }
-                if !side.relinquished.isEmpty {
-                    moveGroup(
-                        label: "Dropped",
-                        assets: side.relinquished,
-                        tint: XomperColors.accentRed,
-                        faab: nil
-                    )
+                // The move details
+                if let side {
+                    moveDetails(side)
                 }
             }
-
-            if !item.summary.isEmpty {
-                Text(item.summary)
-                    .font(.subheadline)
-                    .foregroundStyle(XomperColors.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            .padding(XomperTheme.Spacing.md)
         }
-        .padding(XomperTheme.Spacing.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
         .background(XomperColors.bgCard)
         .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
         .overlay(
@@ -55,24 +38,179 @@ struct MoveNewsCard: View {
         .accessibilityLabel(item.summary.isEmpty ? item.headline : item.summary)
     }
 
-    private func moveGroup(label: String, assets: [NewsAsset], tint: Color, faab: Int?) -> some View {
-        VStack(alignment: .leading, spacing: XomperTheme.Spacing.xxs) {
-            HStack(spacing: XomperTheme.Spacing.xs) {
-                Text(label.uppercased())
-                    .font(.caption2.weight(.bold))
+    // MARK: - Header Banner
+
+    private var headerBanner: some View {
+        HStack {
+            HStack(spacing: 6) {
+                Image(systemName: item.type == .waiver ? "clock.badge.checkmark" : "plus.circle")
+                    .font(.caption.weight(.bold))
+                Text(item.type == .waiver ? "WAIVER" : "FREE AGENT")
+                    .font(.caption.weight(.heavy))
+                    .tracking(1)
+            }
+            .foregroundStyle(XomperColors.bgDark)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(item.type.accentColor)
+
+            Spacer()
+
+            Text(relativeNewsDate(item.createdAt))
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(XomperColors.textMuted)
+                .padding(.trailing, XomperTheme.Spacing.md)
+        }
+    }
+
+    // MARK: - Headline Section
+
+    private var headlineSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(engagingHeadline)
+                .font(.headline.weight(.bold))
+                .foregroundStyle(XomperColors.textPrimary)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let teamName = side?.teamName {
+                Text(teamName)
+                    .font(.subheadline)
+                    .foregroundStyle(XomperColors.textSecondary)
+            }
+        }
+    }
+
+    /// Creates engaging headlines like "Patrick Mahomes Claimed!" or "Roster Shakeup: 2 In, 1 Out"
+    private var engagingHeadline: String {
+        guard let side else { return item.headline }
+
+        let addCount = side.acquired.count
+        let dropCount = side.relinquished.count
+
+        // Single add
+        if addCount == 1, let player = primaryAdd {
+            let verb = item.type == .waiver ? "Claims" : "Signs"
+            return "\(verb) \(player.name)"
+        }
+
+        // Multiple moves
+        if addCount > 0 && dropCount > 0 {
+            return "Roster Shakeup: \(addCount) In, \(dropCount) Out"
+        }
+
+        // Just adds
+        if addCount > 1 {
+            return "\(addCount) Players Added"
+        }
+
+        // Just drops
+        if dropCount > 0 && addCount == 0 {
+            return "\(dropCount) Player\(dropCount > 1 ? "s" : "") Released"
+        }
+
+        return item.headline
+    }
+
+    // MARK: - Move Details
+
+    private func moveDetails(_ side: NewsSide) -> some View {
+        HStack(alignment: .top, spacing: XomperTheme.Spacing.sm) {
+            // Added column
+            if !side.acquired.isEmpty {
+                moveColumn(
+                    label: item.type == .waiver ? "CLAIMED" : "SIGNED",
+                    assets: side.acquired,
+                    tint: XomperColors.successGreen,
+                    faab: side.faab
+                )
+            }
+
+            // Dropped column
+            if !side.relinquished.isEmpty {
+                moveColumn(
+                    label: "DROPPED",
+                    assets: side.relinquished,
+                    tint: XomperColors.accentRed,
+                    faab: nil
+                )
+            }
+        }
+    }
+
+    private func moveColumn(label: String, assets: [NewsAsset], tint: Color, faab: Int?) -> some View {
+        VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
+            // Header with optional FAAB
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(tint)
+                    .frame(width: 6, height: 6)
+                Text(label)
+                    .font(.system(size: 10, weight: .bold))
                     .tracking(0.5)
                     .foregroundStyle(tint)
+
                 if let faab, faab > 0 {
-                    Text("$\(faab) FAAB")
-                        .font(.caption2.weight(.semibold))
+                    Text("$\(faab)")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(XomperColors.championGold)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(XomperColors.championGold.opacity(0.15))
+                        .clipShape(Capsule())
+                }
+            }
+
+            // Player list
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(assets.prefix(4)) { asset in
+                    playerRow(asset, tint: tint)
+                }
+                if assets.count > 4 {
+                    Text("+\(assets.count - 4) more")
+                        .font(.caption2)
                         .foregroundStyle(XomperColors.textMuted)
                 }
             }
-            ForEach(assets) { AssetRow(asset: $0) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(XomperTheme.Spacing.sm)
-        .background(XomperColors.surfaceLight.opacity(0.3))
+        .background(tint.opacity(0.06))
         .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
+    }
+
+    private func playerRow(_ asset: NewsAsset, tint: Color) -> some View {
+        HStack(spacing: 6) {
+            // Position emoji
+            Text(positionEmoji(asset.position))
+                .font(.system(size: 12))
+
+            // Player name
+            Text(asset.name)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(XomperColors.textPrimary)
+                .lineLimit(1)
+
+            Spacer()
+
+            // Value if significant
+            if asset.value > 0 {
+                Text("\(asset.value)")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(XomperColors.textMuted)
+            }
+        }
+    }
+
+    private func positionEmoji(_ pos: String) -> String {
+        switch pos.uppercased() {
+        case "QB": return "🎯"
+        case "RB": return "🏃"
+        case "WR": return "🙌"
+        case "TE": return "🤲"
+        case "K": return "🦵"
+        case "DEF", "DST": return "🛡️"
+        default: return "🏈"
+        }
     }
 }
