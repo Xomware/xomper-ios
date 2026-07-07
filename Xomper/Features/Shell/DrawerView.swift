@@ -26,7 +26,7 @@ struct DrawerView: View {
     /// runtime when `isAdmin == true`.
     /// Drawer sections plus pinned Settings + optional Admin.
     ///
-    /// - Play:    landing, standings, matchups, playoffs, draftHistory, worldCup
+    /// - Play:    landing, standings, matchups, playoffs, news, draftHistory, worldCup
     /// - Team:    myTeam, taxiSquad, teamAnalyzer
     /// - League:  rulebook, scoring, leagueSettings, payouts, ruleProposals, draftOrder
     /// - Admin:   aiReview (full archive), admin (only when isAdmin)
@@ -41,7 +41,7 @@ struct DrawerView: View {
         var out: [TraySection] = [
             TraySection(
                 title: "Play",
-                entries: [.landing, .standings, .matchups, .playoffs, .draftHistory, .worldCup]
+                entries: [.landing, .standings, .matchups, .playoffs, .news, .draftHistory, .worldCup]
             ),
             TraySection(
                 title: "Team",
