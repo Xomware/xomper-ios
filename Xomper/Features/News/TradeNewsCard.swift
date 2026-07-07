@@ -23,10 +23,7 @@ struct TradeNewsCard: View {
             differentialRow
 
             if !item.summary.isEmpty {
-                Text(item.summary)
-                    .font(.subheadline)
-                    .foregroundStyle(XomperColors.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                analysisBlock
             }
         }
         .padding(XomperTheme.Spacing.md)
@@ -39,6 +36,24 @@ struct TradeNewsCard: View {
         )
         .accessibilityElement(children: .combine)
         .accessibilityLabel(item.summary.isEmpty ? item.headline : item.summary)
+    }
+
+    // MARK: - Analysis write-up
+
+    /// The deterministic trade write-up, presented under an "ANALYSIS"
+    /// label so it reads as commentary rather than a bare data dump.
+    private var analysisBlock: some View {
+        VStack(alignment: .leading, spacing: XomperTheme.Spacing.xxs) {
+            Text("ANALYSIS")
+                .font(.caption2.weight(.bold))
+                .tracking(0.5)
+                .foregroundStyle(XomperColors.championGold)
+            Text(item.summary)
+                .font(.subheadline)
+                .foregroundStyle(XomperColors.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: - Side block

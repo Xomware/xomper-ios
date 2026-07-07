@@ -40,9 +40,15 @@ struct NewsView: View {
     // MARK: - Feed
 
     private var feed: some View {
-        ScrollView {
-            LazyVStack(spacing: XomperTheme.Spacing.sm, pinnedViews: [.sectionHeaders]) {
-                Section {
+        // Filter bar lives in a fixed strip above the ScrollView (not a
+        // pinned section header) so it stays put with no gap between it
+        // and the content as the feed scrolls underneath.
+        VStack(spacing: 0) {
+            NewsFilterBar(store: newsStore)
+                .background(XomperColors.bgDark)
+
+            ScrollView {
+                LazyVStack(spacing: XomperTheme.Spacing.sm) {
                     let items = newsStore.filteredItems
                     if items.isEmpty {
                         EmptyStateView(
@@ -57,12 +63,10 @@ struct NewsView: View {
                                 .padding(.horizontal, XomperTheme.Spacing.md)
                         }
                     }
-                } header: {
-                    NewsFilterBar(store: newsStore)
-                        .background(XomperColors.bgDark)
                 }
+                .padding(.top, XomperTheme.Spacing.sm)
+                .padding(.bottom, XomperTheme.Spacing.md)
             }
-            .padding(.bottom, XomperTheme.Spacing.md)
         }
     }
 
