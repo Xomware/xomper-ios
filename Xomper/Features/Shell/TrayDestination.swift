@@ -26,7 +26,7 @@ enum TrayDestination: Hashable {
     case myTeam
     case taxiSquad
     case teamAnalyzer
-    case tradeAnalysis
+    case tradeCenter
     case rulebook
     case scoring
     case leagueSettings
@@ -54,7 +54,7 @@ enum TrayDestination: Hashable {
         case .myTeam:         "My Team"
         case .taxiSquad:      "Taxi Squad"
         case .teamAnalyzer:   "Team Analyzer"
-        case .tradeAnalysis:  "Trade Analysis"
+        case .tradeCenter:    "Trade Center"
         case .rulebook:       "Rulebook"
         case .scoring:        "Scoring"
         case .leagueSettings: "League Settings"
@@ -83,7 +83,7 @@ enum TrayDestination: Hashable {
         case .myTeam:         "person.crop.square.fill"
         case .taxiSquad:      "bus.fill"
         case .teamAnalyzer:   "chart.dots.scatter"
-        case .tradeAnalysis:  "arrow.left.arrow.right.circle.fill"
+        case .tradeCenter:    "arrow.left.arrow.right.circle.fill"
         case .rulebook:       "book.fill"
         case .scoring:        "function"
         case .leagueSettings: "slider.horizontal.3"

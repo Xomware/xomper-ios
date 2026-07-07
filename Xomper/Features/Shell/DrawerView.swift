@@ -45,7 +45,7 @@ struct DrawerView: View {
             ),
             TraySection(
                 title: "Team",
-                entries: [.myTeam, .taxiSquad, .teamAnalyzer, .tradeAnalysis]
+                entries: [.myTeam, .taxiSquad, .teamAnalyzer, .tradeCenter]
             ),
             TraySection(
                 title: "League",
