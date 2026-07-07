@@ -23,6 +23,12 @@ final class LeagueStore {
     private(set) var isLoading = false
     private(set) var error: Error?
 
+    /// Traded picks for the home league. Each row records the original
+    /// roster owner (`rosterId`) plus the current owner (`ownerId`) after
+    /// any chain of trades. Used by Trade Builder to show who owns each
+    /// pick across all future seasons.
+    private(set) var tradedPicks: [TradedPick] = []
+
     private let apiClient: SleeperAPIClientProtocol
     var leagueChainCache: [League]?
 
@@ -70,12 +76,20 @@ final class LeagueStore {
             // Use Supabase-resolved league ID when available; falls back
             // to Config.whitelistedLeagueId.
             let leagueId = resolvedHomeLeagueId
-            let league = try await apiClient.fetchLeague(leagueId)
-            let context = try await fetchLeagueContext(leagueId: leagueId)
+            async let leagueTask = apiClient.fetchLeague(leagueId)
+            async let contextTask = fetchLeagueContext(leagueId: leagueId)
+            // Traded picks — soft-fail so a transient error doesn't block
+            // the rest of the league from loading.
+            async let tradedTask: [TradedPick] = (try? apiClient.fetchTradedPicks(leagueId)) ?? []
+
+            let league = try await leagueTask
+            let context = try await contextTask
+            let traded = await tradedTask
 
             myLeague = league
             myLeagueUsers = context.users
             myLeagueRosters = context.rosters
+            tradedPicks = traded
 
             // Also set as current league for initial view
             currentLeague = league
@@ -153,12 +167,17 @@ final class LeagueStore {
         guard resolved.leagueId != myLeague?.leagueId else { return }
 
         do {
-            let context = try await fetchLeagueContext(leagueId: resolved.leagueId)
+            async let contextTask = fetchLeagueContext(leagueId: resolved.leagueId)
+            async let tradedTask: [TradedPick] = (try? apiClient.fetchTradedPicks(resolved.leagueId)) ?? []
+
+            let context = try await contextTask
+            let traded = await tradedTask
             let wasCurrentMatchingMy = currentLeague?.leagueId == myLeague?.leagueId
 
             myLeague = resolved
             myLeagueUsers = context.users
             myLeagueRosters = context.rosters
+            tradedPicks = traded
 
             if wasCurrentMatchingMy {
                 currentLeague = resolved
@@ -280,6 +299,7 @@ final class LeagueStore {
         winnersBracket = nil
         losersBracket = nil
         bracketError = nil
+        tradedPicks = []
         error = nil
     }
 }

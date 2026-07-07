@@ -14,11 +14,6 @@ final class PushNotificationManager: NSObject, Sendable {
     /// Pending deep link from notification tap (consumed by MainShell)
     var pendingDeepLink: NotificationDeepLink?
 
-    // MARK: - Token Waiters
-
-    /// Continuations waiting for the APNs token to arrive
-    private var tokenWaiters: [CheckedContinuation<String?, Never>] = []
-
     // MARK: - Shared Instance
 
     /// Shared instance used by AppDelegate for token forwarding.
@@ -43,59 +38,15 @@ final class PushNotificationManager: NSObject, Sendable {
         }
     }
 
-    /// Request permission and wait for the APNs token (with timeout).
-    /// Returns the hex token string or nil if permission denied / timeout.
-    func requestPermissionAndToken(timeout: TimeInterval = 10) async -> String? {
-        // If we already have a token, return it immediately
-        if let existing = deviceToken {
-            return existing
-        }
-
-        await requestPermission()
-
-        guard permissionGranted else { return nil }
-
-        // Wait for token with timeout
-        return await withCheckedContinuation { continuation in
-            tokenWaiters.append(continuation)
-
-            // Timeout after specified seconds
-            Task {
-                try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
-                await MainActor.run {
-                    // If this waiter is still pending, resume with nil
-                    if let idx = tokenWaiters.firstIndex(where: { $0 == continuation }) {
-                        tokenWaiters.remove(at: idx)
-                        continuation.resume(returning: nil)
-                    }
-                }
-            }
-        }
-    }
-
     // MARK: - Token Handling
 
     func registerDeviceToken(_ tokenData: Data) {
         let hexToken = tokenData.map { String(format: "%02x", $0) }.joined()
         deviceToken = hexToken
-
-        // Resume all waiting continuations
-        let waiters = tokenWaiters
-        tokenWaiters.removeAll()
-        for waiter in waiters {
-            waiter.resume(returning: hexToken)
-        }
     }
 
     func handleRegistrationError(_ error: Error) {
         deviceToken = nil
-
-        // Resume all waiting continuations with nil
-        let waiters = tokenWaiters
-        tokenWaiters.removeAll()
-        for waiter in waiters {
-            waiter.resume(returning: nil)
-        }
     }
 }
 
@@ -108,15 +59,7 @@ extension PushNotificationManager: UNUserNotificationCenterDelegate {
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        // Record to notification store for in-app center
-        let userInfo = notification.request.content.userInfo
-        Task { @MainActor in
-            NotificationStore.shared.recordNotification(
-                title: notification.request.content.title,
-                body: notification.request.content.body,
-                userInfo: userInfo
-            )
-        }
+        // Show banner and play sound when app is in foreground
         completionHandler([.banner, .sound])
     }
 
@@ -125,12 +68,25 @@ extension PushNotificationManager: UNUserNotificationCenterDelegate {
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
+        // Extract values from userInfo before crossing actor boundary
         let userInfo = response.notification.request.content.userInfo
+        let category = userInfo["category"] as? String
+        let linkString = userInfo["link"] as? String
 
+        // Parse deep link on main actor
         Task { @MainActor in
-            // Parse deep link from payload
-            if let deepLink = NotificationDeepLink.from(userInfo: userInfo) {
-                pendingDeepLink = deepLink
+            if let category {
+                switch category {
+                case "trade": self.pendingDeepLink = .tradeCenter
+                case "weekly_recap", "news": self.pendingDeepLink = .news
+                case "matchup": self.pendingDeepLink = .matchups
+                case "draft", "mock": self.pendingDeepLink = .mocks
+                default: break
+                }
+            } else if let linkString,
+                      let url = URL(string: linkString),
+                      let deepLink = NotificationDeepLink.from(url: url) {
+                self.pendingDeepLink = deepLink
             }
         }
 
@@ -140,34 +96,12 @@ extension PushNotificationManager: UNUserNotificationCenterDelegate {
 
 // MARK: - Deep Link
 
-enum NotificationDeepLink: Equatable {
+enum NotificationDeepLink: Equatable, Sendable {
     case news
     case tradeCenter
     case matchups
     case mocks
     case myTeam
-    case notificationCenter
-
-    static func from(userInfo: [AnyHashable: Any]) -> NotificationDeepLink? {
-        // Check for explicit link URL
-        if let linkString = userInfo["link"] as? String,
-           let url = URL(string: linkString) {
-            return from(url: url)
-        }
-
-        // Check for category-based routing
-        if let category = userInfo["category"] as? String {
-            switch category {
-            case "trade": return .tradeCenter
-            case "weekly_recap", "news": return .news
-            case "matchup": return .matchups
-            case "draft", "mock": return .mocks
-            default: return nil
-            }
-        }
-
-        return nil
-    }
 
     static func from(url: URL) -> NotificationDeepLink? {
         guard url.scheme == "xomper" else { return nil }
@@ -178,7 +112,6 @@ enum NotificationDeepLink: Equatable {
         case "matchups": return .matchups
         case "mocks", "draft": return .mocks
         case "team", "my-team": return .myTeam
-        case "notifications": return .notificationCenter
         default: return nil
         }
     }

@@ -21,7 +21,6 @@ struct TradeCenterView: View {
     var valuesStore: PlayerValuesStore
     var newsStore: NewsStore
     var teamStore: TeamStore
-    var historyStore: HistoryStore
 
     @State private var selectedTab: TradeCenterTab = .recent
 
@@ -77,7 +76,7 @@ struct TradeCenterView: View {
             leagueStore: leagueStore,
             playerStore: playerStore,
             valuesStore: valuesStore,
-            tradedPicks: historyStore.upcomingTradedPicks
+            tradedPicks: leagueStore.tradedPicks
         )
     }
 
@@ -359,8 +358,7 @@ private struct TradeCenterTabBar: View {
             playerStore: PlayerStore(),
             valuesStore: PlayerValuesStore(),
             newsStore: NewsStore(),
-            teamStore: TeamStore(),
-            historyStore: HistoryStore()
+            teamStore: TeamStore()
         )
     }
     .preferredColorScheme(.dark)
