@@ -86,6 +86,10 @@ final class MockDraftStore {
     /// snapshots change so `ensureLoaded` knows to regenerate.
     private var lastBuildKey: String?
 
+    /// Fingerprint of the last slot order. Triggers regen when commish
+    /// sets a new draft order mid-session.
+    private var lastSlotFingerprint: String?
+
     // MARK: - Public API
 
     /// Idempotent loader. Builds `TeamContext`, derives the rookie
@@ -173,10 +177,16 @@ final class MockDraftStore {
             valuesLoadedAt: playerValuesStore.lastLoadedAt,
             seed: currentSeed
         )
-        if buildKey == lastBuildKey { return }
+
+        // Detect slot order changes (commish set 2026 draft order mid-session)
+        let newFingerprint = Self.slotFingerprint(resolvedSlots)
+        let orderChanged = lastSlotFingerprint != nil && lastSlotFingerprint != newFingerprint
+
+        if buildKey == lastBuildKey && !orderChanged { return }
 
         slotOrder = resolvedSlots
         usingFallbackSlotOrder = isFallback
+        lastSlotFingerprint = newFingerprint
 
         // Build the rookie pool.
         let (pool, didFallback) = buildRookiePool(
@@ -439,5 +449,10 @@ final class MockDraftStore {
     ) -> String {
         let stamp = valuesLoadedAt.map { String(Int($0.timeIntervalSince1970)) } ?? "nil"
         return "\(draftId)|\(stamp)|\(seed)"
+    }
+
+    /// Hash of slot order to detect when commish sets draft order.
+    static func slotFingerprint(_ slots: [Int: SlotTeam]) -> String {
+        slots.keys.sorted().map { "\($0):\(slots[$0]!.rosterId)" }.joined(separator: ",")
     }
 }
