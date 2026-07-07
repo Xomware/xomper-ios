@@ -97,15 +97,9 @@ struct TradeAnalysisView: View {
                             playerIds: sideAPlayerIds,
                             pickNames: sideAPickNames,
                             sideValue: evaluation.sideAValue,
-                            addPlayerAction: {
+                            addAction: {
                                 showSidePicker = TradeSidePickerContext(
                                     side: .a, kind: .player,
-                                    rosterId: teamA.rosterId, teamName: teamA.teamName
-                                )
-                            },
-                            addPickAction: {
-                                showSidePicker = TradeSidePickerContext(
-                                    side: .a, kind: .pick,
                                     rosterId: teamA.rosterId, teamName: teamA.teamName
                                 )
                             },
@@ -125,15 +119,9 @@ struct TradeAnalysisView: View {
                             playerIds: sideBPlayerIds,
                             pickNames: sideBPickNames,
                             sideValue: evaluation.sideBValue,
-                            addPlayerAction: {
+                            addAction: {
                                 showSidePicker = TradeSidePickerContext(
                                     side: .b, kind: .player,
-                                    rosterId: teamB.rosterId, teamName: teamB.teamName
-                                )
-                            },
-                            addPickAction: {
-                                showSidePicker = TradeSidePickerContext(
-                                    side: .b, kind: .pick,
                                     rosterId: teamB.rosterId, teamName: teamB.teamName
                                 )
                             },
@@ -432,8 +420,7 @@ struct TradeAnalysisView: View {
         playerIds: [String],
         pickNames: [String],
         sideValue: Int,
-        addPlayerAction: @escaping () -> Void,
-        addPickAction: @escaping () -> Void,
+        addAction: @escaping () -> Void,
         removePlayerAction: @escaping (String) -> Void,
         removePickAction: @escaping (String) -> Void
     ) -> some View {
@@ -464,40 +451,21 @@ struct TradeAnalysisView: View {
                 }
             }
 
-            HStack(spacing: XomperTheme.Spacing.xs) {
-                Button(action: addPlayerAction) {
-                    HStack(spacing: XomperTheme.Spacing.xs) {
-                        Image(systemName: "plus.circle.fill")
-                        Text("Player")
-                    }
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(XomperColors.bgDark)
-                    .padding(.horizontal, XomperTheme.Spacing.md)
-                    .padding(.vertical, XomperTheme.Spacing.xs)
-                    .frame(minHeight: 36)
-                    .background(XomperColors.championGold)
-                    .clipShape(Capsule())
+            Button(action: addAction) {
+                HStack(spacing: XomperTheme.Spacing.xs) {
+                    Image(systemName: "plus.circle.fill")
+                    Text("Add player or pick")
                 }
-                .buttonStyle(.pressableCard)
-
-                Button(action: addPickAction) {
-                    HStack(spacing: XomperTheme.Spacing.xs) {
-                        Image(systemName: "plus.circle")
-                        Text("Pick")
-                    }
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(XomperColors.championGold)
-                    .padding(.horizontal, XomperTheme.Spacing.md)
-                    .padding(.vertical, XomperTheme.Spacing.xs)
-                    .frame(minHeight: 36)
-                    .background(XomperColors.surfaceLight.opacity(0.4))
-                    .overlay(
-                        Capsule().strokeBorder(XomperColors.championGold.opacity(0.5), lineWidth: 1)
-                    )
-                    .clipShape(Capsule())
-                }
-                .buttonStyle(.pressableCard)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(XomperColors.bgDark)
+                .padding(.horizontal, XomperTheme.Spacing.md)
+                .padding(.vertical, XomperTheme.Spacing.xs)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 36)
+                .background(XomperColors.championGold)
+                .clipShape(Capsule())
             }
+            .buttonStyle(.pressableCard)
         }
         .padding(XomperTheme.Spacing.md)
         .background(XomperColors.bgCard)
@@ -566,151 +534,65 @@ struct TradeAnalysisView: View {
 
     // MARK: - Picker sheet
 
-    @ViewBuilder
     private func sidePicker(context: TradeSidePickerContext) -> some View {
-        switch context.kind {
-        case .player:
-            playerSelectionList(context: context)
-        case .pick:
-            pickSelectionList(context: context)
-        }
+        TradeItemPickerSheet(
+            teamName: context.teamName,
+            items: pickerItems(for: context),
+            onSelect: { item in
+                switch (context.side, item.kind) {
+                case (.a, .player): sideAPlayerIds.append(item.id)
+                case (.b, .player): sideBPlayerIds.append(item.id)
+                case (.a, .pick): sideAPickNames.append(item.id)
+                case (.b, .pick): sideBPickNames.append(item.id)
+                }
+                showSidePicker = nil
+            },
+            onCancel: { showSidePicker = nil }
+        )
     }
 
-    @ViewBuilder
-    private func playerSelectionList(context: TradeSidePickerContext) -> some View {
-        let alreadyPicked: Set<String> = {
-            switch context.side {
-            case .a: return Set(sideAPlayerIds)
-            case .b: return Set(sideBPlayerIds)
-            }
-        }()
+    /// Build the combined, de-duplicated pool of selectable players +
+    /// draft picks for a side. Players come from the team's Sleeper
+    /// roster (value > 0, not already on this side); picks are the full
+    /// FantasyCalc pick set (not already on this side). Sorted by value
+    /// desc so the search/filter sheet leads with the most valuable
+    /// assets before the user narrows down.
+    private func pickerItems(for context: TradeSidePickerContext) -> [TradePickerItem] {
+        let pickedPlayers: Set<String>
+        let pickedPicks: Set<String>
+        switch context.side {
+        case .a: pickedPlayers = Set(sideAPlayerIds); pickedPicks = Set(sideAPickNames)
+        case .b: pickedPlayers = Set(sideBPlayerIds); pickedPicks = Set(sideBPickNames)
+        }
+
         let roster = leagueStore.myLeagueRosters.first { $0.rosterId == context.rosterId }
-        let entries: [TradeAnalysisPickerEntry] = (roster?.players ?? [])
-            .compactMap { pid in
-                guard !alreadyPicked.contains(pid) else { return nil }
-                let value = valuesStore.value(for: pid)
-                guard value > 0 else { return nil }
-                let player = playerStore.player(for: pid)
-                return TradeAnalysisPickerEntry(
-                    playerId: pid,
-                    name: player?.fullDisplayName ?? "Player #\(pid)",
-                    position: player?.displayPosition ?? "?",
-                    value: value
+        let players: [TradePickerItem] = (roster?.players ?? []).compactMap { pid in
+            guard !pickedPlayers.contains(pid) else { return nil }
+            let value = valuesStore.value(for: pid)
+            guard value > 0 else { return nil }
+            let player = playerStore.player(for: pid)
+            return TradePickerItem(
+                kind: .player,
+                id: pid,
+                name: player?.fullDisplayName ?? "Player #\(pid)",
+                position: player?.displayPosition ?? "?",
+                value: value
+            )
+        }
+
+        let picks: [TradePickerItem] = valuesStore.allPickNames
+            .filter { !pickedPicks.contains($0) }
+            .map { name in
+                TradePickerItem(
+                    kind: .pick,
+                    id: name,
+                    name: name,
+                    position: "PICK",
+                    value: valuesStore.pickValue(for: name)
                 )
             }
-            .sorted(by: { $0.value > $1.value })
 
-        ScrollView {
-            VStack(spacing: XomperTheme.Spacing.xs) {
-                ForEach(entries) { entry in
-                    Button {
-                        switch context.side {
-                        case .a: sideAPlayerIds.append(entry.playerId)
-                        case .b: sideBPlayerIds.append(entry.playerId)
-                        }
-                        showSidePicker = nil
-                    } label: {
-                        pickerRow(name: entry.name, badge: entry.position, value: entry.value)
-                    }
-                    .buttonStyle(.pressableCard)
-                }
-            }
-            .padding(XomperTheme.Spacing.md)
-        }
-        .background(XomperColors.bgDark)
-        .navigationTitle("Add player from \(context.teamName)")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(.dark, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") { showSidePicker = nil }
-                    .foregroundStyle(XomperColors.championGold)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func pickSelectionList(context: TradeSidePickerContext) -> some View {
-        let alreadyPicked: Set<String> = {
-            switch context.side {
-            case .a: return Set(sideAPickNames)
-            case .b: return Set(sideBPickNames)
-            }
-        }()
-        let currentYear = Calendar.current.component(.year, from: Date())
-        let years: Set<Int> = [currentYear, currentYear + 1, currentYear + 2]
-        let names = valuesStore.pickNames(forYears: years)
-            .filter { !alreadyPicked.contains($0) }
-
-        ScrollView {
-            if names.isEmpty {
-                EmptyStateView(
-                    icon: "ticket",
-                    title: "No Pick Values",
-                    message: "FantasyCalc didn't return tradeable pick values for the current + next two seasons. Pull to refresh values to retry."
-                )
-                .padding(.top, XomperTheme.Spacing.xl)
-            } else {
-                VStack(spacing: XomperTheme.Spacing.xs) {
-                    Text("Pick values are league-wide — add a pick the team actually owns. Trades aren't validated against Sleeper roster ownership.")
-                        .font(.caption2)
-                        .foregroundStyle(XomperColors.textMuted)
-                        .padding(.horizontal, XomperTheme.Spacing.sm)
-
-                    ForEach(names, id: \.self) { name in
-                        Button {
-                            switch context.side {
-                            case .a: sideAPickNames.append(name)
-                            case .b: sideBPickNames.append(name)
-                            }
-                            showSidePicker = nil
-                        } label: {
-                            pickerRow(
-                                name: name,
-                                badge: "PICK",
-                                value: valuesStore.pickValue(for: name)
-                            )
-                        }
-                        .buttonStyle(.pressableCard)
-                    }
-                }
-                .padding(XomperTheme.Spacing.md)
-            }
-        }
-        .background(XomperColors.bgDark)
-        .navigationTitle("Add pick to \(context.teamName)")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(.dark, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") { showSidePicker = nil }
-                    .foregroundStyle(XomperColors.championGold)
-            }
-        }
-    }
-
-    private func pickerRow(name: String, badge: String, value: Int) -> some View {
-        HStack(spacing: XomperTheme.Spacing.sm) {
-            Text(name)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(XomperColors.textPrimary)
-                .lineLimit(1)
-            Text(badge)
-                .font(.caption2.weight(.bold))
-                .foregroundStyle(XomperColors.textSecondary)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(XomperColors.surfaceLight.opacity(0.4))
-                .clipShape(Capsule())
-            Spacer()
-            Text("\(value)")
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(XomperColors.championGold)
-                .monospacedDigit()
-        }
-        .padding(XomperTheme.Spacing.md)
-        .background(XomperColors.bgCard)
-        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
+        return (players + picks).sorted { $0.value > $1.value }
     }
 }
 
@@ -725,12 +607,209 @@ private extension TradeEvaluation.Verdict {
     }
 }
 
-// MARK: - Picker entry
+// MARK: - Picker item
 
-private struct TradeAnalysisPickerEntry: Identifiable, Hashable {
-    let playerId: String
+/// A single selectable asset in the trade picker — either a rostered
+/// player or a FantasyCalc draft pick. `id` is the Sleeper player ID
+/// for players and the pick name (e.g. "2027 Mid 1st") for picks.
+private struct TradePickerItem: Identifiable, Hashable {
+    enum Kind: Hashable { case player, pick }
+    let kind: Kind
+    let id: String
     let name: String
+    /// "QB"/"RB"/"WR"/"TE"/… for players, "PICK" for picks.
     let position: String
     let value: Int
-    var id: String { playerId }
+}
+
+// MARK: - Position filter
+
+private enum TradePositionFilter: String, CaseIterable, Identifiable {
+    case all, qb, rb, wr, te, picks
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .all:   return "All"
+        case .qb:    return "QB"
+        case .rb:    return "RB"
+        case .wr:    return "WR"
+        case .te:    return "TE"
+        case .picks: return "Picks"
+        }
+    }
+
+    func matches(_ item: TradePickerItem) -> Bool {
+        switch self {
+        case .all:   return true
+        case .picks: return item.kind == .pick
+        case .qb:    return item.position == "QB"
+        case .rb:    return item.position == "RB"
+        case .wr:    return item.position == "WR"
+        case .te:    return item.position == "TE"
+        }
+    }
+}
+
+// MARK: - Picker sheet
+
+/// Searchable, position-filterable, value-sorted picker for adding a
+/// player or draft pick to one side of a trade. Its own `@State` for
+/// search + filter so each presentation starts fresh.
+private struct TradeItemPickerSheet: View {
+    let teamName: String
+    let items: [TradePickerItem]
+    let onSelect: (TradePickerItem) -> Void
+    let onCancel: () -> Void
+
+    @State private var searchText = ""
+    @State private var positionFilter: TradePositionFilter = .all
+
+    private var filteredItems: [TradePickerItem] {
+        items.filter { item in
+            positionFilter.matches(item) &&
+            (searchText.isEmpty || item.name.localizedCaseInsensitiveContains(searchText))
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: XomperTheme.Spacing.sm) {
+            searchField
+            positionFilterBar
+
+            if filteredItems.isEmpty {
+                EmptyStateView(
+                    icon: "magnifyingglass",
+                    title: "No Matches",
+                    message: "No players or picks match your search and filter. Clear them to see the full pool."
+                )
+                .padding(.top, XomperTheme.Spacing.xl)
+                Spacer(minLength: 0)
+            } else {
+                ScrollView {
+                    VStack(spacing: XomperTheme.Spacing.xs) {
+                        ForEach(filteredItems) { item in
+                            Button {
+                                onSelect(item)
+                            } label: {
+                                pickerRow(item: item)
+                            }
+                            .buttonStyle(.pressableCard)
+                        }
+                    }
+                    .padding(.horizontal, XomperTheme.Spacing.md)
+                    .padding(.bottom, XomperTheme.Spacing.md)
+                }
+            }
+        }
+        .padding(.top, XomperTheme.Spacing.md)
+        .background(XomperColors.bgDark)
+        .navigationTitle("Add to \(teamName)")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") { onCancel() }
+                    .foregroundStyle(XomperColors.championGold)
+            }
+        }
+    }
+
+    private var searchField: some View {
+        HStack(spacing: XomperTheme.Spacing.sm) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(XomperColors.textMuted)
+                .accessibilityHidden(true)
+
+            TextField("Search players or picks", text: $searchText)
+                .font(.body)
+                .foregroundStyle(XomperColors.textPrimary)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+                .submitLabel(.search)
+
+            if !searchText.isEmpty {
+                Button {
+                    searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(XomperColors.textMuted)
+                }
+                .accessibilityLabel("Clear search")
+            }
+        }
+        .padding(.horizontal, XomperTheme.Spacing.md)
+        .padding(.vertical, XomperTheme.Spacing.sm)
+        .background(XomperColors.bgInput)
+        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
+        .padding(.horizontal, XomperTheme.Spacing.md)
+    }
+
+    private var positionFilterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: XomperTheme.Spacing.xs) {
+                ForEach(TradePositionFilter.allCases) { filter in
+                    TradeFilterChip(
+                        label: filter.label,
+                        isSelected: positionFilter == filter
+                    ) {
+                        withAnimation(XomperTheme.defaultAnimation) {
+                            positionFilter = filter
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, XomperTheme.Spacing.md)
+        }
+    }
+
+    private func pickerRow(item: TradePickerItem) -> some View {
+        HStack(spacing: XomperTheme.Spacing.sm) {
+            if item.kind == .pick {
+                Image(systemName: "ticket.fill")
+                    .foregroundStyle(XomperColors.championGold)
+            }
+            Text(item.name)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(XomperColors.textPrimary)
+                .lineLimit(1)
+            Text(item.position)
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(XomperColors.textSecondary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(XomperColors.surfaceLight.opacity(0.4))
+                .clipShape(Capsule())
+            Spacer()
+            Text("\(item.value)")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(XomperColors.championGold)
+                .monospacedDigit()
+        }
+        .padding(XomperTheme.Spacing.md)
+        .background(XomperColors.bgCard)
+        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
+    }
+}
+
+// MARK: - Filter chip
+
+private struct TradeFilterChip: View {
+    let label: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(isSelected ? XomperColors.bgDark : XomperColors.textSecondary)
+                .padding(.horizontal, XomperTheme.Spacing.md)
+                .padding(.vertical, XomperTheme.Spacing.xs)
+                .background(isSelected ? XomperColors.championGold : XomperColors.surfaceLight.opacity(0.4))
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.pressableCard)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
 }
