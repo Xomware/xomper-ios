@@ -227,6 +227,7 @@
 		FC8AD0A6A8B4648E71C63553 /* AnnouncementsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65C814C64F50004B297F6808 /* AnnouncementsStore.swift */; };
 		FCC663F09AC754C35DF93A3D /* AdminStorePreviewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46FB9B5B4B8700EACD4A9CFD /* AdminStorePreviewTests.swift */; };
 		FCD03562C1879183A5DC02E2 /* PlayerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC3F6B5022E8151683A45F4F /* PlayerStore.swift */; };
+		FD74C82C594CDC1B73DFE4BD /* TradeCenterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D35311441AC3DB76F9FBF42 /* TradeCenterView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -365,6 +366,7 @@
 		9AD03A165767A043D34A9499 /* AdminStorePreseasonTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminStorePreseasonTests.swift; sourceTree = "<group>"; };
 		9B7C85CB880ABD7D373E49A6 /* RuleProposal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuleProposal.swift; sourceTree = "<group>"; };
 		9C57E1F397386BF980992CF7 /* LogEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogEvent.swift; sourceTree = "<group>"; };
+		9D35311441AC3DB76F9FBF42 /* TradeCenterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TradeCenterView.swift; sourceTree = "<group>"; };
 		9DBFB7D900A09D0B904F5836 /* ReportFlag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportFlag.swift; sourceTree = "<group>"; };
 		9E8B04D9DD0B2952BBABAB46 /* LeagueEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeagueEditView.swift; sourceTree = "<group>"; };
 		9E94170F987E8EFE5C566B9B /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
@@ -569,6 +571,7 @@
 				6901B56E6449F5FCF4E986E7 /* TaxiSquad */,
 				3E62B7EC555EA6961ADE3151 /* Team */,
 				6C903B9D928F907691888954 /* TeamAnalyzer */,
+				C1D2DEC09C12F608D1948D8A /* TradeCenter */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -824,6 +827,14 @@
 				2C12289B5D74747C89E09283 /* XomperAPIClientProtocol+TestStubs.swift */,
 			);
 			path = Support;
+			sourceTree = "<group>";
+		};
+		C1D2DEC09C12F608D1948D8A /* TradeCenter */ = {
+			isa = PBXGroup;
+			children = (
+				9D35311441AC3DB76F9FBF42 /* TradeCenterView.swift */,
+			);
+			path = TradeCenter;
 			sourceTree = "<group>";
 		};
 		CF0EB2B68A2AB44A16E88FB9 /* Shared */ = {
@@ -1294,6 +1305,7 @@
 				98D5EE595D14742780A47B81 /* ThisWeekMatchupsCard.swift in Sources */,
 				E38EEC7B1F19582B9975C236 /* TradeAnalysisView.swift in Sources */,
 				B7BD3E81860C8271FA1C068F /* TradeAnalyzerController.swift in Sources */,
+				FD74C82C594CDC1B73DFE4BD /* TradeCenterView.swift in Sources */,
 				B645CF88B5881CBE29EE6705 /* TradeNewsCard.swift in Sources */,
 				57C17293587E8DBED9A14970 /* TradedPick.swift in Sources */,
 				78094B6DF90F54E0FA59898A /* TrayDestination.swift in Sources */,
