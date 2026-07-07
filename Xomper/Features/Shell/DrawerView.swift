@@ -122,7 +122,7 @@ struct DrawerView: View {
             LinearGradient(
                 colors: [
                     XomperColors.bgDark,
-                    XomperColors.bgCard.opacity(0.85),
+                    XomperColors.bgCard,
                 ],
                 startPoint: .top,
                 endPoint: .bottom
