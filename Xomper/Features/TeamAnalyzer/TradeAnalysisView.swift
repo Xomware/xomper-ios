@@ -18,6 +18,7 @@ struct TradeAnalysisView: View {
     var leagueStore: LeagueStore
     var playerStore: PlayerStore
     var valuesStore: PlayerValuesStore
+    var tradedPicks: [TradedPick] = []
 
     // MARK: - Builder state
     //
@@ -580,19 +581,89 @@ struct TradeAnalysisView: View {
             )
         }
 
-        let picks: [TradePickerItem] = valuesStore.allPickNames
+        // Filter picks to only those owned by this roster
+        let ownedPickNames = picksOwned(byRosterId: context.rosterId)
+        let picks: [TradePickerItem] = ownedPickNames
             .filter { !pickedPicks.contains($0) }
-            .map { name in
-                TradePickerItem(
+            .compactMap { name in
+                let value = valuesStore.pickValue(for: name)
+                guard value > 0 else { return nil }
+                return TradePickerItem(
                     kind: .pick,
                     id: name,
                     name: name,
                     position: "PICK",
-                    value: valuesStore.pickValue(for: name)
+                    value: value
                 )
             }
 
         return (players + picks).sorted { $0.value > $1.value }
+    }
+
+    /// Compute the draft pick names owned by a given roster.
+    /// A roster owns:
+    /// - Their original picks (where no TradedPick shows them traded away)
+    /// - Picks traded TO them (TradedPick.ownerId == rosterId)
+    private func picksOwned(byRosterId rosterId: Int) -> [String] {
+        let currentYear = Calendar.current.component(.year, from: Date())
+        let relevantYears = [currentYear, currentYear + 1, currentYear + 2]
+        let numRosters = leagueStore.myLeagueRosters.count
+        let rounds = 1...5  // Dynasty rookie drafts typically 4-5 rounds
+
+        var owned: [String] = []
+
+        for year in relevantYears {
+            let season = String(year)
+            for round in rounds {
+                // Check if this team's original pick (their slot) was traded
+                let tradedAway = tradedPicks.first {
+                    $0.season == season &&
+                    $0.round == round &&
+                    $0.rosterId == rosterId &&
+                    $0.ownerId != rosterId
+                }
+
+                // Check if they acquired a pick from another team
+                let acquired = tradedPicks.filter {
+                    $0.season == season &&
+                    $0.round == round &&
+                    $0.ownerId == rosterId &&
+                    $0.rosterId != rosterId
+                }
+
+                // If their original pick wasn't traded away, they still own it
+                if tradedAway == nil {
+                    let pickName = formatPickName(season: season, round: round, numRosters: numRosters)
+                    owned.append(pickName)
+                }
+
+                // Add any picks they acquired
+                for pick in acquired {
+                    let pickName = formatPickName(season: season, round: round, numRosters: numRosters, originalRosterId: pick.rosterId)
+                    owned.append(pickName)
+                }
+            }
+        }
+
+        return owned
+    }
+
+    /// Format pick name to match FantasyCalc naming convention
+    private func formatPickName(season: String, round: Int, numRosters: Int, originalRosterId: Int? = nil) -> String {
+        // FantasyCalc uses "2026 Mid 1st", "2027 Early 2nd" etc.
+        // We'll use a simplified tier for now
+        let roundSuffix: String
+        switch round {
+        case 1: roundSuffix = "1st"
+        case 2: roundSuffix = "2nd"
+        case 3: roundSuffix = "3rd"
+        default: roundSuffix = "\(round)th"
+        }
+
+        // Estimate tier based on roster position (simplified)
+        let tier = "Mid"  // Default to mid since we don't know exact standings
+
+        return "\(season) \(tier) \(roundSuffix)"
     }
 }
 
