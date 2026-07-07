@@ -204,7 +204,8 @@ struct MainShell: View {
                     leagueStore: leagueStore,
                     playerStore: playerStore,
                     valuesStore: valuesStore,
-                    newsStore: newsStore
+                    newsStore: newsStore,
+                    historyStore: historyStore
                 )
 
             case .draftHistory:
@@ -259,7 +260,8 @@ struct MainShell: View {
                     playerStore: playerStore,
                     valuesStore: valuesStore,
                     newsStore: newsStore,
-                    teamStore: teamStore
+                    teamStore: teamStore,
+                    historyStore: historyStore
                 )
 
             case .payouts:

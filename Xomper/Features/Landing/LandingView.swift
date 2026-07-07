@@ -74,6 +74,7 @@ struct LandingView: View {
                     leagueStore: leagueStore,
                     playerStore: playerStore,
                     valuesStore: valuesStore,
+                    historyStore: historyStore,
                     navStore: navStore,
                     router: router
                 )
@@ -130,6 +131,11 @@ struct LandingView: View {
     /// so team-name resolution has its source data.
     private func refreshNews() async {
         guard !leagueStore.myLeagueRosters.isEmpty else { return }
+
+        // Ensure draft history is loaded so we can resolve traded picks
+        // to the players they became and value them correctly.
+        await ensureDraftHistoryLoaded()
+
         await valuesStore.loadValues()
         await newsStore.load(
             leagueId: leagueStore.resolvedHomeLeagueId,
@@ -137,8 +143,25 @@ struct LandingView: View {
             users: leagueStore.myLeagueUsers,
             playerStore: playerStore,
             valuesStore: valuesStore,
+            draftHistory: historyStore.draftHistory,
             forceRefresh: true
         )
+    }
+
+    /// Ensures draft history is loaded for pick resolution. Skips if already
+    /// loaded or loading.
+    private func ensureDraftHistoryLoaded() async {
+        guard historyStore.draftHistory.isEmpty,
+              !historyStore.isLoadingDrafts else { return }
+
+        // Build the league chain if not already available.
+        if leagueStore.leagueChain.isEmpty,
+           let leagueId = leagueStore.myLeague?.leagueId {
+            await leagueStore.loadLeagueChain(startingFrom: leagueId)
+        }
+
+        guard !leagueStore.leagueChain.isEmpty else { return }
+        await historyStore.loadDraftHistory(chain: leagueStore.leagueChain)
     }
 }
 

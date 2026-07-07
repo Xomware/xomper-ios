@@ -10,6 +10,7 @@ struct NewsPreviewCard: View {
     var leagueStore: LeagueStore
     var playerStore: PlayerStore
     var valuesStore: PlayerValuesStore
+    var historyStore: HistoryStore
     var navStore: NavigationStore
     var router: AppRouter
 
@@ -111,13 +112,35 @@ struct NewsPreviewCard: View {
 
     private func load() async {
         guard !leagueStore.myLeagueRosters.isEmpty else { return }
+
+        // Ensure draft history is loaded so we can resolve traded picks
+        // to the players they became and value them correctly.
+        await ensureDraftHistoryLoaded()
+
         await valuesStore.loadValues()
         await newsStore.load(
             leagueId: leagueStore.resolvedHomeLeagueId,
             rosters: leagueStore.myLeagueRosters,
             users: leagueStore.myLeagueUsers,
             playerStore: playerStore,
-            valuesStore: valuesStore
+            valuesStore: valuesStore,
+            draftHistory: historyStore.draftHistory
         )
+    }
+
+    /// Ensures draft history is loaded for pick resolution. Skips if already
+    /// loaded or loading.
+    private func ensureDraftHistoryLoaded() async {
+        guard historyStore.draftHistory.isEmpty,
+              !historyStore.isLoadingDrafts else { return }
+
+        // Build the league chain if not already available.
+        if leagueStore.leagueChain.isEmpty,
+           let leagueId = leagueStore.myLeague?.leagueId {
+            await leagueStore.loadLeagueChain(startingFrom: leagueId)
+        }
+
+        guard !leagueStore.leagueChain.isEmpty else { return }
+        await historyStore.loadDraftHistory(chain: leagueStore.leagueChain)
     }
 }
