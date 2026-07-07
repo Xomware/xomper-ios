@@ -259,7 +259,8 @@ struct MainShell: View {
                     playerStore: playerStore,
                     valuesStore: valuesStore,
                     newsStore: newsStore,
-                    teamStore: teamStore
+                    teamStore: teamStore,
+                    historyStore: historyStore
                 )
 
             case .payouts:
