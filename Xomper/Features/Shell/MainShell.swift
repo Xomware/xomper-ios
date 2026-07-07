@@ -704,7 +704,11 @@ struct MainShell: View {
         // myTeam, so the name-based home-league anchor (Phase 1 used the
         // potentially-stale hardcoded ID) can re-anchor to this season's
         // league before we build standings against it.
-        let season = nflStateStore.nflState?.season ?? leagueStore.myLeague?.season ?? "2024"
+        //
+        // Use currentSeason (has calendar-year fallback) rather than
+        // nflState?.season (can be nil), to avoid falling back to a stale
+        // myLeague.season from Phase 1 when Supabase has outdated data.
+        let season = nflStateStore.currentSeason
         await leagueStore.loadUserLeagues(userId: sleeperUserId, season: season)
 
         // Re-anchor myLeague to the current-season league matching

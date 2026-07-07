@@ -159,8 +159,14 @@ final class LeagueStore {
         let targetName = resolvedHomeLeagueName.trimmingCharacters(in: .whitespaces)
         guard !targetName.isEmpty else { return }
 
-        let resolvedLeague = userLeagues.first { league in
+        // Find all leagues matching the target name, then pick the one
+        // with the highest season (most recent). Dynasty leagues roll over
+        // to a new leagueId each year, so we need the current season's ID.
+        let matchingLeagues = userLeagues.filter { league in
             (league.name ?? "").caseInsensitiveCompare(targetName) == .orderedSame
+        }
+        let resolvedLeague = matchingLeagues.max { a, b in
+            (Int(a.season) ?? 0) < (Int(b.season) ?? 0)
         }
 
         guard let resolved = resolvedLeague else { return }
