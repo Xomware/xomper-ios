@@ -181,9 +181,11 @@ struct MoveNewsCard: View {
 
     private func playerRow(_ asset: NewsAsset, tint: Color) -> some View {
         HStack(spacing: 6) {
-            // Position emoji
-            Text(positionEmoji(asset.position))
-                .font(.system(size: 12))
+            // Position badge
+            Text(asset.position.uppercased())
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(XomperColors.textMuted)
+                .frame(width: 24)
 
             // Player name
             Text(asset.name)
@@ -199,18 +201,6 @@ struct MoveNewsCard: View {
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(XomperColors.textMuted)
             }
-        }
-    }
-
-    private func positionEmoji(_ pos: String) -> String {
-        switch pos.uppercased() {
-        case "QB": return "🎯"
-        case "RB": return "🏃"
-        case "WR": return "🙌"
-        case "TE": return "🤲"
-        case "K": return "🦵"
-        case "DEF", "DST": return "🛡️"
-        default: return "🏈"
         }
     }
 }

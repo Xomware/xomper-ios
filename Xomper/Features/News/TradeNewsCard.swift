@@ -208,8 +208,10 @@ struct TradeNewsCard: View {
     private func compactAssetRow(_ asset: NewsAsset) -> some View {
         HStack(spacing: 4) {
             // Position badge
-            Text(asset.isPick ? "📋" : positionEmoji(asset.position))
-                .font(.system(size: 10))
+            Text(asset.isPick ? "PICK" : asset.position.uppercased())
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(XomperColors.textMuted)
+                .frame(width: 28, alignment: .leading)
 
             // Name - show resolved player for picks
             if asset.isResolvedPick, let playerName = asset.resolvedPlayerName {
@@ -223,16 +225,6 @@ struct TradeNewsCard: View {
                     .foregroundStyle(XomperColors.textPrimary)
                     .lineLimit(1)
             }
-        }
-    }
-
-    private func positionEmoji(_ pos: String) -> String {
-        switch pos.uppercased() {
-        case "QB": return "🎯"
-        case "RB": return "🏃"
-        case "WR": return "🙌"
-        case "TE": return "🤲"
-        default: return "🏈"
         }
     }
 
