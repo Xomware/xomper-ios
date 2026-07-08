@@ -32,7 +32,13 @@ struct DraftRecapView: View {
     /// to `DraftGradeCalculator`. Empty when picks haven't loaded yet
     /// or no FantasyCalc values are available — the card is silently
     /// absent in that case.
+    ///
+    /// Note: We explicitly check `playerValuesStore.hasValues` to ensure
+    /// SwiftUI tracks this dependency and re-renders once values load.
     private var grades: [DraftGrade] {
+        // Guard on values being loaded — this creates an observable
+        // dependency so SwiftUI re-renders when values arrive.
+        guard playerValuesStore.hasValues else { return [] }
         let picks = historyStore.draftHistory.filter { $0.season == year }
         guard !picks.isEmpty else { return [] }
         return Array(DraftGradeCalculator.grade(

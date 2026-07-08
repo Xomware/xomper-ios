@@ -88,35 +88,49 @@ struct NewsView: View {
         // the feed doesn't cache placeholder "Team N" labels.
         guard !leagueStore.myLeagueRosters.isEmpty else { return }
 
-        // Ensure draft history is loaded so we can resolve traded picks
-        // to the players they became and value them correctly.
-        await ensureDraftHistoryLoaded()
+        // Ensure league chain and draft history are loaded first.
+        await ensureChainAndHistoryLoaded()
 
         await valuesStore.loadValues()
-        await newsStore.load(
-            leagueId: leagueStore.resolvedHomeLeagueId,
-            rosters: leagueStore.myLeagueRosters,
-            users: leagueStore.myLeagueUsers,
-            playerStore: playerStore,
-            valuesStore: valuesStore,
-            draftHistory: historyStore.draftHistory,
-            forceRefresh: force
-        )
+
+        // Use chain-based loading to get transactions from ALL seasons,
+        // not just the current one. This fixes historical trades not showing.
+        if !leagueStore.leagueChain.isEmpty {
+            await newsStore.loadFromChain(
+                chain: leagueStore.leagueChain,
+                playerStore: playerStore,
+                valuesStore: valuesStore,
+                draftHistory: historyStore.draftHistory,
+                forceRefresh: force
+            )
+        } else {
+            // Fallback to single-league load if chain isn't available
+            await newsStore.load(
+                leagueId: leagueStore.resolvedHomeLeagueId,
+                rosters: leagueStore.myLeagueRosters,
+                users: leagueStore.myLeagueUsers,
+                playerStore: playerStore,
+                valuesStore: valuesStore,
+                draftHistory: historyStore.draftHistory,
+                forceRefresh: force
+            )
+        }
     }
 
-    /// Ensures draft history is loaded for pick resolution. Skips if already
-    /// loaded or loading.
-    private func ensureDraftHistoryLoaded() async {
-        guard historyStore.draftHistory.isEmpty,
-              !historyStore.isLoadingDrafts else { return }
-
+    /// Ensures league chain and draft history are loaded for proper
+    /// historical data display and pick resolution.
+    private func ensureChainAndHistoryLoaded() async {
         // Build the league chain if not already available.
         if leagueStore.leagueChain.isEmpty,
            let leagueId = leagueStore.myLeague?.leagueId {
             await leagueStore.loadLeagueChain(startingFrom: leagueId)
         }
 
-        guard !leagueStore.leagueChain.isEmpty else { return }
-        await historyStore.loadDraftHistory(chain: leagueStore.leagueChain)
+        // Load draft history for pick resolution.
+        if historyStore.draftHistory.isEmpty,
+           !historyStore.isLoadingDrafts,
+           !leagueStore.leagueChain.isEmpty {
+            await historyStore.loadDraftHistory(chain: leagueStore.leagueChain)
+        }
     }
 }

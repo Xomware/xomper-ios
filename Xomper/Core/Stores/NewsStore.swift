@@ -156,6 +156,111 @@ final class NewsStore {
         lastLoadedAt = Date()
     }
 
+    /// Load transactions from ALL leagues in a chain (multiple seasons of
+    /// the same dynasty). This enables showing historical trades from
+    /// previous seasons, not just the current one.
+    ///
+    /// Each league in the chain gets its own roster/user context since
+    /// team names and roster IDs can change between seasons.
+    func loadFromChain(
+        chain: [League],
+        playerStore: PlayerStore,
+        valuesStore: PlayerValuesStore,
+        draftHistory: [DraftHistoryRecord] = [],
+        forceRefresh: Bool = false
+    ) async {
+        guard !isLoading else { return }
+        guard let firstLeague = chain.first else { return }
+
+        let chainKey = chain.map(\.leagueId).joined(separator: "-")
+        if !forceRefresh,
+           chainKey == lastLoadedLeagueId,
+           let last = lastLoadedAt,
+           Date().timeIntervalSince(last) < 10 * 60,
+           !items.isEmpty {
+            return
+        }
+
+        isLoading = true
+        defer { isLoading = false }
+        error = nil
+
+        // Intermediate type to hold fetched data before building NewsItems.
+        struct LeagueData: Sendable {
+            let rosters: [Roster]
+            let users: [SleeperUser]
+            let transactions: [(week: Int, txn: Transaction)]
+        }
+
+        // Fetch transactions from each league in the chain concurrently.
+        // Each league needs its own rosters/users context.
+        var allLeagueData: [LeagueData] = []
+        await withTaskGroup(of: LeagueData?.self) { group in
+            for league in chain {
+                group.addTask { [apiClient] in
+                    // Fetch rosters and users for this league
+                    let rosters = (try? await apiClient.fetchLeagueRosters(league.leagueId)) ?? []
+                    let users = (try? await apiClient.fetchLeagueUsers(league.leagueId)) ?? []
+
+                    // Fetch all weeks of transactions for this league
+                    var collected: [(week: Int, txn: Transaction)] = []
+                    await withTaskGroup(of: (Int, [Transaction]).self) { weekGroup in
+                        for week in 1...18 {
+                            weekGroup.addTask {
+                                let txns = (try? await apiClient.fetchTransactions(league.leagueId, week: week)) ?? []
+                                return (week, txns)
+                            }
+                        }
+                        for await (week, txns) in weekGroup {
+                            for txn in txns { collected.append((week, txn)) }
+                        }
+                    }
+
+                    return LeagueData(rosters: rosters, users: users, transactions: collected)
+                }
+            }
+
+            for await leagueData in group {
+                if let data = leagueData {
+                    allLeagueData.append(data)
+                }
+            }
+        }
+
+        // Build NewsItems on the main actor (where NewsBuilder.build lives).
+        var allBuilt: [NewsItem] = []
+        var seen = Set<String>()
+        var allTeamNames: [Int: String] = [:]
+
+        for leagueData in allLeagueData {
+            for entry in leagueData.transactions {
+                guard !seen.contains(entry.txn.transactionId) else { continue }
+                if let item = NewsBuilder.build(
+                    transaction: entry.txn,
+                    week: entry.week,
+                    rosters: leagueData.rosters,
+                    users: leagueData.users,
+                    playerStore: playerStore,
+                    valuesStore: valuesStore,
+                    draftHistory: draftHistory
+                ) {
+                    allBuilt.append(item)
+                    seen.insert(entry.txn.transactionId)
+                    for side in item.sides {
+                        allTeamNames[side.rosterId] = side.teamName
+                    }
+                }
+            }
+        }
+
+        allBuilt.sort { $0.createdAt > $1.createdAt }
+
+        items = allBuilt
+        teamNames = allTeamNames
+        lastLoadedLeagueId = chainKey
+        lastLoadedAt = Date()
+    }
+
     func reset() {
         items = []
         teamNames = [:]

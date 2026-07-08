@@ -252,15 +252,13 @@ enum LetterGrade: String, Sendable, Hashable, CaseIterable {
 // MARK: - Draft pick valuation
 
 /// Pick-name helpers so historical trades value draft picks off the same
-/// FantasyCalc catalog the trade analyzer uses. Per issue #145 all picks
-/// are valued at the **Mid** tier (FantasyCalc splits each round into
-/// Early/Mid/Late; we deliberately collapse to Mid since Sleeper trade
-/// payloads only carry season + round, not the eventual slot).
+/// FantasyCalc catalog the trade analyzer uses. FantasyCalc pick names
+/// are formatted as "{year} {round}" e.g. "2026 1st", "2027 2nd".
 enum PickValuation {
-    /// FantasyCalc catalog name for a season + round at the Mid tier,
-    /// e.g. `(2026, 1)` → "2026 Mid 1st".
+    /// FantasyCalc catalog name for a season + round,
+    /// e.g. `(2026, 1)` → "2026 1st".
     static func fantasyCalcName(season: String, round: Int) -> String {
-        "\(season) Mid \(ordinal(round))"
+        "\(season) \(ordinal(round))"
     }
 
     /// Human display name for a traded pick, e.g. `(2026, 1)` → "2026 1st".

@@ -648,10 +648,9 @@ struct TradeAnalysisView: View {
         return owned
     }
 
-    /// Format pick name to match FantasyCalc naming convention
+    /// Format pick name to match FantasyCalc naming convention.
+    /// FantasyCalc uses "{year} {ordinal}" e.g. "2026 1st", "2027 2nd".
     private func formatPickName(season: String, round: Int, numRosters: Int, originalRosterId: Int? = nil) -> String {
-        // FantasyCalc uses "2026 Mid 1st", "2027 Early 2nd" etc.
-        // We'll use a simplified tier for now
         let roundSuffix: String
         switch round {
         case 1: roundSuffix = "1st"
@@ -659,11 +658,7 @@ struct TradeAnalysisView: View {
         case 3: roundSuffix = "3rd"
         default: roundSuffix = "\(round)th"
         }
-
-        // Estimate tier based on roster position (simplified)
-        let tier = "Mid"  // Default to mid since we don't know exact standings
-
-        return "\(season) \(tier) \(roundSuffix)"
+        return "\(season) \(roundSuffix)"
     }
 }
 
