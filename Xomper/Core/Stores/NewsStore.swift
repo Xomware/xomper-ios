@@ -233,6 +233,13 @@ final class NewsStore {
         var allTeamNames: [Int: String] = [:]
 
         for leagueData in allLeagueData {
+            // Build roster -> slot mapping. In most leagues, rosterId maps
+            // directly to draft slot (roster 1 = slot 1), unless trades or
+            // custom draft orders are used. This gives us exact pick positions.
+            let slotByRosterId = Dictionary(
+                uniqueKeysWithValues: leagueData.rosters.map { ($0.rosterId, $0.rosterId) }
+            )
+
             for entry in leagueData.transactions {
                 guard !seen.contains(entry.txn.transactionId) else { continue }
                 if let item = NewsBuilder.build(
@@ -242,7 +249,8 @@ final class NewsStore {
                     users: leagueData.users,
                     playerStore: playerStore,
                     valuesStore: valuesStore,
-                    draftHistory: draftHistory
+                    draftHistory: draftHistory,
+                    slotByRosterId: slotByRosterId
                 ) {
                     allBuilt.append(item)
                     seen.insert(entry.txn.transactionId)
@@ -316,7 +324,8 @@ enum NewsBuilder {
         users: [SleeperUser],
         playerStore: PlayerStore,
         valuesStore: PlayerValuesStore,
-        draftHistory: [DraftHistoryRecord] = []
+        draftHistory: [DraftHistoryRecord] = [],
+        slotByRosterId: [Int: Int] = [:]
     ) -> NewsItem? {
         // Only surface completed, recognized moves.
         guard t.status == nil || t.status == "complete" else { return nil }
@@ -329,9 +338,9 @@ enum NewsBuilder {
 
         let sides: [NewsSide] = rosterIds.map { rid in
             let acquired = playerAssets(from: t.adds, roster: rid, playerStore: playerStore, valuesStore: valuesStore)
-                + pickAssets(from: t.draftPicks, roster: rid, acquired: true, valuesStore: valuesStore, draftHistory: draftHistory)
+                + pickAssets(from: t.draftPicks, roster: rid, acquired: true, valuesStore: valuesStore, draftHistory: draftHistory, slotByRosterId: slotByRosterId)
             let relinquished = playerAssets(from: t.drops, roster: rid, playerStore: playerStore, valuesStore: valuesStore)
-                + pickAssets(from: t.draftPicks, roster: rid, acquired: false, valuesStore: valuesStore, draftHistory: draftHistory)
+                + pickAssets(from: t.draftPicks, roster: rid, acquired: false, valuesStore: valuesStore, draftHistory: draftHistory, slotByRosterId: slotByRosterId)
             return NewsSide(
                 rosterId: rid,
                 teamName: teamName(rid, rosters: rosters, users: users),

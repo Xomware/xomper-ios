@@ -225,6 +225,15 @@ struct TradeNewsCard: View {
                     .foregroundStyle(XomperColors.textPrimary)
                     .lineLimit(1)
             }
+
+            Spacer()
+
+            // Value
+            if asset.value > 0 {
+                Text("\(asset.value)")
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(XomperColors.textMuted)
+            }
         }
     }
 
