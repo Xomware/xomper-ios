@@ -150,6 +150,18 @@ final class PlayerValuesStore {
         return pickValuesByName[matches.first!] ?? 0
     }
 
+    /// Lookup exact pick value by season, round, and slot. Returns the
+    /// specific slot value (e.g., "2026 Pick 1.03") if available, otherwise
+    /// falls back to round value (e.g., "2026 1st").
+    func exactPickValue(season: String, round: Int, slot: Int) -> Int {
+        let exactName = PickValuation.exactPickName(season: season, round: round, slot: slot)
+        if let exact = pickValuesByName[exactName] {
+            return exact
+        }
+        // Fall back to round value
+        return pickValue(for: PickValuation.fantasyCalcName(season: season, round: round))
+    }
+
     /// All pick names currently fetchable, sorted by value desc so
     /// the trade picker leads with the highest-value picks.
     var allPickNames: [String] {

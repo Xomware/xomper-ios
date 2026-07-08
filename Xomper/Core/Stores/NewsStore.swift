@@ -396,7 +396,8 @@ enum NewsBuilder {
         roster rid: Int,
         acquired: Bool,
         valuesStore: PlayerValuesStore,
-        draftHistory: [DraftHistoryRecord] = []
+        draftHistory: [DraftHistoryRecord] = [],
+        slotByRosterId: [Int: Int] = [:]
     ) -> [NewsAsset] {
         guard let picks else { return [] }
         return picks.compactMap { pick -> NewsAsset? in
@@ -414,6 +415,9 @@ enum NewsBuilder {
                 record.pickedByRosterId == pick.rosterId
             }
 
+            // Get the slot from draft history (if used) or slot mapping (if upcoming).
+            let slot: Int? = draftedPlayer?.draftSlot ?? slotByRosterId[pick.rosterId]
+
             // For resolved picks, use the drafted player's current dynasty
             // value instead of the generic pick value. This makes historical
             // trade grades more accurate — a 2024 1st that became Caleb
@@ -424,13 +428,16 @@ enum NewsBuilder {
                 let playerValue = valuesStore.value(for: playerId)
                 // Fall back to pick value if player not found (rare edge case)
                 value = playerValue > 0 ? playerValue : valuesStore.pickValue(for: PickValuation.fantasyCalcName(season: pick.season, round: pick.round))
+            } else if let slot {
+                // For future picks with known slot, use exact pick value
+                value = valuesStore.exactPickValue(season: pick.season, round: pick.round, slot: slot)
             } else {
                 value = valuesStore.pickValue(for: PickValuation.fantasyCalcName(season: pick.season, round: pick.round))
             }
 
             return NewsAsset(
                 id: "pick-\(pick.season)-\(pick.round)-\(pick.rosterId)",
-                name: PickValuation.displayName(season: pick.season, round: pick.round),
+                name: PickValuation.displayName(season: pick.season, round: pick.round, slot: slot),
                 position: "PICK",
                 value: value,
                 isPick: true,

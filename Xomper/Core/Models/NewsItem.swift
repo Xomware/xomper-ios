@@ -254,6 +254,7 @@ enum LetterGrade: String, Sendable, Hashable, CaseIterable {
 /// Pick-name helpers so historical trades value draft picks off the same
 /// FantasyCalc catalog the trade analyzer uses. FantasyCalc pick names
 /// are formatted as "{year} {round}" e.g. "2026 1st", "2027 2nd".
+/// For current year, exact picks like "2026 Pick 1.03" are also available.
 enum PickValuation {
     /// FantasyCalc catalog name for a season + round,
     /// e.g. `(2026, 1)` → "2026 1st".
@@ -261,9 +262,19 @@ enum PickValuation {
         "\(season) \(ordinal(round))"
     }
 
-    /// Human display name for a traded pick, e.g. `(2026, 1)` → "2026 1st".
-    static func displayName(season: String, round: Int) -> String {
-        "\(season) \(ordinal(round))"
+    /// FantasyCalc catalog name for an exact pick slot,
+    /// e.g. `(2026, 1, 3)` → "2026 Pick 1.03".
+    static func exactPickName(season: String, round: Int, slot: Int) -> String {
+        String(format: "%@ Pick %d.%02d", season, round, slot)
+    }
+
+    /// Human display name for a traded pick. If slot is known, shows exact
+    /// position (e.g., "2026 1.03"), otherwise round only (e.g., "2026 1st").
+    static func displayName(season: String, round: Int, slot: Int? = nil) -> String {
+        if let slot {
+            return String(format: "%@ %d.%02d", season, round, slot)
+        }
+        return "\(season) \(ordinal(round))"
     }
 
     static func ordinal(_ n: Int) -> String {
