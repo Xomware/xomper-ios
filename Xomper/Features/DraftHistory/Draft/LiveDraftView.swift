@@ -136,54 +136,53 @@ struct LiveDraftView: View {
     // MARK: - Controls bar
 
     private var controlsBar: some View {
-        HStack(spacing: XomperTheme.Spacing.sm) {
-            filterChip(label: "All Picks", selected: !myPicksOnly) { myPicksOnly = false }
-            filterChip(label: "My Picks",  selected:  myPicksOnly) { myPicksOnly = true  }
+        HStack(spacing: 0) {
+            // Segmented filter toggle
+            HStack(spacing: 0) {
+                filterSegment(label: "All", selected: !myPicksOnly) { myPicksOnly = false }
+                filterSegment(label: "Mine", selected: myPicksOnly) { myPicksOnly = true }
+            }
+            .background(XomperColors.bgCard)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
 
             Spacer()
 
-            viewModeToggle
+            // View mode toggle
+            HStack(spacing: 0) {
+                ForEach(DraftViewMode.allCases) { mode in
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        viewMode = mode
+                    }) {
+                        Image(systemName: mode.systemImage)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(viewMode == mode ? XomperColors.bgDark : XomperColors.textMuted)
+                            .frame(width: 32, height: 28)
+                            .background(viewMode == mode ? XomperColors.championGold : Color.clear)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(mode.label)
+                }
+            }
+            .background(XomperColors.bgCard)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
         }
         .padding(.horizontal, XomperTheme.Spacing.md)
-        .padding(.vertical, XomperTheme.Spacing.sm)
-        .background(XomperColors.bgDark)
+        .padding(.vertical, XomperTheme.Spacing.xs)
     }
 
-    private func filterChip(label: String, selected: Bool, action: @escaping () -> Void) -> some View {
+    private func filterSegment(label: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             action()
         }) {
             Text(label)
-                .font(.caption.weight(selected ? .bold : .regular))
-                .foregroundStyle(selected ? XomperColors.bgDark : XomperColors.textSecondary)
-                .padding(.horizontal, XomperTheme.Spacing.sm)
-                .padding(.vertical, 6)
-                .background(selected ? XomperColors.championGold : XomperColors.bgCard)
-                .clipShape(Capsule())
+                .font(.system(size: 13, weight: selected ? .semibold : .regular))
+                .foregroundStyle(selected ? XomperColors.bgDark : XomperColors.textMuted)
+                .frame(width: 50, height: 28)
+                .background(selected ? XomperColors.championGold : Color.clear)
         }
         .buttonStyle(.plain)
-    }
-
-    private var viewModeToggle: some View {
-        HStack(spacing: 0) {
-            ForEach(DraftViewMode.allCases) { mode in
-                Button(action: {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    viewMode = mode
-                }) {
-                    Image(systemName: mode.systemImage)
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(viewMode == mode ? XomperColors.bgDark : XomperColors.textSecondary)
-                        .frame(width: 36, height: 28)
-                        .background(viewMode == mode ? XomperColors.championGold : Color.clear)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(mode.label)
-            }
-        }
-        .background(XomperColors.bgCard)
-        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.sm))
     }
 
     // MARK: - Rounds list
@@ -548,17 +547,10 @@ struct LiveDraftView: View {
                 if let pick {
                     let first = pick.metadata?.firstName ?? ""
                     let last  = pick.metadata?.lastName  ?? ""
-                    let name  = [first, last].filter { !$0.isEmpty }.joined(separator: " ")
-                    // Show drafter name prominently with player below
-                    HStack(spacing: XomperTheme.Spacing.xs) {
-                        Text(team?.teamName ?? "Slot \(slot)")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(XomperColors.championGold)
-                            .lineLimit(1)
-                        Text("drafted")
-                            .font(.caption)
-                            .foregroundStyle(XomperColors.textMuted)
-                    }
+                    let playerName = [first, last].filter { !$0.isEmpty }.joined(separator: " ")
+                    let drafterName = (team?.teamName.isEmpty == false ? team?.teamName : nil) ?? "Pick \(slot)"
+
+                    // Player name is primary, drafter in subtitle
                     HStack(spacing: XomperTheme.Spacing.xs) {
                         if let pos = pick.metadata?.position {
                             Text(pos)
@@ -569,11 +561,20 @@ struct LiveDraftView: View {
                                 .background(positionColor(pos))
                                 .clipShape(Capsule())
                         }
-                        Text(name.isEmpty ? "Pick made" : name)
+                        Text(playerName.isEmpty ? "Pick made" : playerName)
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(XomperColors.textPrimary)
                             .lineLimit(1)
+                    }
+                    HStack(spacing: 4) {
+                        Text(drafterName)
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(XomperColors.championGold)
+                            .lineLimit(1)
                         if let nfl = pick.metadata?.team {
+                            Text("·")
+                                .font(.caption2)
+                                .foregroundStyle(XomperColors.textMuted)
                             Text(nfl)
                                 .font(.caption2)
                                 .foregroundStyle(XomperColors.textMuted)
