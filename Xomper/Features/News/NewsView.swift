@@ -13,21 +13,32 @@ struct NewsView: View {
     var historyStore: HistoryStore
 
     var body: some View {
-        Group {
-            if newsStore.isLoading && !newsStore.hasItems {
-                LoadingView(message: "Loading league news...")
-            } else if let error = newsStore.error, !newsStore.hasItems {
-                ErrorView(message: error.localizedDescription) {
-                    Task { await reload(force: true) }
+        VStack(spacing: 0) {
+            // Filter bar
+            filterBar
+
+            Group {
+                if newsStore.isLoading && !newsStore.hasItems {
+                    LoadingView(message: "Loading league news...")
+                } else if let error = newsStore.error, !newsStore.hasItems {
+                    ErrorView(message: error.localizedDescription) {
+                        Task { await reload(force: true) }
+                    }
+                } else if filteredItems.isEmpty && newsStore.hasItems {
+                    EmptyStateView(
+                        icon: "line.3.horizontal.decrease.circle",
+                        title: "No Matches",
+                        message: "No news items match your filters."
+                    )
+                } else if !newsStore.hasItems {
+                    EmptyStateView(
+                        icon: "newspaper",
+                        title: "No News Yet",
+                        message: "Trades and roster moves across the league will show up here."
+                    )
+                } else {
+                    feed
                 }
-            } else if !newsStore.hasItems {
-                EmptyStateView(
-                    icon: "newspaper",
-                    title: "No News Yet",
-                    message: "Trades and roster moves across the league will show up here."
-                )
-            } else {
-                feed
             }
         }
         .background(XomperColors.bgDark.ignoresSafeArea())
@@ -37,12 +48,103 @@ struct NewsView: View {
         }
     }
 
+    // MARK: - Filters
+
+    private var filteredItems: [NewsItem] {
+        newsStore.filteredItems
+    }
+
+    private var filterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                // Type filters
+                ForEach(NewsType.allCases) { type in
+                    filterChip(
+                        label: type.label,
+                        icon: type.systemImage,
+                        selected: newsStore.typeFilter == type
+                    ) {
+                        newsStore.typeFilter = newsStore.typeFilter == type ? nil : type
+                    }
+                }
+
+                // Divider
+                Rectangle()
+                    .fill(XomperColors.surfaceLight)
+                    .frame(width: 1, height: 20)
+
+                // Team filter (if teams available)
+                if !newsStore.teamNames.isEmpty {
+                    Menu {
+                        Button("All Teams") {
+                            newsStore.teamFilter = nil
+                        }
+                        Divider()
+                        ForEach(newsStore.teamNames.sorted(by: { $0.value < $1.value }), id: \.key) { rosterId, name in
+                            Button(name) {
+                                newsStore.teamFilter = rosterId
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "person.2")
+                                .font(.system(size: 11, weight: .semibold))
+                            Text(newsStore.teamFilter.flatMap { newsStore.teamNames[$0] } ?? "Team")
+                                .font(.system(size: 12, weight: .medium))
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 9, weight: .bold))
+                        }
+                        .foregroundStyle(newsStore.teamFilter != nil ? XomperColors.bgDark : XomperColors.textSecondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(newsStore.teamFilter != nil ? XomperColors.championGold : XomperColors.bgCard)
+                        .clipShape(Capsule())
+                    }
+                }
+
+                // Clear button if filters active
+                if newsStore.activeFilterCount > 0 {
+                    Button {
+                        newsStore.clearFilters()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(XomperColors.textMuted)
+                    }
+                }
+            }
+            .padding(.horizontal, XomperTheme.Spacing.md)
+        }
+        .padding(.vertical, 8)
+        .background(XomperColors.bgDark)
+    }
+
+    private func filterChip(label: String, icon: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            action()
+        }) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 11, weight: .semibold))
+                Text(label)
+                    .font(.system(size: 12, weight: .medium))
+            }
+            .foregroundStyle(selected ? XomperColors.bgDark : XomperColors.textSecondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(selected ? XomperColors.championGold : XomperColors.bgCard)
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - Feed
 
     private var feed: some View {
         ScrollView {
             LazyVStack(spacing: XomperTheme.Spacing.sm) {
-                ForEach(newsStore.items) { item in
+                ForEach(filteredItems) { item in
                     card(for: item)
                         .padding(.horizontal, XomperTheme.Spacing.md)
                 }
