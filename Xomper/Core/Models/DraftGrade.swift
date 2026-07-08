@@ -85,6 +85,16 @@ enum DraftGradeCalculator {
             (record, playerValues.value(for: record.playerId))
         }
 
+        #if DEBUG
+        let zeroCount = resolved.filter { $0.value == 0 }.count
+        if zeroCount > 0 {
+            print("[DraftGrade] \(zeroCount)/\(resolved.count) picks have value=0")
+            if let first = resolved.first(where: { $0.value == 0 }) {
+                print("[DraftGrade] Example: \(first.record.playerName) (ID: \(first.record.playerId))")
+            }
+        }
+        #endif
+
         // 2. Expected curve = actual values sorted desc.
         let expectedCurve = resolved.map(\.value).sorted(by: >)
 
