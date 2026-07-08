@@ -33,7 +33,7 @@ struct HeaderBar: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            wordmarkRow
+            headerRow
 
             if showsPickerRow {
                 SeasonPickerBar(seasonStore: seasonStore)
@@ -45,61 +45,69 @@ struct HeaderBar: View {
         .background(XomperColors.bgDark)
     }
 
-    // MARK: - Wordmark row
+    // MARK: - Header row
 
-    private var wordmarkRow: some View {
-        ZStack {
-            // Center wordmark + league name stacked.
-            VStack(spacing: 2) {
-                Text("Xomper")
-                    .font(.title3)
+    private var headerRow: some View {
+        HStack(spacing: XomperTheme.Spacing.sm) {
+            // Avatar (opens drawer).
+            Button {
+                navStore.openDrawer()
+            } label: {
+                AvatarView(avatarID: avatarID, size: 32)
+                    .frame(width: 40, height: 40)
+            }
+            .buttonStyle(.pressableCard)
+            .accessibilityLabel("Open menu")
+            .accessibilityHint("Shows standings, history, roster and settings")
+            .accessibilityAddTraits(.isButton)
+
+            // Title section - shows destination or Xomper on landing
+            VStack(alignment: .leading, spacing: 1) {
+                Text(headerTitle)
+                    .font(.headline)
                     .fontWeight(.bold)
                     .foregroundStyle(XomperColors.textPrimary)
+                    .lineLimit(1)
                     .accessibilityAddTraits(.isHeader)
 
-                if let leagueName, !leagueName.isEmpty {
+                if showsSubtitle, let leagueName, !leagueName.isEmpty {
                     Text(leagueName)
                         .font(.caption2)
                         .foregroundStyle(XomperColors.textMuted)
                         .lineLimit(1)
-                        .accessibilityLabel("Active league: \(leagueName)")
                 }
             }
 
-            HStack(spacing: 0) {
-                // Avatar (opens drawer).
-                Button {
-                    navStore.openDrawer()
-                } label: {
-                    AvatarView(avatarID: avatarID, size: 36)
-                        .frame(width: 44, height: 44)
-                }
-                .buttonStyle(.pressableCard)
-                .accessibilityLabel("Open menu")
-                .accessibilityHint("Shows standings, history, roster and settings")
-                .accessibilityAddTraits(.isButton)
+            Spacer()
 
-                Spacer()
-
-                // Search.
-                Button {
-                    let generator = UIImpactFeedbackGenerator(style: .light)
-                    generator.impactOccurred()
-                    router.navigate(to: .search)
-                    navStore.closeDrawer()
-                } label: {
-                    Image(systemName: "magnifyingglass")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(XomperColors.championGold)
-                        .frame(width: 44, height: 44)
-                }
-                .buttonStyle(.pressableCard)
-                .accessibilityLabel("Search")
-                .accessibilityHint("Search for users or leagues")
+            // Search.
+            Button {
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
+                router.navigate(to: .search)
+                navStore.closeDrawer()
+            } label: {
+                Image(systemName: "magnifyingglass")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(XomperColors.championGold)
+                    .frame(width: 40, height: 40)
             }
+            .buttonStyle(.pressableCard)
+            .accessibilityLabel("Search")
+            .accessibilityHint("Search for users or leagues")
         }
-        .padding(.horizontal, XomperTheme.Spacing.sm)
-        .frame(height: 44)
+        .padding(.horizontal, XomperTheme.Spacing.md)
+        .frame(height: 52)
+    }
+
+    private var headerTitle: String {
+        navStore.currentDestination == .landing
+            ? "Xomper"
+            : navStore.currentDestination.title
+    }
+
+    private var showsSubtitle: Bool {
+        navStore.currentDestination == .landing
     }
 
     // MARK: - Sub-row visibility

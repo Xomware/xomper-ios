@@ -335,9 +335,7 @@ struct MainShell: View {
             }
         }
         .background(XomperColors.bgDark.ignoresSafeArea())
-        .navigationTitle(navStore.currentDestination.title)
-        .navigationBarTitleDisplayMode(.large)
-        .toolbarColorScheme(.dark, for: .navigationBar)
+        .navigationBarHidden(true)
     }
 
     // MARK: - My Team root
