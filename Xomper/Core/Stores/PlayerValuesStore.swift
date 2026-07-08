@@ -107,10 +107,14 @@ final class PlayerValuesStore {
 
             #if DEBUG
             print("[PlayerValuesStore] Loaded \(byId.count) players, \(picksByName.count) picks")
-            // Log sample pick names to verify format
-            let samplePicks = picksByName.keys.sorted().prefix(5)
-            for pick in samplePicks {
-                print("[PlayerValuesStore] Pick: '\(pick)' = \(picksByName[pick] ?? 0)")
+            // Check specifically for generic round picks like "2026 1st"
+            let genericPicks = picksByName.keys.filter { $0.hasSuffix("1st") || $0.hasSuffix("2nd") }
+            print("[PlayerValuesStore] Generic picks found: \(genericPicks.sorted().prefix(6))")
+            if let v = picksByName["2026 1st"] {
+                print("[PlayerValuesStore] '2026 1st' = \(v)")
+            } else {
+                print("[PlayerValuesStore] '2026 1st' NOT FOUND!")
+                print("[PlayerValuesStore] All pick keys: \(picksByName.keys.sorted().prefix(10))")
             }
             #endif
         } catch {
