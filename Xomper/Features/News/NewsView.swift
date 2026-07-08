@@ -32,7 +32,6 @@ struct NewsView: View {
         }
         .background(XomperColors.bgDark.ignoresSafeArea())
         .task { await reload(force: false) }
-        .refreshable { await reload(force: true) }
         .onChange(of: leagueStore.myLeagueRosters.count) { _, _ in
             Task { await reload(force: false) }
         }
@@ -41,34 +40,17 @@ struct NewsView: View {
     // MARK: - Feed
 
     private var feed: some View {
-        // Filter bar lives in a fixed strip above the ScrollView (not a
-        // pinned section header) so it stays put with no gap between it
-        // and the content as the feed scrolls underneath.
-        VStack(spacing: 0) {
-            NewsFilterBar(store: newsStore)
-                .background(XomperColors.bgDark)
-
-            ScrollView {
-                LazyVStack(spacing: XomperTheme.Spacing.sm) {
-                    let items = newsStore.filteredItems
-                    if items.isEmpty {
-                        EmptyStateView(
-                            icon: "line.3.horizontal.decrease.circle",
-                            title: "No Matches",
-                            message: "No news matches your current filters."
-                        )
-                        .padding(.top, XomperTheme.Spacing.xl)
-                    } else {
-                        ForEach(items) { item in
-                            card(for: item)
-                                .padding(.horizontal, XomperTheme.Spacing.md)
-                        }
-                    }
+        ScrollView {
+            LazyVStack(spacing: XomperTheme.Spacing.sm) {
+                ForEach(newsStore.items) { item in
+                    card(for: item)
+                        .padding(.horizontal, XomperTheme.Spacing.md)
                 }
-                .padding(.top, XomperTheme.Spacing.sm)
-                .padding(.bottom, XomperTheme.Spacing.md)
             }
+            .padding(.top, XomperTheme.Spacing.xs)
+            .padding(.bottom, XomperTheme.Spacing.md)
         }
+        .refreshable { await reload(force: true) }
     }
 
     @ViewBuilder
