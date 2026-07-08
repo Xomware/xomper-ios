@@ -107,6 +107,11 @@ final class PlayerValuesStore {
 
             #if DEBUG
             print("[PlayerValuesStore] Loaded \(byId.count) players, \(picksByName.count) picks")
+            // Log sample pick names to verify format
+            let samplePicks = picksByName.keys.sorted().prefix(5)
+            for pick in samplePicks {
+                print("[PlayerValuesStore] Pick: '\(pick)' = \(picksByName[pick] ?? 0)")
+            }
             #endif
         } catch {
             self.error = error
@@ -129,18 +134,32 @@ final class PlayerValuesStore {
     /// For tierless names, returns the matching tier value from the catalog.
     func pickValue(for name: String) -> Int {
         // Exact match first (handles FantasyCalc-format names).
-        if let exact = pickValuesByName[name] { return exact }
+        if let exact = pickValuesByName[name] {
+            return exact
+        }
 
         // Tierless format: "2026 1st" → find "2026 1st" in catalog.
         // FantasyCalc now uses this format (no Early/Mid/Late tiers).
         let parts = name.split(separator: " ")
-        guard parts.count == 2, let year = Int(parts[0]) else { return 0 }
+        guard parts.count == 2, let year = Int(parts[0]) else {
+            #if DEBUG
+            print("[PlayerValuesStore] pickValue('\(name)') - invalid format")
+            #endif
+            return 0
+        }
         let ordinal = String(parts[1])  // "1st", "2nd", …
 
         // Find any pick matching this year + ordinal.
         let matches = pickValuesByName.keys.filter { key in
             pickYearsByName[key] == year && key.hasSuffix(ordinal)
         }
+
+        #if DEBUG
+        if matches.isEmpty {
+            print("[PlayerValuesStore] pickValue('\(name)') - no matches for year=\(year), ordinal=\(ordinal)")
+        }
+        #endif
+
         guard !matches.isEmpty else { return 0 }
 
         // Prefer exact match, otherwise take the first.
