@@ -102,15 +102,12 @@ struct MainShell: View {
                 isAdmin: authStore.whitelistedUser?.isAdmin == true
             )
 
-            // Edge-swipe-to-open hit area. Confined to a 20pt strip on
-            // the leading edge so the drag gesture doesn't race with
-            // scroll/tap gestures across the whole content area. Only
-            // active when the drawer is closed and the user is at the
-            // root of the nav stack — otherwise the system swipe-to-pop
-            // and inner scrolls take precedence.
-            if !navStore.isDrawerOpen && router.path.count == 0 {
+            // Edge-swipe-to-open hit area. Wider 44pt strip on the leading
+            // edge for easier discovery. Only active when the drawer is
+            // closed — otherwise system swipe-to-pop takes precedence.
+            if !navStore.isDrawerOpen {
                 Color.clear
-                    .frame(width: 20)
+                    .frame(width: 44)
                     .frame(maxHeight: .infinity)
                     .contentShape(Rectangle())
                     .gesture(edgeDragGesture)
@@ -651,16 +648,16 @@ struct MainShell: View {
     /// - we're at the root of the navigation stack (so swipe-to-pop wins
     ///   inside pushed views)
     private var edgeDragGesture: some Gesture {
-        DragGesture(minimumDistance: 12, coordinateSpace: .global)
+        DragGesture(minimumDistance: 10, coordinateSpace: .global)
             .onEnded { value in
-                let startedAtEdge = value.startLocation.x < 30
-                let pulledRight = value.translation.width > 60
-                let mostlyHorizontal = abs(value.translation.width) > abs(value.translation.height) * 1.5
+                let startedAtEdge = value.startLocation.x < 50
+                let pulledRight = value.translation.width > 40
+                let mostlyHorizontal = abs(value.translation.width) > abs(value.translation.height)
                 guard !navStore.isDrawerOpen,
                       startedAtEdge,
                       pulledRight,
-                      mostlyHorizontal,
-                      router.path.count == 0 else { return }
+                      mostlyHorizontal else { return }
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 navStore.openDrawer()
             }
     }

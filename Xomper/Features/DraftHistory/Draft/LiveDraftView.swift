@@ -549,10 +549,16 @@ struct LiveDraftView: View {
                     let first = pick.metadata?.firstName ?? ""
                     let last  = pick.metadata?.lastName  ?? ""
                     let name  = [first, last].filter { !$0.isEmpty }.joined(separator: " ")
-                    Text(name.isEmpty ? "Pick made" : name)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(XomperColors.textPrimary)
-                        .lineLimit(1)
+                    // Show drafter name prominently with player below
+                    HStack(spacing: XomperTheme.Spacing.xs) {
+                        Text(team?.teamName ?? "Slot \(slot)")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(XomperColors.championGold)
+                            .lineLimit(1)
+                        Text("drafted")
+                            .font(.caption)
+                            .foregroundStyle(XomperColors.textMuted)
+                    }
                     HStack(spacing: XomperTheme.Spacing.xs) {
                         if let pos = pick.metadata?.position {
                             Text(pos)
@@ -560,18 +566,18 @@ struct LiveDraftView: View {
                                 .foregroundStyle(XomperColors.bgDark)
                                 .padding(.horizontal, 5)
                                 .padding(.vertical, 1)
-                                .background(XomperColors.successGreen)
+                                .background(positionColor(pos))
                                 .clipShape(Capsule())
                         }
+                        Text(name.isEmpty ? "Pick made" : name)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(XomperColors.textPrimary)
+                            .lineLimit(1)
                         if let nfl = pick.metadata?.team {
                             Text(nfl)
                                 .font(.caption2)
                                 .foregroundStyle(XomperColors.textMuted)
                         }
-                        Text("· \(team?.teamName ?? "Slot \(slot)")")
-                            .font(.caption2)
-                            .foregroundStyle(XomperColors.textMuted)
-                            .lineLimit(1)
                     }
                 } else {
                     Text(team?.teamName ?? "Slot \(slot)")
