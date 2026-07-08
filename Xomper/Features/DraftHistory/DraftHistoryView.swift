@@ -74,7 +74,8 @@ struct DraftHistoryView: View {
                         leagueStore: leagueStore,
                         historyStore: historyStore,
                         userStore: userStore,
-                        nflStateStore: nflStateStore
+                        nflStateStore: nflStateStore,
+                        playerValuesStore: playerValuesStore
                     )
                 case .mocks:
                     MocksView(

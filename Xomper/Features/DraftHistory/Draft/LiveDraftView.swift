@@ -15,6 +15,7 @@ struct LiveDraftView: View {
     var historyStore: HistoryStore
     var userStore: UserStore
     var nflStateStore: NflStateStore
+    var playerValuesStore: PlayerValuesStore
 
     /// View toggle — rounds list (default) vs the column-per-team
     /// draft board grid (PR #129). Reuses `DraftViewMode` so the live
@@ -218,9 +219,198 @@ struct LiveDraftView: View {
                                 pickDate: pickDate(firstPick: firstPick, pickNo: pickNo)
                             )
                         }
+
+                        // Show round summary if this round is complete
+                        if isRoundComplete(round: round, slots: slots, picksByCell: picksByCell) {
+                            roundSummaryCard(
+                                round: round,
+                                slots: slots,
+                                teamsBySlot: teamsBySlot,
+                                teamsByRound: teamsByRound,
+                                picksByCell: picksByCell
+                            )
+                        }
                     }
                 }
             }
+        }
+    }
+
+    /// Check if all picks in a round have been made.
+    private func isRoundComplete(round: Int, slots: [Int], picksByCell: [String: DraftPick]) -> Bool {
+        for slot in slots {
+            if picksByCell["\(round).\(slot)"] == nil {
+                return false
+            }
+        }
+        return true
+    }
+
+    /// Summary card shown after each completed round with grades and position breakdown.
+    private func roundSummaryCard(
+        round: Int,
+        slots: [Int],
+        teamsBySlot: [Int: UpcomingDraftTeam],
+        teamsByRound: [Int: [Int: UpcomingDraftTeam]],
+        picksByCell: [String: DraftPick]
+    ) -> some View {
+        let perRound = teamsByRound[round] ?? teamsBySlot
+
+        // Build grades for this round
+        let roundGrades = computeRoundGrades(
+            throughRound: round,
+            slots: slots,
+            teamsBySlot: teamsBySlot,
+            teamsByRound: teamsByRound,
+            picksByCell: picksByCell
+        )
+
+        // Position breakdown for this round only
+        let positionCounts = countPositionsInRound(round: round, slots: slots, picksByCell: picksByCell)
+
+        return VStack(alignment: .leading, spacing: XomperTheme.Spacing.sm) {
+            HStack {
+                Text("ROUND \(round) SUMMARY")
+                    .font(.caption2.weight(.bold))
+                    .tracking(1)
+                    .foregroundStyle(XomperColors.championGold)
+                Spacer()
+            }
+
+            // Position breakdown
+            if !positionCounts.isEmpty {
+                HStack(spacing: XomperTheme.Spacing.sm) {
+                    ForEach(positionCounts.sorted(by: { $0.value > $1.value }), id: \.key) { pos, count in
+                        HStack(spacing: 4) {
+                            Text(pos)
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(positionColor(pos))
+                            Text("\(count)")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(XomperColors.textSecondary)
+                        }
+                    }
+                }
+            }
+
+            // Top performers (best value picks this round)
+            let topPicks = topPicksInRound(round: round, slots: slots, perRound: perRound, picksByCell: picksByCell)
+            if !topPicks.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Top Picks")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(XomperColors.textMuted)
+                    ForEach(topPicks.prefix(3), id: \.pickNo) { pick in
+                        HStack(spacing: 6) {
+                            Text(pick.position)
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(positionColor(pick.position))
+                                .frame(width: 24)
+                            Text(pick.playerName)
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(XomperColors.textPrimary)
+                                .lineLimit(1)
+                            Spacer()
+                            Text(pick.teamName)
+                                .font(.caption2)
+                                .foregroundStyle(XomperColors.textMuted)
+                                .lineLimit(1)
+                            if pick.value > 0 {
+                                Text("\(pick.value)")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(XomperColors.successGreen)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .padding(XomperTheme.Spacing.sm)
+        .background(XomperColors.bgCard)
+        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
+        .overlay(
+            RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md)
+                .strokeBorder(XomperColors.championGold.opacity(0.3), lineWidth: 1)
+        )
+        .padding(.top, XomperTheme.Spacing.xs)
+    }
+
+    /// Simple pick info for the round summary.
+    private struct RoundPickInfo {
+        let pickNo: Int
+        let playerName: String
+        let position: String
+        let teamName: String
+        let value: Int
+    }
+
+    /// Get the top picks in a round by value.
+    private func topPicksInRound(
+        round: Int,
+        slots: [Int],
+        perRound: [Int: UpcomingDraftTeam],
+        picksByCell: [String: DraftPick]
+    ) -> [RoundPickInfo] {
+        var picks: [RoundPickInfo] = []
+        for slot in slots {
+            guard let pick = picksByCell["\(round).\(slot)"] else { continue }
+            let team = perRound[slot]
+            let playerName = [pick.metadata?.firstName ?? "", pick.metadata?.lastName ?? ""]
+                .joined(separator: " ")
+                .trimmingCharacters(in: .whitespaces)
+            let position = pick.metadata?.position ?? ""
+            let value = playerValuesStore.value(for: pick.playerId)
+            picks.append(RoundPickInfo(
+                pickNo: pick.pickNo,
+                playerName: playerName.isEmpty ? "Player" : playerName,
+                position: position,
+                teamName: team?.teamName ?? "Team",
+                value: value
+            ))
+        }
+        return picks.sorted { $0.value > $1.value }
+    }
+
+    /// Count positions drafted in a round.
+    private func countPositionsInRound(round: Int, slots: [Int], picksByCell: [String: DraftPick]) -> [String: Int] {
+        var counts: [String: Int] = [:]
+        for slot in slots {
+            guard let pick = picksByCell["\(round).\(slot)"],
+                  let pos = pick.metadata?.position, !pos.isEmpty else { continue }
+            counts[pos, default: 0] += 1
+        }
+        return counts
+    }
+
+    /// Compute running grades through a given round.
+    private func computeRoundGrades(
+        throughRound: Int,
+        slots: [Int],
+        teamsBySlot: [Int: UpcomingDraftTeam],
+        teamsByRound: [Int: [Int: UpcomingDraftTeam]],
+        picksByCell: [String: DraftPick]
+    ) -> [String: Int] {
+        // Sum values by user ID through this round
+        var valueByUser: [String: Int] = [:]
+        for round in 1...throughRound {
+            let perRound = teamsByRound[round] ?? teamsBySlot
+            for slot in slots {
+                guard let pick = picksByCell["\(round).\(slot)"],
+                      let team = perRound[slot] else { continue }
+                let value = playerValuesStore.value(for: pick.playerId)
+                valueByUser[team.userId, default: 0] += value
+            }
+        }
+        return valueByUser
+    }
+
+    private func positionColor(_ pos: String) -> Color {
+        switch pos.uppercased() {
+        case "QB": return XomperColors.errorRed
+        case "RB": return XomperColors.successGreen
+        case "WR": return Color.blue
+        case "TE": return Color.orange
+        default: return XomperColors.textMuted
         }
     }
 

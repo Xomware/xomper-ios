@@ -25,6 +25,7 @@ struct TeamAnalyzerView: View {
 
     @State private var activeTab: AnalyzerTab = .compare
     @State private var comparisonRosterId: Int?
+    @State private var expandedTeamId: Int?
 
     /// Trade-builder state lives on a shared `TradeAnalyzerController`
     /// so the My Team Trades tab can preload a recommendation before
@@ -394,42 +395,64 @@ struct TeamAnalyzerView: View {
         averages: [TeamAnalysis.HexAxis],
         maxes: [String: Int]
     ) -> some View {
-        VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
-            HStack(spacing: XomperTheme.Spacing.sm) {
-                Text("\(rank)")
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(rank == 1 ? XomperColors.championGold : XomperColors.textSecondary)
-                    .frame(width: 28, alignment: .leading)
-                    .monospacedDigit()
+        let isExpanded = expandedTeamId == team.rosterId
 
-                Text(team.teamName)
-                    .font(.subheadline.weight(isMine ? .bold : .semibold))
-                    .foregroundStyle(isMine ? XomperColors.championGold : XomperColors.textPrimary)
-                    .lineLimit(1)
-
-                if isMine {
-                    Text("YOU")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(XomperColors.bgDark)
-                        .padding(.horizontal, XomperTheme.Spacing.xs)
-                        .background(XomperColors.championGold)
-                        .clipShape(Capsule())
+        return VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    expandedTeamId = isExpanded ? nil : team.rosterId
                 }
+            } label: {
+                VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
+                    HStack(spacing: XomperTheme.Spacing.sm) {
+                        Text("\(rank)")
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(rank == 1 ? XomperColors.championGold : XomperColors.textSecondary)
+                            .frame(width: 28, alignment: .leading)
+                            .monospacedDigit()
 
-                Spacer()
+                        Text(team.teamName)
+                            .font(.subheadline.weight(isMine ? .bold : .semibold))
+                            .foregroundStyle(isMine ? XomperColors.championGold : XomperColors.textPrimary)
+                            .lineLimit(1)
 
-                Text("\(team.totalValue)")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(XomperColors.textPrimary)
-                    .monospacedDigit()
+                        if isMine {
+                            Text("YOU")
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(XomperColors.bgDark)
+                                .padding(.horizontal, XomperTheme.Spacing.xs)
+                                .background(XomperColors.championGold)
+                                .clipShape(Capsule())
+                        }
+
+                        Spacer()
+
+                        Text("\(team.totalValue)")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(XomperColors.textPrimary)
+                            .monospacedDigit()
+
+                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(XomperColors.textMuted)
+                    }
+
+                    HStack(spacing: XomperTheme.Spacing.xs) {
+                        ForEach(Array(team.hexAxes.enumerated()), id: \.offset) { idx, axis in
+                            let avg = idx < averages.count ? averages[idx].value : 0
+                            let max = maxes[axis.label] ?? axis.value
+                            leagueTeamAxisCell(axis: axis, avg: avg, leagueMax: max)
+                        }
+                    }
+                }
             }
+            .buttonStyle(.plain)
 
-            HStack(spacing: XomperTheme.Spacing.xs) {
-                ForEach(Array(team.hexAxes.enumerated()), id: \.offset) { idx, axis in
-                    let avg = idx < averages.count ? averages[idx].value : 0
-                    let max = maxes[axis.label] ?? axis.value
-                    leagueTeamAxisCell(axis: axis, avg: avg, leagueMax: max)
-                }
+            // Expanded player list
+            if isExpanded {
+                expandedPlayerList(team: team)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
         .padding(XomperTheme.Spacing.md)
@@ -443,6 +466,61 @@ struct TeamAnalyzerView: View {
                 )
         )
         .padding(.horizontal, XomperTheme.Spacing.md)
+    }
+
+    private func expandedPlayerList(team: TeamAnalysis) -> some View {
+        VStack(alignment: .leading, spacing: XomperTheme.Spacing.sm) {
+            Divider().background(XomperColors.surfaceLight.opacity(0.4))
+
+            // Show top players (limit to 10 to keep it scannable)
+            ForEach(team.players.prefix(10)) { player in
+                HStack(spacing: XomperTheme.Spacing.sm) {
+                    Text(player.position)
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(positionColor(player.position))
+                        .frame(width: 24)
+
+                    Text(player.name)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(XomperColors.textPrimary)
+                        .lineLimit(1)
+
+                    if player.isTaxi {
+                        Text("TAXI")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(XomperColors.textMuted)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(XomperColors.surfaceLight)
+                            .clipShape(Capsule())
+                    }
+
+                    Spacer()
+
+                    Text("\(player.value)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(XomperColors.championGold)
+                        .monospacedDigit()
+                }
+            }
+
+            if team.players.count > 10 {
+                Text("+\(team.players.count - 10) more")
+                    .font(.caption2)
+                    .foregroundStyle(XomperColors.textMuted)
+            }
+        }
+        .padding(.top, XomperTheme.Spacing.xs)
+    }
+
+    private func positionColor(_ pos: String) -> Color {
+        switch pos.uppercased() {
+        case "QB": return XomperColors.errorRed
+        case "RB": return XomperColors.successGreen
+        case "WR": return Color.blue
+        case "TE": return Color.orange
+        default: return XomperColors.textMuted
+        }
     }
 
     private func leagueTeamAxisCell(

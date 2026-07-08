@@ -24,6 +24,9 @@ struct TeamAnalysis: Sendable, Hashable {
     /// Players on taxi squad.
     let taxiValue: Int
 
+    /// Individual players on this roster, sorted by value descending.
+    let players: [RosteredPlayer]
+
     var totalValue: Int {
         qbValue + rbValue + wrValue + teValue + benchValue + taxiValue
     }
@@ -41,9 +44,26 @@ struct TeamAnalysis: Sendable, Hashable {
         ]
     }
 
+    /// Players grouped by position for expandable display.
+    func playersByPosition(_ position: String) -> [RosteredPlayer] {
+        players.filter { $0.position == position }
+    }
+
     struct HexAxis: Sendable, Hashable {
         let label: String
         let value: Int
+    }
+
+    /// A single rostered player with value info.
+    struct RosteredPlayer: Sendable, Hashable, Identifiable {
+        let playerId: String
+        let name: String
+        let position: String
+        let value: Int
+        let isStarter: Bool
+        let isTaxi: Bool
+
+        var id: String { playerId }
     }
 }
 
@@ -74,21 +94,38 @@ enum TeamAnalysisBuilder {
 
             var qb = 0, rb = 0, wr = 0, te = 0
             var bench = 0, taxiSum = 0
+            var rosteredPlayers: [TeamAnalysis.RosteredPlayer] = []
 
             for pid in allRostered {
                 let value = valuesStore.value(for: pid)
+                let player = playerStore.player(for: pid)
+                let pos = player?.displayPosition
+                    ?? valuesStore.position(for: pid)
+                    ?? "?"
+                let name = player?.fullDisplayName ?? "Player"
+                let isStarter = starters.contains(pid)
+                let isTaxi = taxi.contains(pid)
+
+                // Add to players list (even if value is 0)
+                if value > 0 {
+                    rosteredPlayers.append(TeamAnalysis.RosteredPlayer(
+                        playerId: pid,
+                        name: name,
+                        position: pos,
+                        value: value,
+                        isStarter: isStarter,
+                        isTaxi: isTaxi
+                    ))
+                }
+
                 guard value > 0 else { continue }
 
-                if taxi.contains(pid) {
+                if isTaxi {
                     taxiSum += value
                     continue  // taxi never counts toward starter buckets
                 }
 
-                let pos = playerStore.player(for: pid)?.displayPosition
-                    ?? valuesStore.position(for: pid)
-                    ?? "?"
-
-                let onBench = !starters.contains(pid) && !reserve.contains(pid)
+                let onBench = !isStarter && !reserve.contains(pid)
 
                 switch pos {
                 case "QB":
@@ -107,6 +144,9 @@ enum TeamAnalysisBuilder {
                 }
             }
 
+            // Sort players by value descending
+            rosteredPlayers.sort { $0.value > $1.value }
+
             let owner = roster.ownerId.flatMap { userById[$0] }
             let teamName = owner?.teamName
                 ?? owner?.resolvedDisplayName
@@ -122,7 +162,8 @@ enum TeamAnalysisBuilder {
                 wrValue: wr,
                 teValue: te,
                 benchValue: bench,
-                taxiValue: taxiSum
+                taxiValue: taxiSum,
+                players: rosteredPlayers
             )
         }
     }
