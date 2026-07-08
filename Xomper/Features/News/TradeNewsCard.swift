@@ -208,12 +208,12 @@ struct TradeNewsCard: View {
     private func compactAssetRow(_ asset: NewsAsset) -> some View {
         HStack(spacing: 4) {
             // Position badge
-            Text(asset.isPick ? "PICK" : asset.position.uppercased())
-                .font(.system(size: 9, weight: .bold))
+            Text(asset.isPick ? "PK" : asset.position.uppercased())
+                .font(.system(size: 8, weight: .bold))
                 .foregroundStyle(XomperColors.textMuted)
-                .frame(width: 28, alignment: .leading)
+                .frame(width: 18, alignment: .leading)
 
-            // Name - show resolved player for picks
+            // Name - show resolved player for picks, or compact pick name
             if asset.isResolvedPick, let playerName = asset.resolvedPlayerName {
                 Text(playerName)
                     .font(.caption.weight(.medium))
@@ -224,16 +224,15 @@ struct TradeNewsCard: View {
                     .font(.caption.weight(.medium))
                     .foregroundStyle(XomperColors.textPrimary)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
 
-            Spacer()
+            Spacer(minLength: 4)
 
-            // Value
-            if asset.value > 0 {
-                Text("\(asset.value)")
-                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(XomperColors.textMuted)
-            }
+            // Value - always show for picks even if 0 (shows we tried)
+            Text("\(asset.value)")
+                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                .foregroundStyle(asset.value > 0 ? XomperColors.textSecondary : XomperColors.textMuted.opacity(0.5))
         }
     }
 

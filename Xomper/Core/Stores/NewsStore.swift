@@ -433,16 +433,23 @@ enum NewsBuilder {
             // Williams should be valued at Caleb Williams' current value,
             // not "2024 Mid 1st" which is now worthless.
             let value: Int
+            let pickName = PickValuation.fantasyCalcName(season: pick.season, round: pick.round)
             if let playerId = draftedPlayer?.playerId {
                 let playerValue = valuesStore.value(for: playerId)
                 // Fall back to pick value if player not found (rare edge case)
-                value = playerValue > 0 ? playerValue : valuesStore.pickValue(for: PickValuation.fantasyCalcName(season: pick.season, round: pick.round))
+                value = playerValue > 0 ? playerValue : valuesStore.pickValue(for: pickName)
             } else if let slot {
                 // For future picks with known slot, use exact pick value
                 value = valuesStore.exactPickValue(season: pick.season, round: pick.round, slot: slot)
             } else {
-                value = valuesStore.pickValue(for: PickValuation.fantasyCalcName(season: pick.season, round: pick.round))
+                value = valuesStore.pickValue(for: pickName)
             }
+
+            #if DEBUG
+            if value == 0 {
+                print("[NewsBuilder] Pick '\(pickName)' has value=0, hasValues=\(valuesStore.hasValues), pickCount=\(valuesStore.allPickNames.count)")
+            }
+            #endif
 
             return NewsAsset(
                 id: "pick-\(pick.season)-\(pick.round)-\(pick.rosterId)",
