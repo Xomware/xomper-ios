@@ -28,11 +28,7 @@ struct SettingsView: View {
 
     private var notificationsSection: some View {
         VStack(alignment: .leading, spacing: XomperTheme.Spacing.sm) {
-            Text("Notifications")
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .foregroundStyle(XomperColors.textSecondary)
-                .padding(.leading, XomperTheme.Spacing.xs)
+            SectionHeader(title: "Notifications", icon: "bell.fill")
 
             VStack(spacing: 0) {
                 HStack {
@@ -101,11 +97,7 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         VStack(alignment: .leading, spacing: XomperTheme.Spacing.sm) {
-            Text("About")
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .foregroundStyle(XomperColors.textSecondary)
-                .padding(.leading, XomperTheme.Spacing.xs)
+            SectionHeader(title: "About", icon: "info.circle")
 
             VStack(spacing: 0) {
                 aboutRow(label: "Version", value: appVersion)

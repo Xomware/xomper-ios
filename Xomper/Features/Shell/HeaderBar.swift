@@ -62,17 +62,16 @@ struct HeaderBar: View {
             .accessibilityAddTraits(.isButton)
 
             // Title section - shows destination or Xomper on landing
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(headerTitle)
-                    .font(.headline)
-                    .fontWeight(.bold)
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
                     .foregroundStyle(XomperColors.textPrimary)
                     .lineLimit(1)
                     .accessibilityAddTraits(.isHeader)
 
                 if showsSubtitle, let leagueName, !leagueName.isEmpty {
                     Text(leagueName)
-                        .font(.caption2)
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(XomperColors.textMuted)
                         .lineLimit(1)
                 }
@@ -88,16 +87,18 @@ struct HeaderBar: View {
                 navStore.closeDrawer()
             } label: {
                 Image(systemName: "magnifyingglass")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(XomperColors.championGold)
-                    .frame(width: 40, height: 40)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(XomperColors.textSecondary)
+                    .frame(width: 36, height: 36)
+                    .background(XomperColors.surfaceLight.opacity(0.5))
+                    .clipShape(Circle())
             }
             .buttonStyle(.pressableCard)
             .accessibilityLabel("Search")
             .accessibilityHint("Search for users or leagues")
         }
         .padding(.horizontal, XomperTheme.Spacing.md)
-        .frame(height: 52)
+        .frame(height: 56)
     }
 
     private var headerTitle: String {

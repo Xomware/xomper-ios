@@ -149,11 +149,7 @@ struct MyProfileView: View {
 
         if !leagues.isEmpty {
             VStack(alignment: .leading, spacing: XomperTheme.Spacing.sm) {
-                Text("My Leagues")
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(XomperColors.textSecondary)
-                    .padding(.leading, XomperTheme.Spacing.xs)
+                SectionHeader(title: "My Leagues", icon: "trophy")
 
                 ForEach(leagues, id: \.leagueId) { league in
                     leagueRow(league)

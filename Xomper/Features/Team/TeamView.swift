@@ -428,10 +428,7 @@ private extension TeamView {
 
     func rosterSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: XomperTheme.Spacing.md) {
-            Text(title)
-                .font(.headline.weight(.bold))
-                .foregroundStyle(XomperColors.championGold)
-                .padding(.bottom, XomperTheme.Spacing.xs)
+            SectionHeader(title: title)
                 .accessibilityAddTraits(.isHeader)
 
             content()

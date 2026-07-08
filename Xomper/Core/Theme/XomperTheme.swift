@@ -98,3 +98,28 @@ extension View {
         modifier(XomperCardModifier(compact: true))
     }
 }
+
+// MARK: - Section Header Component
+
+/// Modern section header — uppercase, letterspaced, subtle.
+/// Use instead of raw Text for section titles throughout the app.
+struct SectionHeader: View {
+    let title: String
+    var icon: String? = nil
+
+    var body: some View {
+        HStack(spacing: 6) {
+            if let icon {
+                Image(systemName: icon)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(XomperColors.textMuted)
+            }
+            Text(title.uppercased())
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .tracking(0.8)
+                .foregroundStyle(XomperColors.textMuted)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, XomperTheme.Spacing.xs)
+    }
+}
