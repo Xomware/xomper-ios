@@ -27,6 +27,10 @@ struct TeamAnalysis: Sendable, Hashable {
     /// Individual players on this roster, sorted by value descending.
     let players: [RosteredPlayer]
 
+    /// Team needs — positions where this team is weak relative to
+    /// league average or has low depth. Sorted by severity.
+    let needs: [TeamNeed]
+
     var totalValue: Int {
         qbValue + rbValue + wrValue + teValue + benchValue + taxiValue
     }
@@ -73,11 +77,14 @@ enum TeamAnalysisBuilder {
     /// Builds analyses for every roster in the league. Players with
     /// unknown positions or no value contribute zero — surfaced as a
     /// "Uncategorized" warning on the view if the gap is large.
+    ///
+    /// Pass `rosterPositions` from the league to enable needs analysis.
     static func build(
         rosters: [Roster],
         users: [SleeperUser],
         playerStore: PlayerStore,
-        valuesStore: PlayerValuesStore
+        valuesStore: PlayerValuesStore,
+        rosterPositions: [String]? = nil
     ) -> [TeamAnalysis] {
         let userById: [String: SleeperUser] = Dictionary(
             uniqueKeysWithValues: users.compactMap { user -> (String, SleeperUser)? in
@@ -86,7 +93,10 @@ enum TeamAnalysisBuilder {
             }
         )
 
-        return rosters.map { roster in
+        // First pass: build team data without needs (needs require averages)
+        var teamDataList: [(TeamAnalysis, [String: Int])] = []
+
+        for roster in rosters {
             let starters = Set(roster.starters ?? [])
             let taxi = Set(roster.taxi ?? [])
             let reserve = Set(roster.reserve ?? [])
@@ -95,6 +105,7 @@ enum TeamAnalysisBuilder {
             var qb = 0, rb = 0, wr = 0, te = 0
             var bench = 0, taxiSum = 0
             var rosteredPlayers: [TeamAnalysis.RosteredPlayer] = []
+            var positionCounts: [String: Int] = [:]  // Count players at each position
 
             for pid in allRostered {
                 let value = valuesStore.value(for: pid)
@@ -105,6 +116,11 @@ enum TeamAnalysisBuilder {
                 let name = player?.fullDisplayName ?? "Player"
                 let isStarter = starters.contains(pid)
                 let isTaxi = taxi.contains(pid)
+
+                // Count positions (only non-taxi players with value)
+                if value > 0 && !isTaxi {
+                    positionCounts[pos, default: 0] += 1
+                }
 
                 // Add to players list (even if value is 0)
                 if value > 0 {
@@ -152,7 +168,7 @@ enum TeamAnalysisBuilder {
                 ?? owner?.resolvedDisplayName
                 ?? "Roster #\(roster.rosterId)"
 
-            return TeamAnalysis(
+            let analysis = TeamAnalysis(
                 rosterId: roster.rosterId,
                 teamName: teamName,
                 userId: roster.ownerId ?? "",
@@ -163,7 +179,36 @@ enum TeamAnalysisBuilder {
                 teValue: te,
                 benchValue: bench,
                 taxiValue: taxiSum,
-                players: rosteredPlayers
+                players: rosteredPlayers,
+                needs: []  // Placeholder, computed below
+            )
+            teamDataList.append((analysis, positionCounts))
+        }
+
+        // Second pass: compute league averages and needs
+        let preliminaryTeams = teamDataList.map { $0.0 }
+        let leagueAverages = leagueAverageAxes(preliminaryTeams)
+
+        return teamDataList.map { (team, positionCounts) in
+            let needs = computeNeeds(
+                team: team,
+                leagueAverages: leagueAverages,
+                positionCounts: positionCounts,
+                rosterPositions: rosterPositions
+            )
+            return TeamAnalysis(
+                rosterId: team.rosterId,
+                teamName: team.teamName,
+                userId: team.userId,
+                avatarId: team.avatarId,
+                qbValue: team.qbValue,
+                rbValue: team.rbValue,
+                wrValue: team.wrValue,
+                teValue: team.teValue,
+                benchValue: team.benchValue,
+                taxiValue: team.taxiValue,
+                players: team.players,
+                needs: needs
             )
         }
     }
@@ -211,6 +256,146 @@ enum TeamAnalysisBuilder {
                 label: label,
                 value: Int(Double(sums[label] ?? 0) / count)
             )
+        }
+    }
+
+    /// Compute needs for a single team given league averages.
+    /// A position is a "need" if the team's value is below 80% of
+    /// league average OR if they have thin depth (fewer starters
+    /// than typical starting slots require).
+    static func computeNeeds(
+        team: TeamAnalysis,
+        leagueAverages: [TeamAnalysis.HexAxis],
+        positionCounts: [String: Int],
+        rosterPositions: [String]?
+    ) -> [TeamNeed] {
+        var needs: [TeamNeed] = []
+
+        // Map label to average value
+        let avgByPos: [String: Int] = Dictionary(
+            uniqueKeysWithValues: leagueAverages.compactMap { axis in
+                ["QB", "RB", "WR", "TE"].contains(axis.label) ? (axis.label, axis.value) : nil
+            }
+        )
+
+        // Count required starters per position from league settings
+        let requiredStarters = countRequiredStarters(rosterPositions: rosterPositions)
+
+        // Check each position
+        let positionValues: [(String, Int)] = [
+            ("QB", team.qbValue),
+            ("RB", team.rbValue),
+            ("WR", team.wrValue),
+            ("TE", team.teValue)
+        ]
+
+        for (pos, value) in positionValues {
+            let avg = avgByPos[pos] ?? 0
+            let count = positionCounts[pos] ?? 0
+            let required = requiredStarters[pos] ?? 0
+
+            // Calculate how far below average (as percentage)
+            let ratio = avg > 0 ? Double(value) / Double(avg) : 1.0
+
+            // Determine severity
+            var severity: TeamNeed.Severity = .none
+            var reason = ""
+
+            if ratio < 0.65 {
+                severity = .critical
+                reason = "Well below league average"
+            } else if ratio < 0.80 {
+                severity = .high
+                reason = "Below league average"
+            } else if count < required && count > 0 {
+                // Has fewer quality starters than needed
+                severity = .moderate
+                reason = "Thin depth (\(count) rostered, \(required) slots)"
+            } else if ratio < 0.90 && count <= required {
+                severity = .low
+                reason = "Slightly below average"
+            }
+
+            if severity != .none {
+                needs.append(TeamNeed(
+                    position: pos,
+                    severity: severity,
+                    reason: reason,
+                    valueVsAvg: ratio
+                ))
+            }
+        }
+
+        // Sort by severity (critical first)
+        return needs.sorted { $0.severity.rawValue > $1.severity.rawValue }
+    }
+
+    /// Count how many starting slots each position needs.
+    /// Parses rosterPositions like ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "BN"...]
+    private static func countRequiredStarters(rosterPositions: [String]?) -> [String: Int] {
+        guard let positions = rosterPositions else {
+            // Default dynasty superflex: 1 QB, 2 RB, 2 WR, 1 TE + FLEX
+            return ["QB": 1, "RB": 2, "WR": 2, "TE": 1]
+        }
+
+        var counts: [String: Int] = ["QB": 0, "RB": 0, "WR": 0, "TE": 0]
+        var flexCount = 0
+        var superflexCount = 0
+
+        for pos in positions {
+            switch pos.uppercased() {
+            case "QB": counts["QB", default: 0] += 1
+            case "RB": counts["RB", default: 0] += 1
+            case "WR": counts["WR", default: 0] += 1
+            case "TE": counts["TE", default: 0] += 1
+            case "FLEX", "REC_FLEX": flexCount += 1  // RB/WR/TE eligible
+            case "SUPER_FLEX", "SUPERFLEX": superflexCount += 1  // QB/RB/WR/TE eligible
+            default: break  // BN, IR, TAXI, etc.
+            }
+        }
+
+        // FLEX adds to RB/WR/TE depth needs (they compete for flex)
+        // We add fractional credit: if you have 2 FLEX, each position
+        // effectively needs ~0.67 more depth. Simplify to +1 per 2 flex.
+        let flexBonus = flexCount / 2
+        counts["RB", default: 0] += flexBonus
+        counts["WR", default: 0] += flexBonus
+        counts["TE", default: 0] += flexBonus
+
+        // SUPERFLEX adds QB depth need primarily
+        counts["QB", default: 0] += superflexCount
+
+        return counts
+    }
+}
+
+// MARK: - Team Need
+
+/// Represents a positional need for a team.
+struct TeamNeed: Sendable, Hashable, Identifiable {
+    let position: String
+    let severity: Severity
+    let reason: String
+    /// Team's value at this position divided by league average (0.0-1.0+)
+    let valueVsAvg: Double
+
+    var id: String { position }
+
+    enum Severity: Int, Sendable, Hashable {
+        case none = 0
+        case low = 1
+        case moderate = 2
+        case high = 3
+        case critical = 4
+
+        var label: String {
+            switch self {
+            case .none: return ""
+            case .low: return "Low"
+            case .moderate: return "Need"
+            case .high: return "High Need"
+            case .critical: return "Critical"
+            }
         }
     }
 }

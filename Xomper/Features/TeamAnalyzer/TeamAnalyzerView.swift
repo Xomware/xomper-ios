@@ -72,7 +72,8 @@ struct TeamAnalyzerView: View {
             rosters: leagueStore.myLeagueRosters,
             users: leagueStore.myLeagueUsers,
             playerStore: playerStore,
-            valuesStore: valuesStore
+            valuesStore: valuesStore,
+            rosterPositions: leagueStore.myLeague?.rosterPositions
         )
         let myAnalysis = primaryAnalysis(in: analyses)
         let comparison = analyses.first { $0.rosterId == comparisonRosterId }
@@ -472,6 +473,25 @@ struct TeamAnalyzerView: View {
         VStack(alignment: .leading, spacing: XomperTheme.Spacing.sm) {
             Divider().background(XomperColors.surfaceLight.opacity(0.4))
 
+            // Team needs section
+            if !team.needs.isEmpty {
+                VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
+                    Text("TEAM NEEDS")
+                        .font(.caption2.weight(.bold))
+                        .tracking(0.5)
+                        .foregroundStyle(XomperColors.textMuted)
+
+                    HStack(spacing: XomperTheme.Spacing.sm) {
+                        ForEach(team.needs) { need in
+                            needBadge(need)
+                        }
+                    }
+                }
+                .padding(.bottom, XomperTheme.Spacing.xs)
+
+                Divider().background(XomperColors.surfaceLight.opacity(0.4))
+            }
+
             // Show top players (limit to 10 to keep it scannable)
             ForEach(team.players.prefix(10)) { player in
                 HStack(spacing: XomperTheme.Spacing.sm) {
@@ -511,6 +531,32 @@ struct TeamAnalyzerView: View {
             }
         }
         .padding(.top, XomperTheme.Spacing.xs)
+    }
+
+    private func needBadge(_ need: TeamNeed) -> some View {
+        let bgColor: Color = {
+            switch need.severity {
+            case .critical: return XomperColors.errorRed
+            case .high: return XomperColors.errorRed.opacity(0.7)
+            case .moderate: return Color.orange
+            case .low: return XomperColors.textMuted
+            case .none: return Color.clear
+            }
+        }()
+
+        return HStack(spacing: 4) {
+            Text(need.position)
+                .font(.caption2.weight(.bold))
+            if need.severity == .critical || need.severity == .high {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 8))
+            }
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .background(bgColor)
+        .clipShape(Capsule())
     }
 
     private func positionColor(_ pos: String) -> Color {

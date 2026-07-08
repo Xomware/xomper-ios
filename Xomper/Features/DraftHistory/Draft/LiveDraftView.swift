@@ -246,7 +246,8 @@ struct LiveDraftView: View {
         return true
     }
 
-    /// Summary card shown after each completed round with grades and position breakdown.
+    /// Summary card shown after each completed round with grades, position breakdown,
+    /// and team needs for the draft.
     private func roundSummaryCard(
         round: Int,
         slots: [Int],
@@ -267,6 +268,15 @@ struct LiveDraftView: View {
 
         // Position breakdown for this round only
         let positionCounts = countPositionsInRound(round: round, slots: slots, picksByCell: picksByCell)
+
+        // Compute what positions teams still need (based on what they drafted so far)
+        let teamNeeds = computeTeamDraftNeeds(
+            throughRound: round,
+            slots: slots,
+            teamsBySlot: teamsBySlot,
+            teamsByRound: teamsByRound,
+            picksByCell: picksByCell
+        )
 
         return VStack(alignment: .leading, spacing: XomperTheme.Spacing.sm) {
             HStack {
@@ -324,6 +334,34 @@ struct LiveDraftView: View {
                     }
                 }
             }
+
+            // Teams still needing positions (show top 3 teams with biggest needs)
+            let teamsWithNeeds = teamNeeds.filter { !$0.needs.isEmpty }.prefix(3)
+            if !teamsWithNeeds.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Teams Still Need")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(XomperColors.textMuted)
+                    ForEach(Array(teamsWithNeeds), id: \.teamName) { teamNeed in
+                        HStack(spacing: 6) {
+                            Text(teamNeed.teamName)
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(XomperColors.textPrimary)
+                                .lineLimit(1)
+                            Spacer()
+                            ForEach(teamNeed.needs.prefix(2), id: \.self) { pos in
+                                Text(pos)
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 2)
+                                    .background(Color.orange)
+                                    .clipShape(Capsule())
+                            }
+                        }
+                    }
+                }
+            }
         }
         .padding(XomperTheme.Spacing.sm)
         .background(XomperColors.bgCard)
@@ -333,6 +371,64 @@ struct LiveDraftView: View {
                 .strokeBorder(XomperColors.championGold.opacity(0.3), lineWidth: 1)
         )
         .padding(.top, XomperTheme.Spacing.xs)
+    }
+
+    /// Represents a team's draft needs after a certain round.
+    private struct TeamDraftNeeds {
+        let teamName: String
+        let needs: [String]  // Positions they haven't drafted yet but typically need
+    }
+
+    /// Compute which positions each team still needs based on what they've drafted.
+    /// In a rookie draft, teams typically want: 1-2 RB, 1-2 WR, maybe a QB or TE.
+    private func computeTeamDraftNeeds(
+        throughRound: Int,
+        slots: [Int],
+        teamsBySlot: [Int: UpcomingDraftTeam],
+        teamsByRound: [Int: [Int: UpcomingDraftTeam]],
+        picksByCell: [String: DraftPick]
+    ) -> [TeamDraftNeeds] {
+        // Count what each team has drafted so far
+        var draftedByTeam: [String: [String: Int]] = [:]  // teamName -> position -> count
+
+        for round in 1...throughRound {
+            let perRound = teamsByRound[round] ?? teamsBySlot
+            for slot in slots {
+                guard let pick = picksByCell["\(round).\(slot)"],
+                      let team = perRound[slot],
+                      let pos = pick.metadata?.position else { continue }
+                draftedByTeam[team.teamName, default: [:]][pos, default: 0] += 1
+            }
+        }
+
+        // Determine needs based on typical rookie draft targets
+        // Most teams want at least: 1 RB, 1 WR (core positions)
+        // Secondary needs: QB (in SF), TE
+        var results: [TeamDraftNeeds] = []
+
+        for (slot, team) in teamsBySlot {
+            let drafted = draftedByTeam[team.teamName] ?? [:]
+            var needs: [String] = []
+
+            // In dynasty rookie drafts, RB and WR are premium
+            if (drafted["RB"] ?? 0) == 0 {
+                needs.append("RB")
+            }
+            if (drafted["WR"] ?? 0) == 0 {
+                needs.append("WR")
+            }
+            // QB is valuable in superflex
+            if (drafted["QB"] ?? 0) == 0 && throughRound >= 2 {
+                needs.append("QB")
+            }
+
+            if !needs.isEmpty {
+                results.append(TeamDraftNeeds(teamName: team.teamName, needs: needs))
+            }
+        }
+
+        // Sort by most needs first
+        return results.sorted { $0.needs.count > $1.needs.count }
     }
 
     /// Simple pick info for the round summary.
