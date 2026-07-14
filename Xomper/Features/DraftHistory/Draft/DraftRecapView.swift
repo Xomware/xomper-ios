@@ -27,20 +27,25 @@ struct DraftRecapView: View {
     var playerValuesStore: PlayerValuesStore
     let year: String
 
+    /// Trigger to force re-render when values load. The computed `grades`
+    /// property depends on playerValuesStore, but SwiftUI's observation
+    /// doesn't always propagate through nested computed property calls.
+    /// This explicit state change guarantees a re-render.
+    @State private var valuesLoaded = false
+
     /// Lazily computed grades for `year`. Filters
     /// `historyStore.draftHistory` to the year's picks then delegates
     /// to `DraftGradeCalculator`. Empty when picks haven't loaded yet
     /// or no FantasyCalc values are available — the card is silently
     /// absent in that case.
-    ///
-    /// Note: We explicitly check `playerValuesStore.hasValues` to ensure
-    /// SwiftUI tracks this dependency and re-renders once values load.
     private var grades: [DraftGrade] {
-        // Guard on values being loaded — this creates an observable
-        // dependency so SwiftUI re-renders when values arrive.
+        // Guard on values being loaded
         guard playerValuesStore.hasValues else { return [] }
         let picks = historyStore.draftHistory.filter { $0.season == year }
         guard !picks.isEmpty else { return [] }
+        #if DEBUG
+        print("[DraftRecapView] grades for \(year): hasValues=\(playerValuesStore.hasValues), valuesById.count=\(playerValuesStore.valuesById.count), sample value(for: \"4984\")=\(playerValuesStore.value(for: "4984"))")
+        #endif
         return Array(DraftGradeCalculator.grade(
             picks: picks,
             playerValues: playerValuesStore
@@ -48,6 +53,8 @@ struct DraftRecapView: View {
     }
 
     var body: some View {
+        // Access valuesLoaded to create explicit dependency for re-render
+        let _ = valuesLoaded
         Group {
             if let report = matchingReport {
                 reportContent(report)
@@ -64,6 +71,8 @@ struct DraftRecapView: View {
         .background(XomperColors.bgDark.ignoresSafeArea())
         .task(id: year) {
             await playerValuesStore.loadValues()
+            // Trigger re-render after values load
+            valuesLoaded = playerValuesStore.hasValues
             await ensureArchiveLoaded()
         }
         .refreshable {

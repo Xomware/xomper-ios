@@ -233,12 +233,21 @@ final class NewsStore {
         var allTeamNames: [Int: String] = [:]
 
         for leagueData in allLeagueData {
-            // Build roster -> slot mapping. In most leagues, rosterId maps
-            // directly to draft slot (roster 1 = slot 1), unless trades or
-            // custom draft orders are used. This gives us exact pick positions.
-            let slotByRosterId = Dictionary(
-                uniqueKeysWithValues: leagueData.rosters.map { ($0.rosterId, $0.rosterId) }
-            )
+            // Build roster -> slot mapping from the draft history itself.
+            // In round 1 (before any in-draft trades), each roster's pick
+            // establishes their slot position. TradedPick.rosterId refers
+            // to the original slot owner, so we need this mapping to find
+            // which draftSlot a pick corresponds to.
+            var slotByRosterId: [Int: Int] = [:]
+            for record in draftHistory where record.round == 1 {
+                slotByRosterId[record.pickedByRosterId] = record.draftSlot
+            }
+            // Fallback for leagues without draft history loaded
+            if slotByRosterId.isEmpty {
+                slotByRosterId = Dictionary(
+                    uniqueKeysWithValues: leagueData.rosters.map { ($0.rosterId, $0.rosterId) }
+                )
+            }
 
             for entry in leagueData.transactions {
                 guard !seen.contains(entry.txn.transactionId) else { continue }
@@ -416,12 +425,16 @@ enum NewsBuilder {
             guard owns else { return nil }
 
             // Look up who this pick became, if the draft has completed.
-            // Match by season + round + original roster (the rosterId on
-            // TradedPick is the *original* owner's roster).
+            // TradedPick.rosterId = the original slot owner (whose draft position it is).
+            // slotByRosterId maps rosterId -> draftSlot (from round 1 picks).
+            // We match by finding a draft record where season/round match AND
+            // the draftSlot matches the original owner's slot. This correctly
+            // resolves even when multiple rosters have picks in the same round.
+            let originalSlot = slotByRosterId[pick.rosterId]
             let draftedPlayer = draftHistory.first { record in
                 record.season == pick.season &&
                 record.round == pick.round &&
-                record.pickedByRosterId == pick.rosterId
+                record.draftSlot == originalSlot
             }
 
             // Get the slot from draft history (if used) or slot mapping (if upcoming).

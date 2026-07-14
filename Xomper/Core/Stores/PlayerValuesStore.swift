@@ -126,7 +126,13 @@ final class PlayerValuesStore {
     }
 
     func value(for playerId: String) -> Int {
-        valuesById[playerId] ?? 0
+        guard let v = valuesById[playerId] else {
+            #if DEBUG
+            print("[PlayerValuesStore] value(for: \"\(playerId)\") → 0 (miss); valuesById.count=\(valuesById.count)")
+            #endif
+            return 0
+        }
+        return v
     }
 
     func position(for playerId: String) -> String? {
@@ -139,6 +145,9 @@ final class PlayerValuesStore {
     func pickValue(for name: String) -> Int {
         // Exact match first (handles FantasyCalc-format names).
         if let exact = pickValuesByName[name] {
+            #if DEBUG
+            print("[PlayerValuesStore] pickValue('\(name)') → \(exact) (exact match)")
+            #endif
             return exact
         }
 

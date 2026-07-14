@@ -73,6 +73,9 @@ final class LandingViewTests: XCTestCase {
             announcementsStore: AnnouncementsStore(),
             historyStore: HistoryStore(),
             userStore: UserStore(),
+            newsStore: NewsStore(),
+            playerStore: PlayerStore(),
+            valuesStore: PlayerValuesStore(),
             navStore: NavigationStore(),
             router: AppRouter()
         )

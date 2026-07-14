@@ -583,10 +583,21 @@ struct TradeAnalysisView: View {
 
         // Filter picks to only those owned by this roster
         let ownedPickNames = picksOwned(byRosterId: context.rosterId)
+        #if DEBUG
+        print("[TradeAnalysisView] ownedPickNames for roster \(context.rosterId): \(ownedPickNames)")
+        print("[TradeAnalysisView] valuesStore.hasValues=\(valuesStore.hasValues), pickValuesByName.count=\(valuesStore.pickValuesByName.count)")
+        let sample2026 = valuesStore.allPickNames.filter { $0.contains("2026") }.prefix(5)
+        print("[TradeAnalysisView] Sample 2026 picks available: \(Array(sample2026))")
+        #endif
         let picks: [TradePickerItem] = ownedPickNames
             .filter { !pickedPicks.contains($0) }
             .compactMap { name in
                 let value = valuesStore.pickValue(for: name)
+                #if DEBUG
+                if value == 0 {
+                    print("[TradeAnalysisView] Pick '\(name)' has value=0, skipping")
+                }
+                #endif
                 guard value > 0 else { return nil }
                 return TradePickerItem(
                     kind: .pick,
