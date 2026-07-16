@@ -22,6 +22,7 @@ struct TradeCenterView: View {
     var newsStore: NewsStore
     var teamStore: TeamStore
     var historyStore: HistoryStore
+    var router: AppRouter
 
     @State private var selectedTab: TradeCenterTab = .recent
 
@@ -234,7 +235,7 @@ struct TradeCenterView: View {
             ScrollView {
                 LazyVStack(spacing: XomperTheme.Spacing.sm) {
                     ForEach(items) { item in
-                        TradeNewsCard(item: item)
+                        TradeNewsCard(item: item, router: router)
                             .padding(.horizontal, XomperTheme.Spacing.md)
                     }
                 }
@@ -396,7 +397,8 @@ private struct TradeCenterTabBar: View {
             valuesStore: PlayerValuesStore(),
             newsStore: NewsStore(),
             teamStore: TeamStore(),
-            historyStore: HistoryStore()
+            historyStore: HistoryStore(),
+            router: AppRouter()
         )
     }
     .preferredColorScheme(.dark)

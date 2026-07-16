@@ -175,7 +175,9 @@
 		C1B45AB2AF3DC33FE9B511AF /* EmailPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44F22FF3CF671CAA9E80918C /* EmailPreview.swift */; };
 		C1D86EAE02F0D6EA70291876 /* AvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECC70812B3E7E07BA6658A54 /* AvatarView.swift */; };
 		C21992E2FA476C65D8D23BA8 /* HexagonChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 501B8FD2B915B3BD6568F42C /* HexagonChartView.swift */; };
+		C36C60F027FA622E34D62D91 /* TradeDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98C08C265E12D3FD7477ED59 /* TradeDetailView.swift */; };
 		C381DCE8472D2F88B04FCBDA /* CareerStatsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72CFD764A2BA7FF93B318A7F /* CareerStatsSection.swift */; };
+		C9A67ADFC94F5944F3882E95 /* DraftRoundDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 869D1AEA4BCB38A603B6D878 /* DraftRoundDetailView.swift */; };
 		C9D656F4702A3483BB8E970C /* Player.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22A99CAA9B57C1A0144DCA22 /* Player.swift */; };
 		CB47F51AA46AEBC59183C449 /* PlayoffBracketView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 581D4F6F3EB8FC0547F49927 /* PlayoffBracketView.swift */; };
 		CC44774FC6B17057810140CF /* SeededRNGTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48F82C66C92981F7F8AB58CE /* SeededRNGTests.swift */; };
@@ -351,6 +353,7 @@
 		831DFA7D391F8415451D6479 /* DraftSubTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DraftSubTabBar.swift; sourceTree = "<group>"; };
 		840D50097382434B0D123ACB /* NavigationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationStore.swift; sourceTree = "<group>"; };
 		8521885A7FF4C6910DFBF549 /* MatchupsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchupsView.swift; sourceTree = "<group>"; };
+		869D1AEA4BCB38A603B6D878 /* DraftRoundDetailView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DraftRoundDetailView.swift; sourceTree = "<group>"; };
 		89328BA5BCB3605A986E57D3 /* EngineMockedPickRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EngineMockedPickRow.swift; sourceTree = "<group>"; };
 		89FC018282A1F1D8B2FD1B60 /* XomperAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XomperAPIClient.swift; sourceTree = "<group>"; };
 		8A95FE8DD123C85CA39DAE13 /* AIReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIReport.swift; sourceTree = "<group>"; };
@@ -362,6 +365,7 @@
 		957EE31D25CFE325633622D4 /* StandingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingsStore.swift; sourceTree = "<group>"; };
 		967DCE922FE090CE4F067587 /* AIReviewDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIReviewDetailView.swift; sourceTree = "<group>"; };
 		98366CAC5A10DA7462A41E7B /* AdminStoreFlagTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminStoreFlagTests.swift; sourceTree = "<group>"; };
+		98C08C265E12D3FD7477ED59 /* TradeDetailView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TradeDetailView.swift; sourceTree = "<group>"; };
 		99981051F598B42534DE81CB /* LogLevel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogLevel.swift; sourceTree = "<group>"; };
 		9AD03A165767A043D34A9499 /* AdminStorePreseasonTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminStorePreseasonTests.swift; sourceTree = "<group>"; };
 		9B7C85CB880ABD7D373E49A6 /* RuleProposal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuleProposal.swift; sourceTree = "<group>"; };
@@ -731,6 +735,7 @@
 				72B721BC741854F856169316 /* NewsFilterBar.swift */,
 				E6FFB24F383C6C33724F54CF /* NewsView.swift */,
 				C1C46DBFDF0160DA0CC8751E /* TradeNewsCard.swift */,
+				98C08C265E12D3FD7477ED59 /* TradeDetailView.swift */,
 			);
 			path = News;
 			sourceTree = "<group>";
@@ -743,6 +748,7 @@
 				831DFA7D391F8415451D6479 /* DraftSubTabBar.swift */,
 				B04B5251715A37E924DF7CEF /* LiveDraftView.swift */,
 				50D86A1E276C98E0A3D5070F /* MocksView.swift */,
+				869D1AEA4BCB38A603B6D878 /* DraftRoundDetailView.swift */,
 			);
 			path = Draft;
 			sourceTree = "<group>";
@@ -1040,8 +1046,6 @@
 				C4510861533ADD704B754B54 /* PBXTargetDependency */,
 			);
 			name = XomperTests;
-			packageProductDependencies = (
-			);
 			productName = XomperTests;
 			productReference = ACCFF9888476668EBE7AA0CC /* XomperTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -1330,6 +1334,8 @@
 				194BED1749B3F623C8D732DE /* XomperColors.swift in Sources */,
 				427F23653F78A52108C55692 /* XomperLoader.swift in Sources */,
 				2F09FBAE23D8109C931D63A9 /* XomperTheme.swift in Sources */,
+				C36C60F027FA622E34D62D91 /* TradeDetailView.swift in Sources */,
+				C9A67ADFC94F5944F3882E95 /* DraftRoundDetailView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -24,6 +24,14 @@ enum AppRoute: Hashable {
     /// view resolves the struct from `AIReviewStore`.
     case aiReportDetail(reportId: String)
 
+    /// Detail view for a trade from the News feed. `transactionId`
+    /// matches `NewsItem.id` (the Sleeper transaction_id).
+    case tradeDetail(transactionId: String)
+
+    /// Detail view for one draft round. Used from DraftRecapView to
+    /// show a full round summary with all picks.
+    case draftRoundDetail(season: String, round: Int)
+
     // MARK: - Archive (F4)
 
     /// Pushed from `ArchiveView`'s "Past Standings" card. Lists every

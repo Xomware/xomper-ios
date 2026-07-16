@@ -11,6 +11,7 @@ struct NewsView: View {
     var valuesStore: PlayerValuesStore
     var newsStore: NewsStore
     var historyStore: HistoryStore
+    var router: AppRouter
 
     var body: some View {
         VStack(spacing: 0) {
@@ -159,7 +160,7 @@ struct NewsView: View {
     private func card(for item: NewsItem) -> some View {
         switch item.type {
         case .trade:
-            TradeNewsCard(item: item)
+            TradeNewsCard(item: item, router: router)
         case .waiver, .freeAgent:
             MoveNewsCard(item: item)
         }

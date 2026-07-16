@@ -8,8 +8,11 @@ import SwiftUI
 /// All data is computed client-side via `DraftGradeCalculator` from
 /// FantasyCalc values + the `DraftHistoryRecord` list. No backend
 /// calls.
+///
+/// Team names are clickable and navigate to the team detail view.
 struct DraftGradesCard: View {
     let grades: [DraftGrade]
+    let router: AppRouter
     @State private var expandedRosterId: Int?
 
     var body: some View {
@@ -46,24 +49,24 @@ struct DraftGradesCard: View {
 
     private func row(_ grade: DraftGrade) -> some View {
         VStack(spacing: 0) {
-            Button(action: {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                withAnimation(.easeInOut(duration: 0.18)) {
-                    expandedRosterId = expandedRosterId == grade.rosterId ? nil : grade.rosterId
-                }
-            }) {
-                HStack(spacing: XomperTheme.Spacing.sm) {
-                    letterChip(grade.letter)
+            HStack(spacing: XomperTheme.Spacing.sm) {
+                letterChip(grade.letter)
 
+                // Team name - clickable to navigate to team detail
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    router.navigate(to: .teamDetail(rosterId: grade.rosterId))
+                } label: {
                     VStack(alignment: .leading, spacing: 1) {
-                        // Most managers never set a custom team name, so
-                        // fall back to the manager handle for the primary
-                        // line and only show the secondary line when a
-                        // distinct team name exists.
-                        Text(grade.teamName.isEmpty ? grade.managerName : grade.teamName)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(XomperColors.textPrimary)
-                            .lineLimit(1)
+                        HStack(spacing: 4) {
+                            Text(grade.teamName.isEmpty ? grade.managerName : grade.teamName)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(XomperColors.championGold)
+                                .lineLimit(1)
+                            Image(systemName: "chevron.right")
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(XomperColors.textMuted)
+                        }
                         if !grade.teamName.isEmpty {
                             Text(grade.managerName)
                                 .font(.caption2)
@@ -71,18 +74,28 @@ struct DraftGradesCard: View {
                                 .lineLimit(1)
                         }
                     }
+                }
+                .buttonStyle(.plain)
 
-                    Spacer()
+                Spacer()
 
-                    voeBadge(grade.valueOverExpected)
+                voeBadge(grade.valueOverExpected)
 
+                // Expand/collapse button
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        expandedRosterId = expandedRosterId == grade.rosterId ? nil : grade.rosterId
+                    }
+                } label: {
                     Image(systemName: expandedRosterId == grade.rosterId ? "chevron.up" : "chevron.down")
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(XomperColors.textMuted)
+                        .frame(width: 24, height: 24)
                 }
-                .padding(.vertical, 6)
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
+            .padding(.vertical, 6)
 
             if expandedRosterId == grade.rosterId {
                 picksList(grade)

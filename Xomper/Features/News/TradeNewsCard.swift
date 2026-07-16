@@ -2,8 +2,12 @@ import SwiftUI
 
 /// Feed card for a completed trade. Social-media-inspired design with
 /// engaging headlines, clear visual hierarchy, and scannable content.
+///
+/// Tapping the card navigates to a full trade detail view. Team names
+/// are clickable and navigate to the team detail view.
 struct TradeNewsCard: View {
     let item: NewsItem
+    let router: AppRouter
 
     /// The winning side (if not fair) for highlight treatment.
     private var winner: NewsSide? {
@@ -18,32 +22,39 @@ struct TradeNewsCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Top banner with grade
-            headerBanner
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            router.navigate(to: .tradeDetail(transactionId: item.id))
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                // Top banner with grade
+                headerBanner
 
-            VStack(alignment: .leading, spacing: XomperTheme.Spacing.md) {
-                // Engaging headline
-                headlineSection
+                VStack(alignment: .leading, spacing: XomperTheme.Spacing.md) {
+                    // Engaging headline
+                    headlineSection
 
-                // The trade itself - two columns
-                tradeComparison
+                    // The trade itself - two columns
+                    tradeComparison
 
-                // Quick verdict for scanners
-                if let grade = item.grade {
-                    verdictPill(grade)
+                    // Quick verdict for scanners
+                    if let grade = item.grade {
+                        verdictPill(grade)
+                    }
                 }
+                .padding(XomperTheme.Spacing.md)
             }
-            .padding(XomperTheme.Spacing.md)
+            .background(XomperColors.bgCard)
+            .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
+            .overlay(
+                RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg)
+                    .strokeBorder(XomperColors.championGold.opacity(0.3), lineWidth: 1)
+            )
         }
-        .background(XomperColors.bgCard)
-        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
-        .overlay(
-            RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg)
-                .strokeBorder(XomperColors.championGold.opacity(0.3), lineWidth: 1)
-        )
+        .buttonStyle(.pressableCard)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(item.summary.isEmpty ? item.headline : item.summary)
+        .accessibilityHint("Double tap to view trade details")
     }
 
     // MARK: - Header Banner
@@ -82,11 +93,32 @@ struct TradeNewsCard: View {
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
 
-            // Subtitle with teams involved
-            Text("\(item.sides[safe: 0]?.teamName ?? "") & \(item.sides[safe: 1]?.teamName ?? "")")
-                .font(.subheadline)
-                .foregroundStyle(XomperColors.textSecondary)
+            // Subtitle with clickable team names
+            HStack(spacing: 4) {
+                if let side0 = item.sides[safe: 0] {
+                    teamNameButton(side0)
+                }
+                Text("&")
+                    .font(.subheadline)
+                    .foregroundStyle(XomperColors.textSecondary)
+                if let side1 = item.sides[safe: 1] {
+                    teamNameButton(side1)
+                }
+            }
         }
+    }
+
+    private func teamNameButton(_ side: NewsSide) -> some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            router.navigate(to: .teamDetail(rosterId: side.rosterId))
+        } label: {
+            Text(side.teamName)
+                .font(.subheadline)
+                .foregroundStyle(XomperColors.championGold)
+                .underline(color: XomperColors.championGold.opacity(0.5))
+        }
+        .buttonStyle(.plain)
     }
 
     /// Creates an engaging headline like "Caleb Williams Headlines Blockbuster Deal"
@@ -147,18 +179,27 @@ struct TradeNewsCard: View {
         let isLoser = loser?.rosterId == side.rosterId
 
         return VStack(alignment: .leading, spacing: XomperTheme.Spacing.xs) {
-            // Team name with grade badge
-            HStack(spacing: 6) {
-                if let grade = item.grade {
-                    Text(grade.letter(for: side.rosterId).rawValue)
-                        .font(.caption.weight(.black))
-                        .foregroundStyle(grade.letter(for: side.rosterId).color)
+            // Team name with grade badge - clickable
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                router.navigate(to: .teamDetail(rosterId: side.rosterId))
+            } label: {
+                HStack(spacing: 6) {
+                    if let grade = item.grade {
+                        Text(grade.letter(for: side.rosterId).rawValue)
+                            .font(.caption.weight(.black))
+                            .foregroundStyle(grade.letter(for: side.rosterId).color)
+                    }
+                    Text(side.teamName)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(XomperColors.championGold)
+                        .lineLimit(1)
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(XomperColors.textMuted)
                 }
-                Text(side.teamName)
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(XomperColors.textPrimary)
-                    .lineLimit(1)
             }
+            .buttonStyle(.plain)
 
             // Received label
             Text("RECEIVED")

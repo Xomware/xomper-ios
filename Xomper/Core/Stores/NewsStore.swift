@@ -74,6 +74,11 @@ final class NewsStore {
         dateFilter = .all
     }
 
+    /// Look up a news item by its transaction id.
+    func item(for transactionId: String) -> NewsItem? {
+        items.first { $0.id == transactionId }
+    }
+
     // MARK: - Load
 
     /// Fetch + build the feed. Skips the network when the same league was
@@ -107,6 +112,14 @@ final class NewsStore {
         defer { isLoading = false }
         error = nil
 
+        // Drafts carry `slot_to_roster_id` — the authoritative slot↔roster
+        // mapping used to resolve traded picks to their real slot.
+        let drafts = (try? await apiClient.fetchDrafts(leagueId)) ?? []
+        let slotByRosterIdBySeason = Self.buildSlotByRosterIdBySeason(
+            leagues: [drafts],
+            draftHistory: draftHistory
+        )
+
         // Fetch every week concurrently; tolerate per-week failures so a
         // single bad week doesn't blank the feed. Weeks with no moves
         // return an empty array, not an error.
@@ -134,7 +147,8 @@ final class NewsStore {
                 users: users,
                 playerStore: playerStore,
                 valuesStore: valuesStore,
-                draftHistory: draftHistory
+                draftHistory: draftHistory,
+                slotByRosterIdBySeason: slotByRosterIdBySeason
             ) {
                 built.append(item)
                 seen.insert(entry.txn.transactionId)
@@ -189,6 +203,7 @@ final class NewsStore {
         struct LeagueData: Sendable {
             let rosters: [Roster]
             let users: [SleeperUser]
+            let drafts: [Draft]
             let transactions: [(week: Int, txn: Transaction)]
         }
 
@@ -201,6 +216,9 @@ final class NewsStore {
                     // Fetch rosters and users for this league
                     let rosters = (try? await apiClient.fetchLeagueRosters(league.leagueId)) ?? []
                     let users = (try? await apiClient.fetchLeagueUsers(league.leagueId)) ?? []
+                    // Drafts carry `slot_to_roster_id` — the authoritative
+                    // slot↔roster mapping used to resolve traded picks.
+                    let drafts = (try? await apiClient.fetchDrafts(league.leagueId)) ?? []
 
                     // Fetch all weeks of transactions for this league
                     var collected: [(week: Int, txn: Transaction)] = []
@@ -216,7 +234,7 @@ final class NewsStore {
                         }
                     }
 
-                    return LeagueData(rosters: rosters, users: users, transactions: collected)
+                    return LeagueData(rosters: rosters, users: users, drafts: drafts, transactions: collected)
                 }
             }
 
@@ -227,28 +245,22 @@ final class NewsStore {
             }
         }
 
+        // Build the authoritative season → (roster → slot) mapping from
+        // every draft's `slot_to_roster_id`. Roster IDs are stable across
+        // a dynasty chain but the slot order changes each season (draft
+        // lottery), so the map MUST be keyed by season — a global merge
+        // would collide (roster 11 = slot 9 one year, slot 3 the next).
+        let slotByRosterIdBySeason = Self.buildSlotByRosterIdBySeason(
+            leagues: allLeagueData.map { ($0.drafts) },
+            draftHistory: draftHistory
+        )
+
         // Build NewsItems on the main actor (where NewsBuilder.build lives).
         var allBuilt: [NewsItem] = []
         var seen = Set<String>()
         var allTeamNames: [Int: String] = [:]
 
         for leagueData in allLeagueData {
-            // Build roster -> slot mapping from the draft history itself.
-            // In round 1 (before any in-draft trades), each roster's pick
-            // establishes their slot position. TradedPick.rosterId refers
-            // to the original slot owner, so we need this mapping to find
-            // which draftSlot a pick corresponds to.
-            var slotByRosterId: [Int: Int] = [:]
-            for record in draftHistory where record.round == 1 {
-                slotByRosterId[record.pickedByRosterId] = record.draftSlot
-            }
-            // Fallback for leagues without draft history loaded
-            if slotByRosterId.isEmpty {
-                slotByRosterId = Dictionary(
-                    uniqueKeysWithValues: leagueData.rosters.map { ($0.rosterId, $0.rosterId) }
-                )
-            }
-
             for entry in leagueData.transactions {
                 guard !seen.contains(entry.txn.transactionId) else { continue }
                 if let item = NewsBuilder.build(
@@ -259,7 +271,7 @@ final class NewsStore {
                     playerStore: playerStore,
                     valuesStore: valuesStore,
                     draftHistory: draftHistory,
-                    slotByRosterId: slotByRosterId
+                    slotByRosterIdBySeason: slotByRosterIdBySeason
                 ) {
                     allBuilt.append(item)
                     seen.insert(entry.txn.transactionId)
@@ -276,6 +288,42 @@ final class NewsStore {
         teamNames = allTeamNames
         lastLoadedLeagueId = chainKey
         lastLoadedAt = Date()
+    }
+
+    /// Builds `season → (rosterId → draftSlot)` from each league's drafts.
+    ///
+    /// The authoritative source is `Draft.slot_to_roster_id` (slot → roster),
+    /// inverted here to roster → slot. `TradedPick.rosterId` is the ORIGINAL
+    /// slot owner, so this is exactly what turns a traded pick into its
+    /// physical slot (and thus its "2.09" label + exact value).
+    ///
+    /// For any season where no draft has an assigned order yet (future
+    /// picks), we fall back to the round-1 draft-history heuristic — imperfect
+    /// when round-1 picks were themselves traded, but the best available
+    /// signal before the draft order exists.
+    static func buildSlotByRosterIdBySeason(
+        leagues: [[Draft]],
+        draftHistory: [DraftHistoryRecord]
+    ) -> [String: [Int: Int]] {
+        var bySeason: [String: [Int: Int]] = [:]
+
+        for drafts in leagues {
+            for draft in drafts {
+                let inverted = draft.slotByRosterId
+                guard !inverted.isEmpty else { continue }
+                // A season has one draft; if somehow multiple, merge.
+                bySeason[draft.season, default: [:]].merge(inverted) { _, new in new }
+            }
+        }
+
+        // Fallback only for seasons with no authoritative map.
+        let authoritative = Set(bySeason.keys)
+        for record in draftHistory where record.round == 1 {
+            guard !authoritative.contains(record.season) else { continue }
+            bySeason[record.season, default: [:]][record.pickedByRosterId] = record.draftSlot
+        }
+
+        return bySeason
     }
 
     func reset() {
@@ -334,7 +382,7 @@ enum NewsBuilder {
         playerStore: PlayerStore,
         valuesStore: PlayerValuesStore,
         draftHistory: [DraftHistoryRecord] = [],
-        slotByRosterId: [Int: Int] = [:]
+        slotByRosterIdBySeason: [String: [Int: Int]] = [:]
     ) -> NewsItem? {
         // Only surface completed, recognized moves.
         guard t.status == nil || t.status == "complete" else { return nil }
@@ -347,9 +395,9 @@ enum NewsBuilder {
 
         let sides: [NewsSide] = rosterIds.map { rid in
             let acquired = playerAssets(from: t.adds, roster: rid, playerStore: playerStore, valuesStore: valuesStore)
-                + pickAssets(from: t.draftPicks, roster: rid, acquired: true, valuesStore: valuesStore, draftHistory: draftHistory, slotByRosterId: slotByRosterId)
+                + pickAssets(from: t.draftPicks, roster: rid, acquired: true, valuesStore: valuesStore, draftHistory: draftHistory, slotByRosterIdBySeason: slotByRosterIdBySeason)
             let relinquished = playerAssets(from: t.drops, roster: rid, playerStore: playerStore, valuesStore: valuesStore)
-                + pickAssets(from: t.draftPicks, roster: rid, acquired: false, valuesStore: valuesStore, draftHistory: draftHistory, slotByRosterId: slotByRosterId)
+                + pickAssets(from: t.draftPicks, roster: rid, acquired: false, valuesStore: valuesStore, draftHistory: draftHistory, slotByRosterIdBySeason: slotByRosterIdBySeason)
             return NewsSide(
                 rosterId: rid,
                 teamName: teamName(rid, rosters: rosters, users: users),
@@ -415,7 +463,7 @@ enum NewsBuilder {
         acquired: Bool,
         valuesStore: PlayerValuesStore,
         draftHistory: [DraftHistoryRecord] = [],
-        slotByRosterId: [Int: Int] = [:]
+        slotByRosterIdBySeason: [String: [Int: Int]] = [:]
     ) -> [NewsAsset] {
         guard let picks else { return [] }
         return picks.compactMap { pick -> NewsAsset? in
@@ -424,21 +472,22 @@ enum NewsBuilder {
             let owns = acquired ? pick.ownerId == rid : pick.previousOwnerId == rid
             guard owns else { return nil }
 
-            // Look up who this pick became, if the draft has completed.
-            // TradedPick.rosterId = the original slot owner (whose draft position it is).
-            // slotByRosterId maps rosterId -> draftSlot (from round 1 picks).
-            // We match by finding a draft record where season/round match AND
-            // the draftSlot matches the original owner's slot. This correctly
-            // resolves even when multiple rosters have picks in the same round.
-            let originalSlot = slotByRosterId[pick.rosterId]
+            // Resolve the pick's PHYSICAL draft slot.
+            // TradedPick.rosterId = the ORIGINAL slot owner (not the slot
+            // number). `slotByRosterIdBySeason` is derived from the draft's
+            // authoritative `slot_to_roster_id`, keyed by season because the
+            // slot order changes every year. We then match a draft-history
+            // record by season/round/slot to find who the pick became.
+            let originalSlot = slotByRosterIdBySeason[pick.season]?[pick.rosterId]
             let draftedPlayer = draftHistory.first { record in
                 record.season == pick.season &&
                 record.round == pick.round &&
                 record.draftSlot == originalSlot
             }
 
-            // Get the slot from draft history (if used) or slot mapping (if upcoming).
-            let slot: Int? = draftedPlayer?.draftSlot ?? slotByRosterId[pick.rosterId]
+            // Get the slot from draft history (if drafted) or the slot
+            // mapping (if the draft order is set but not yet used).
+            let slot: Int? = draftedPlayer?.draftSlot ?? originalSlot
 
             // For resolved picks, use the drafted player's current dynasty
             // value instead of the generic pick value. This makes historical

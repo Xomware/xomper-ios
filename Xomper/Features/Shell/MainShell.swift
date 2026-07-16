@@ -202,7 +202,8 @@ struct MainShell: View {
                     playerStore: playerStore,
                     valuesStore: valuesStore,
                     newsStore: newsStore,
-                    historyStore: historyStore
+                    historyStore: historyStore,
+                    router: router
                 )
 
             case .draftHistory:
@@ -214,7 +215,8 @@ struct MainShell: View {
                     playerValuesStore: valuesStore,
                     userStore: userStore,
                     nflStateStore: nflStateStore,
-                    aiReviewStore: aiReviewStore
+                    aiReviewStore: aiReviewStore,
+                    router: router
                 )
 
             case .matchupHistory:
@@ -258,7 +260,8 @@ struct MainShell: View {
                     valuesStore: valuesStore,
                     newsStore: newsStore,
                     teamStore: teamStore,
-                    historyStore: historyStore
+                    historyStore: historyStore,
+                    router: router
                 )
 
             case .payouts:
@@ -472,7 +475,8 @@ struct MainShell: View {
                 playerValuesStore: valuesStore,
                 userStore: userStore,
                 nflStateStore: nflStateStore,
-                aiReviewStore: aiReviewStore
+                aiReviewStore: aiReviewStore,
+                router: router
             )
 
         case .matchupHistory:
@@ -533,6 +537,26 @@ struct MainShell: View {
                     message: "We couldn't load this report — pull to refresh the archive."
                 )
             }
+
+        case .tradeDetail(let transactionId):
+            if let item = newsStore.item(for: transactionId) {
+                TradeDetailView(item: item, router: router)
+            } else {
+                EmptyStateView(
+                    icon: "arrow.left.arrow.right",
+                    title: "Trade Not Found",
+                    message: "We couldn't load this trade — pull to refresh the news feed."
+                )
+            }
+
+        case .draftRoundDetail(let season, let round):
+            DraftRoundDetailView(
+                season: season,
+                round: round,
+                historyStore: historyStore,
+                playerStore: playerStore,
+                router: router
+            )
 
         case .archivePastStandings:
             PastStandingsListView(

@@ -25,6 +25,7 @@ struct DraftRecapView: View {
     var aiReviewStore: AIReviewStore
     var historyStore: HistoryStore
     var playerValuesStore: PlayerValuesStore
+    var router: AppRouter
     let year: String
 
     /// Trigger to force re-render when values load. The computed `grades`
@@ -50,6 +51,13 @@ struct DraftRecapView: View {
             picks: picks,
             playerValues: playerValuesStore
         ).values)
+    }
+
+    /// Get all rounds for this year's draft.
+    private var draftRounds: [Int] {
+        let picks = historyStore.draftHistory.filter { $0.season == year }
+        let rounds = Set(picks.map(\.round))
+        return rounds.sorted()
     }
 
     var body: some View {
@@ -119,14 +127,93 @@ struct DraftRecapView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: XomperTheme.Spacing.md) {
                 headerCard(report)
+
+                // Round summaries - prominently displayed at the top
+                if !draftRounds.isEmpty {
+                    roundSummariesCard
+                }
+
                 if !grades.isEmpty {
-                    DraftGradesCard(grades: grades)
+                    DraftGradesCard(grades: grades, router: router)
                 }
                 bodyCard(report)
             }
             .padding(.horizontal, XomperTheme.Spacing.md)
             .padding(.vertical, XomperTheme.Spacing.sm)
         }
+    }
+
+    // MARK: - Round Summaries Card
+
+    private var roundSummariesCard: some View {
+        VStack(alignment: .leading, spacing: XomperTheme.Spacing.sm) {
+            HStack(spacing: XomperTheme.Spacing.xs) {
+                Text("DRAFT ROUNDS")
+                    .font(.caption2.weight(.bold))
+                    .tracking(2)
+                    .foregroundStyle(XomperColors.championGold)
+                Spacer()
+                Text("Tap to view picks")
+                    .font(.caption2)
+                    .foregroundStyle(XomperColors.textMuted)
+            }
+            .padding(.bottom, 4)
+
+            // Round chips in a flowing grid
+            LazyVGrid(columns: [
+                GridItem(.adaptive(minimum: 80, maximum: 120), spacing: XomperTheme.Spacing.sm)
+            ], spacing: XomperTheme.Spacing.sm) {
+                ForEach(draftRounds, id: \.self) { round in
+                    roundChip(round)
+                }
+            }
+        }
+        .padding(XomperTheme.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(XomperColors.bgCard)
+        .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg))
+        .overlay(
+            RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.lg)
+                .strokeBorder(XomperColors.championGold.opacity(0.3), lineWidth: 1)
+        )
+    }
+
+    private func roundChip(_ round: Int) -> some View {
+        let picks = historyStore.draftHistory.filter { $0.season == year && $0.round == round }
+        let topPick = picks.sorted { $0.pickNo < $1.pickNo }.first
+
+        return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            router.navigate(to: .draftRoundDetail(season: year, round: round))
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("Round \(round)")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(XomperColors.championGold)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(XomperColors.textMuted)
+                }
+
+                if let top = topPick {
+                    Text("#1: \(top.playerName)")
+                        .font(.caption2)
+                        .foregroundStyle(XomperColors.textSecondary)
+                        .lineLimit(1)
+                }
+
+                Text("\(picks.count) picks")
+                    .font(.caption2)
+                    .foregroundStyle(XomperColors.textMuted)
+            }
+            .padding(XomperTheme.Spacing.sm)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(XomperColors.surfaceLight.opacity(0.3))
+            .clipShape(RoundedRectangle(cornerRadius: XomperTheme.CornerRadius.md))
+        }
+        .buttonStyle(.pressableCard)
     }
 
     private func headerCard(_ report: AIReport) -> some View {

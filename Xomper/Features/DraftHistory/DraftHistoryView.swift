@@ -26,6 +26,7 @@ struct DraftHistoryView: View {
     var userStore: UserStore
     var nflStateStore: NflStateStore
     var aiReviewStore: AIReviewStore
+    var router: AppRouter
 
     @Environment(\.selectedSeason) private var seasonStore: SeasonStore?
 
@@ -92,6 +93,7 @@ struct DraftHistoryView: View {
                         aiReviewStore: aiReviewStore,
                         historyStore: historyStore,
                         playerValuesStore: playerValuesStore,
+                        router: router,
                         year: currentSeason
                     )
                 case .picks:
@@ -1047,7 +1049,8 @@ enum DraftViewMode: String, CaseIterable, Identifiable {
             playerValuesStore: PlayerValuesStore(),
             userStore: UserStore(),
             nflStateStore: NflStateStore(),
-            aiReviewStore: AIReviewStore()
+            aiReviewStore: AIReviewStore(),
+            router: AppRouter()
         )
     }
     .preferredColorScheme(.dark)

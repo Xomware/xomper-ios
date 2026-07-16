@@ -15,10 +15,37 @@ struct Draft: Codable, Identifiable, Sendable {
     let lastMessageTime: Int?
     let lastMessageId: String?
     let draftOrder: [String: Int]?
+    /// Sleeper's authoritative physical-slot → roster mapping
+    /// (`{"1": 5, "2": 3, …}`, keys are slot numbers as strings). This
+    /// is the source of truth for which roster owns which draft SLOT,
+    /// independent of any pick trades. `TradedPick.rosterId` refers to
+    /// the ORIGINAL slot owner, so this is what resolves a traded pick
+    /// to its "2.09"-style label. Nil until the draft order is set
+    /// (pre-draft leagues).
+    let slotToRosterId: [String: Int]?
     let creators: [String]?
     let created: Int?
 
     var id: String { draftId }
+
+    /// Inverts `slotToRosterId` (slot → roster) into roster → slot so a
+    /// `TradedPick.rosterId` (the original slot owner) can be resolved
+    /// to its physical draft slot. Empty until the order is assigned.
+    var slotByRosterId: [Int: Int] {
+        guard let slotToRosterId else { return [:] }
+        var out: [Int: Int] = [:]
+        for (slotString, rosterId) in slotToRosterId {
+            if let slot = Int(slotString) { out[rosterId] = slot }
+        }
+        return out
+    }
+
+    /// Physical draft slot for the pick originally owned by `rosterId`.
+    /// Nil when the draft order isn't set yet (future/undrafted picks),
+    /// in which case callers should fall back to a round-only label.
+    func originalSlot(forRosterId rosterId: Int) -> Int? {
+        slotByRosterId[rosterId]
+    }
 
     enum CodingKeys: String, CodingKey {
         case draftId = "draft_id"
@@ -35,6 +62,7 @@ struct Draft: Codable, Identifiable, Sendable {
         case lastMessageTime = "last_message_time"
         case lastMessageId = "last_message_id"
         case draftOrder = "draft_order"
+        case slotToRosterId = "slot_to_roster_id"
         case creators
         case created
     }
