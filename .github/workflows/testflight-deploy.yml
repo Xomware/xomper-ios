@@ -77,7 +77,12 @@ jobs:
           ASC_API_KEY_ID: ${{ env.ASC_API_KEY_ID }}
         run: |
           mkdir -p ~/.appstoreconnect/private_keys
-          echo "$ASC_API_KEY_P8" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_${ASC_API_KEY_ID}.p8
+          # Infisical stores the raw PEM; older secrets were base64. Accept either.
+          if printf "%s" "$ASC_API_KEY_P8" | grep -q -- "-----BEGIN PRIVATE KEY-----"; then
+            printf "%s" "$ASC_API_KEY_P8" > ~/.appstoreconnect/private_keys/AuthKey_${ASC_API_KEY_ID}.p8
+          else
+            printf "%s" "$ASC_API_KEY_P8" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_${ASC_API_KEY_ID}.p8
+          fi
           chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${ASC_API_KEY_ID}.p8
 
       - name: Compute version and build number
